@@ -186,7 +186,7 @@
       same "printed page" as the copyright notice for easier
       identification within third-party archives.
 
-   Copyright [yyyy] [name of copyright owner]
+   Copyright 2024 DecoKee
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -199,3 +199,18 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+   ## Additional Terms for DecoKee
+   
+   DecoKee is provided subject to a commercial license and subscription as described in the [Terms of Use](http://www.decokee.com/about/terms.html).
+   
+   ### Communication Protocol Usage
+   
+   The communication protocol parts of this project (including but not limited to protocol specifications, implementation code, etc.) may not be used for commercial purposes, because doing so would violate the project's usage restrictions. For non-commercial uses, there are no restrictions.
+   
+   ## Evaluation Use
+   
+   An evaluation license is offered that provides a limited, evaluation license for internal and non-commercial use.
+   
+   With a paid-up subscription you can incorporate new releases, updates and patches for the software into your products. If you do not have an active subscription, you cannot apply patches from the software to your products.
+   
