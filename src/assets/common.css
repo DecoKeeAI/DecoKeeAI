@@ -1,0 +1,184 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+ol, ul {
+  list-style-type: none;  
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+  -webkit-box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+  background: #979a9f;
+}
+
+::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+  -webkit-box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  background: #EDEDED;
+}
+
+
+.el-input__inner {
+  height: 30px;
+  background: #3b3b3b;
+  border: none;
+  border-radius: 0;
+  color: #fff;
+}
+
+.el-icon-search {
+  line-height: 30px;
+  padding-right: 15px;
+}
+
+/* 下拉菜单样式 */
+.el-select-dropdown {
+  background: #3b3b3b;
+  border: 0;
+  font-weight: 400;
+  border-radius: 0;
+}
+.el-select:hover .el-input__inner {
+  border-color: transparent;
+}
+.el-select .el-input.is-focus .el-input__inner {
+  border-color: transparent;
+}
+.el-select-dropdown__item {
+  color: #fff;
+}
+
+.el-select-dropdown__item.hover,
+.el-select-dropdown__item:hover {
+  background: #4b9cfb;
+}
+
+.el-select-dropdown__item.selected {
+  color: #fff;
+}
+
+.el-popper[x-placement^=top] {
+  margin-bottom: 0px;
+}
+
+.el-popper[x-placement^=top] .popper__arrow,
+.el-popper[x-placement^=top] .popper__arrow::after {
+  border-top-color: #3b3b3b;
+}
+
+.el-popper[x-placement^=bottom] {
+  margin-top:4px;
+}
+
+.el-popper[x-placement^=bottom] .popper__arrow, .el-popper[x-placement^=bottom] .popper__arrow::after {
+  border-bottom-color: transparent;
+}
+
+.el-popper[x-placement^=right] {
+  margin-left: 0;
+}
+
+.el-popover {
+  background: #3b3b3b;
+  border: none;
+  color: #fff;
+}
+
+.el-cascader-menu {
+  color: #fff;
+  background: #2d2d2d;
+}
+
+.el-cascader__dropdown {
+  border-color: #3b3b3b;
+}
+
+.el-popper[x-placement^=right] .popper__arrow::after {
+  border-right-color: #3b3b3b;
+  border-width: 8px;
+  bottom: -7px;
+  left: -10px;
+}
+
+.el-cascader-node:not(.is-disabled):focus,
+.el-cascader-node:not(.is-disabled):hover {
+  background: transparent;
+}
+
+.el-cascader-panel.is-bordered {
+  border: 0;
+  margin-left: -20px;
+}
+/* 颜色选择器 */
+.el-color-dropdown__btns .el-input__inner {
+  background: transparent;
+  color: #000;
+  border: 1px solid #909399;
+}
+
+
+/* 朴素按钮样式 */
+.el-button--primary.is-plain {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  color: #fff;
+}
+
+.el-button--primary.is-plain:focus {
+  color: #fff;
+  background: transparent;
+}
+
+.el-button--primary.is-plain:hover {
+  color: #409EFF;
+  background: transparent;
+}
+
+
+
+.el-loading-mask {
+  background-color: rgba(255, 255, 255, 0.3); /* Modify the background color */
+}
+
+.el-loading-spinner .path {
+  stroke: #2699FB; /* Modify the loading circle's color */
+}
+
+.el-message-box {
+  background-color: #2d2d2d;
+  border-color: #2d2d2d;
+}
+
+
+.el-message-box__message {
+  /* Text color of the message */
+  color: #fff;
+}
+
+
+.el-dialog {
+  background: #2d2d2d;
+}
+
+.el-dialog__title {
+  color: #ffffff;
+}
+
+#right-click-menu {
+  background: #3d3d3d;
+}
+
+.el-message--success {
+  min-width: 100px;
+  padding: 10px;
+}

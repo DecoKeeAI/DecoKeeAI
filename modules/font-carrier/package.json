@@ -1,0 +1,78 @@
+{
+  "_args": [
+    [
+      "font-carrier@0.3.1"
+    ]
+  ],
+  "_from": "font-carrier@0.3.1",
+  "_id": "font-carrier@0.3.1",
+  "_inBundle": false,
+  "_integrity": "sha512-byxvmzBPZiOtEgIt6olqjY5/9PNx1dF0chP8Qmz2CpvDIqV0Qk/zfi03w8JmLaXH0KnV5aU+bauHvc97TitXRg==",
+  "_location": "/font-carrier",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "version",
+    "registry": true,
+    "raw": "font-carrier@0.3.1",
+    "name": "font-carrier",
+    "escapedName": "font-carrier",
+    "rawSpec": "0.3.1",
+    "saveSpec": null,
+    "fetchSpec": "0.3.1"
+  },
+  "_requiredBy": [
+    "/"
+  ],
+  "_resolved": "https://registry.npmmirror.com/font-carrier/-/font-carrier-0.3.1.tgz",
+  "_spec": "0.3.1",
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/purplebamboo/font-carrier/issues"
+  },
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "multiline": "^2.0.0",
+    "opentype.js": "^1.3.4",
+    "svg2ttf": "^5.2.0",
+    "svg_pathify": "^0.0.8",
+    "svgpath": "^2.3.1",
+    "ttf2eot": "^2.0.0",
+    "ttf2svg": "0.0.7",
+    "xmldom": "^0.1.27"
+  },
+  "description": "字体搬运工，中文字体解决方案，iconfont",
+  "devDependencies": {},
+  "engines": {
+    "node": ">=12.19.0"
+  },
+  "homepage": "https://github.com/purplebamboo/font-carrier#readme",
+  "keywords": [
+    "font",
+    "webfont",
+    "webfont",
+    "iconfont",
+    "font-cli",
+    "svg2ttf",
+    "ttf2eot",
+    "ttf2woff",
+    "ttf2svg",
+    "fontmin",
+    "font-mini",
+    "font subset",
+    "font subsetting",
+    "font converter",
+    "font-carrier"
+  ],
+  "license": "MIT",
+  "main": "./lib/index.js",
+  "name": "font-carrier",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/purplebamboo/font-carrier.git"
+  },
+  "scripts": {
+    "test": "node ./test/index.js",
+    "ttx": "ttx -f test/font-out/font1.ttf test/font-out/font2.ttf test/font-out/font3.ttf test/font-out/arrow-up.ttf"
+  },
+  "version": "0.3.1"
+}

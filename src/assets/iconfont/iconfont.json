@@ -1,0 +1,44 @@
+{
+  "id": "4284179",
+  "name": "DecoKee Deck",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "37754439",
+      "name": "arrow_down",
+      "font_class": "arrow_down",
+      "unicode": "e605",
+      "unicode_decimal": 58885
+    },
+    {
+      "icon_id": "37657615",
+      "name": "settings",
+      "font_class": "settings",
+      "unicode": "e604",
+      "unicode_decimal": 58884
+    },
+    {
+      "icon_id": "37655473",
+      "name": "minimize",
+      "font_class": "minimize",
+      "unicode": "e601",
+      "unicode_decimal": 58881
+    },
+    {
+      "icon_id": "37655506",
+      "name": "close",
+      "font_class": "close",
+      "unicode": "e603",
+      "unicode_decimal": 58883
+    },
+    {
+      "icon_id": "37655501",
+      "name": "fullscreen",
+      "font_class": "fullscreen",
+      "unicode": "e602",
+      "unicode_decimal": 58882
+    }
+  ]
+}

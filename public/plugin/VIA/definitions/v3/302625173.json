@@ -1,0 +1,1 @@
+{"name":"Big Switch","vendorProductId":302625173,"firmwareVersion":0,"menus":["qmk_rgblight"],"keycodes":["qmk_lighting"],"matrix":{"rows":1,"cols":1},"layouts":{"width":4,"height":4,"optionKeys":{},"keys":[{"row":0,"col":0,"x":0,"y":0,"r":0,"rx":0,"ry":0,"d":false,"h":4,"w":4,"color":"alpha"}]}}

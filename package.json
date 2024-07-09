@@ -1,0 +1,103 @@
+{
+  "name": "decokee-ai",
+  "version": "0.0.46",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint",
+    "go": "vue-cli-service electron:serve --x64",
+    "golinux": "vue-cli-service electron:serve",
+    "buildapp": "vue-cli-service electron:build",
+    "buildapp:win-64": "vue-cli-service electron:build --windows --x64",
+    "buildapp:win-32": "vue-cli-service electron:build --windows --ia32",
+    "buildapp:linux": "vue-cli-service electron:build --linux",
+    "buildapp:linux-arm": "vue-cli-service electron:build --linux --armv7l",
+    "buildapp:mac": "vue-cli-service electron:build --macos",
+    "postinstall": "electron-builder install-app-deps",
+    "postuninstall": "electron-builder install-app-deps",
+    "install": "npm rebuild --runtime=electron --target=23.0.0 --abi=113 --dist-url=https://electronjs.org/headers",
+    "rebuild": "./node_modules/.bin/electron-rebuild",
+    "updatefiles": "./node_modules/.bin/electron-rebuild",
+    "rebuildmodule": "node-gyp rebuild --target=23.0.0 --arch=x64 --dist-url=https://electronjs.org/headers --abi=113"
+  },
+  "author": {
+    "name": "DECOKEE AI",
+    "email": "decokee.ai@decokee.com",
+    "url": "https://www.decokee.com"
+  },
+  "main": "background.js",
+  "dependencies": {
+    "@electron/remote": "^2.0.12",
+    "@mdi/svg": "^7.4.47",
+    "active-win": "file:modules/active-win",
+    "axios": "^1.5.1",
+    "clipboard": "^2.0.11",
+    "core-js": "^3.33.0",
+    "crypto-js": "4.2.0",
+    "decompress-zip": "^0.3.3",
+    "electron-log": "^4.4.8",
+    "electron-store": "^7.0.3",
+    "element-ui": "^2.15.14",
+    "express": "^4.18.2",
+    "fast-levenshtein": "^3.0.0",
+    "font-carrier": "file:modules/font-carrier",
+    "get-installed-apps": "^1.1.0",
+    "get-windows-shortcut-properties": "^1.3.0",
+    "highlight.js": "^11.9.0",
+    "howler": "2.1.3",
+    "markdown-it": "^14.1.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.38.0",
+    "node-hid": "2.1.2",
+    "openai": "^4.51.0",
+    "robotjs": "file:modules/robotjs",
+    "sharp": "^0.33.4",
+    "shelljs": "^0.8.5",
+    "uiohook-napi": "^1.5.4",
+    "vue": "^2.6.11",
+    "vue-contextmenujs": "^1.4.11",
+    "vue-i18n": "^8.22.4",
+    "vuedraggable": "^2.24.3",
+    "ws": "^8.15.1",
+    "xmldom": "^0.6.0"
+  },
+  "devDependencies": {
+    "@babel/eslint-parser": "^7.5.4",
+    "@vue/cli-plugin-babel": "^5.0.8",
+    "@vue/cli-plugin-eslint": "^5.0.8",
+    "@vue/cli-service": "^5.0.8",
+    "electron": "23.0.0",
+    "electron-devtools-installer": "^3.2.0",
+    "electron-rebuild": "^3.2.9",
+    "eslint": "^8.22.0",
+    "eslint-plugin-vue": "^9.17.0",
+    "less": "^4.2.0",
+    "less-loader": "^11.1.2",
+    "postcss": "^8.4.31",
+    "vue-cli-plugin-electron-builder": "^2.1.1",
+    "vue-cli-plugin-element": "^1.0.1",
+    "vue-template-compiler": "^2.7.14"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true
+    },
+    "extends": [
+      "plugin:vue/essential",
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "parser": "@babel/eslint-parser"
+    },
+    "rules": {}
+  },
+  "eslintIgnore": [
+    "iconfont.js"
+  ],
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}

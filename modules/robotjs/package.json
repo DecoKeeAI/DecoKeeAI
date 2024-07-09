@@ -1,0 +1,105 @@
+{
+  "_from": "robotjs",
+  "_id": "robotjs@0.6.0",
+  "_inBundle": false,
+  "_integrity": "sha512-6pRWI3d+CBZqCXT/rsJfabbZoELua+jTeXilG27F8Jvix/J2BYZ0O7Tly2WCmXyqw5xYdCvOwvCeLRHEtXkt4w==",
+  "_location": "/robotjs",
+  "_phantomChildren": {
+    "code-point-at": "1.1.0",
+    "console-control-strings": "1.1.0",
+    "core-util-is": "1.0.3",
+    "delegates": "1.0.0",
+    "expand-template": "2.0.3",
+    "github-from-package": "0.0.0",
+    "has-unicode": "2.0.1",
+    "inherits": "2.0.4",
+    "minimist": "1.2.8",
+    "mkdirp-classic": "0.5.3",
+    "napi-build-utils": "1.0.2",
+    "noop-logger": "0.1.1",
+    "number-is-nan": "1.0.1",
+    "object-assign": "4.1.1",
+    "once": "1.4.0",
+    "process-nextick-args": "2.0.1",
+    "pump": "3.0.0",
+    "rc": "1.2.8",
+    "set-blocking": "2.0.0",
+    "signal-exit": "3.0.7",
+    "simple-concat": "1.0.1",
+    "tar-fs": "2.1.1",
+    "tunnel-agent": "0.6.0",
+    "util-deprecate": "1.0.2",
+    "which-pm-runs": "1.1.0",
+    "wide-align": "1.1.5"
+  },
+  "_requested": {
+    "type": "tag",
+    "registry": true,
+    "raw": "robotjs",
+    "name": "robotjs",
+    "escapedName": "robotjs",
+    "rawSpec": "",
+    "saveSpec": null,
+    "fetchSpec": "latest"
+  },
+  "_requiredBy": [
+    "#USER",
+    "/"
+  ],
+  "_resolved": "https://registry.npmmirror.com/robotjs/-/robotjs-0.6.0.tgz",
+  "_shasum": "8d1f63221f5b18dc496c7768f75261043891f64a",
+  "_spec": "robotjs",
+  "_where": "D:\\Work\\DecoKee-Deck",
+  "author": {
+    "name": "Jason Stallings"
+  },
+  "bugs": {
+    "url": "https://github.com/octalmage/robotjs/issues"
+  },
+  "bundleDependencies": false,
+  "dependencies": {
+    "nan": "^2.18.0",
+    "node-abi": "^3.51.0"
+  },
+  "deprecated": false,
+  "description": "Node.js Desktop Automation.",
+  "devDependencies": {
+    "jasmine": "^2.99.0",
+    "run-script-os": "^1.0.3",
+    "targetpractice": "0.0.7"
+  },
+  "gypfile": true,
+  "homepage": "https://github.com/octalmage/robotjs",
+  "keywords": [
+    "Automation",
+    "GUI",
+    "mouse",
+    "keyboard",
+    "screenshot",
+    "image",
+    "pixel",
+    "desktop",
+    "robotjs",
+    "screen",
+    "recognition",
+    "autohotkey",
+    "machine",
+    "learning",
+    "color"
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "name": "robotjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/octalmage/robotjs.git"
+  },
+  "scripts": {
+    "install": "node-gyp rebuild --target=23.0.0 --arch=x64 --dist-url=https://electronjs.org/headers --abi=113",
+    "test": "run-script-os",
+    "test:darwin:linux": "jasmine 'test/**/*.js'",
+    "test:win32": "jasmine test/**/*.js"
+  },
+  "typings": "index.d.ts",
+  "version": "0.6.0"
+}
