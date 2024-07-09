@@ -123,7 +123,14 @@ export default {
                 .resolve(installPath, '..', 'resources', 'app.zip');
             console.log('checkForUpdates: rootDir: ', this.downloadFilePath);
 
-            let downloadUrl = updateConfigs.downloadUrlPrefix + this.newVersionNum;
+            const deviceLocationInfo = window.store.storeGet('system.deviceLocationInfo');
+            let countryCode = 'CN';
+
+            if (deviceLocationInfo) {
+                countryCode = deviceLocationInfo.countryCode;
+            }
+
+            let downloadUrl = (countryCode === 'CN' ? updateConfigs.cnDownloadUrlPrefix : updateConfigs.downloadUrlPrefix) + this.newVersionNum;
 
             let platInfo;
             platInfo = remote.getGlobal('platform');
@@ -132,7 +139,7 @@ export default {
                 platInfo = 'win-' + currentArch;
             }
 
-            downloadUrl += '/' + platInfo + '/' + 'app.zip';
+            downloadUrl += '/DecoKeeAI_OTA_' + platInfo + '.zip';
 
             console.log('checkForUpdates: final download URL: ', downloadUrl);
 

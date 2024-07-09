@@ -54,7 +54,6 @@
 
 <script>
 import config from '../../../package.json';
-import { checkUpdate } from '@/plugins/VersionHelper';
 import UpgradeInfoDialog from '@/views/Components/UpgradeInfoDialog';
 import { setI18nLanguage } from '@/plugins/i18n';
 import { ipcRenderer } from 'electron';
@@ -146,26 +145,21 @@ export default {
         },
         checkForUpdates() {
             const that = this;
-            checkUpdate()
-                .then(res => {
-                    console.log('checkForUpdates: HaveUpdates: ', res);
-                    if (!res.haveUpdate) {
-                        this.$message({
-                            message: that.$t('isLatestVersion'),
-                            type: 'success',
-                        });
-                        return;
-                    }
 
-                    this.$refs.upgradeInfoDialog.show(res.version);
-                })
-                .catch(err => {
-                    console.log('checkForUpdates: Failed to get latest version: ', err);
+            setTimeout(async () => {
+                const res = await ipcRenderer.invoke('check-update', {});
+                console.log('GeneralSettings: checkForUpdates: ', res);
+
+                if (!res || !res.haveUpdate) {
                     this.$message({
                         message: that.$t('isLatestVersion'),
                         type: 'success',
                     });
-                });
+                    return;
+                }
+
+                this.$refs.upgradeInfoDialog.show(res.version);
+            }, 500);
         },
     },
 };

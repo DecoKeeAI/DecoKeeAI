@@ -1,13 +1,13 @@
 **DecoKeeAI**
 ================
 
-🌟 **Your Intelligent Desktop Assistant** 🌟
+🌟 **Your Smart Desktop Assistant** 🌟
 
-DecoKeeAI is a revolutionary desktop assistant that combines voice control and automation to make your workflow more efficient. With DecoKeeAI, you can:
+DecoKeeAI introduces a revolutionary human-machine interaction approach by combining AI technology with display-equipped shortcut keys, aiming to integrate AI into desktop HMI (Human-Machine Interface). Through the combination of voice control and new input devices (shortcut keys with displays), AI becomes your intelligent assistant.
 
-✨ Configure shortcuts with voice commands <br/>
-✨ Launch software with voice commands <br/>
-✨ Generate content with voice commands
+✨ Voice-configured desktop application shortcuts: Achieve complex functions with a single command <br/>
+✨ Voice-activated software: Configure multiple applications to display-equipped keys for quick switching through voice commands  <br/>
+✨ Voice-generated content: Trigger AI content generation with a single press; different keys trigger different applications, making AI your versatile assistant through voice configuration and interaction.
 
 **Learn More and Join Our GitHub Project**
 ------------------------------------------

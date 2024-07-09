@@ -54,8 +54,8 @@ import TitleBar from '@/views/Components/TitleBar';
 import MainContent from '@/views/MainView/MainContent';
 import UpgradeInfoDialog from '@/views/Components/UpgradeInfoDialog';
 import config from '../../../package.json';
-import { checkUpdate } from '@/plugins/VersionHelper';
 import AudioPlayer from '../Components/AudioPlayer';
+import {ipcRenderer} from "electron";
 
 export default {
     name: 'MainView',
@@ -167,13 +167,18 @@ export default {
             this.resetShowAdsTimer();
         },
         checkForUpdates() {
-            checkUpdate().then(res => {
-                console.log('checkForUpdates: HaveUpdates: ', res);
+
+            setTimeout(async () => {
+                const res = await ipcRenderer.invoke('check-update', {});
+
+                console.log('MainView: checkForUpdates: ', res);
+                if (!res) return;
+
                 if (!res.haveUpdate) {
                     return;
                 }
                 this.$refs.upgradeInfoDialog.show(res.version);
-            });
+            }, 3000);
         },
     },
 };

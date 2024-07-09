@@ -2,13 +2,22 @@ import { axios } from './request'
 import config from "../../package.json";
 
 export const updateConfigs = {
-    versionCheckUrl: "http://fota.matrixz.cn/decokee-ai/update/latest.json",
-    downloadUrlPrefix: "http://fota.matrixz.cn/decokee-ai/update/"
+    versionCheckUrl: "https://raw.github.com/DecoKeeAI/DecoKeeAI/main/ota/latest.json",
+    downloadUrlPrefix: "https://github.com/DecoKeeAI/DecoKeeAI/releases/download/V",
+    cnVersionCheckUrl: "https://gitee.com/decokeeai/decokee-ai/raw/master/ota/latest.json",
+    cnDownloadUrlPrefix: "https://gitee.com/decokeeai/decokee-ai/releases/download/V"
 }
 
-export function checkUpdate() {
+export function checkUpdate(country) {
+    const checkUpdateUrl = country === 'CN' ? updateConfigs.cnVersionCheckUrl : updateConfigs.versionCheckUrl;
+    console.log("checkUpdate: checkUpdateUrl: ", checkUpdateUrl);
     return axios({
-        url: updateConfigs.versionCheckUrl,
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        url: checkUpdateUrl,
         method: "GET"
     }).then(res => {
         console.log("checkUpdate: ", res);
@@ -55,6 +64,6 @@ export function checkUpdate() {
             version: currentVersion
         };
     }).catch(err => {
-        console.error('checkUpdate: Detected error', err);
+        console.log('checkUpdate: Detected error', err);
     });
 }
