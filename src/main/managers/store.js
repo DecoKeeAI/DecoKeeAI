@@ -1,5 +1,5 @@
 import {setI18nLanguage} from "@/plugins/i18n";
-import {globalShortcut} from "electron";
+import {globalShortcut, app} from "electron";
 
 const Store = require('electron-store')
 
@@ -14,9 +14,22 @@ class StoreManager {
         if (!this.store.has('system.openAsHidden')) {
             this.store.set('system.openAsHidden', false)
         }
-        if (!this.store.has('system.locale')) {
-            this.store.set('system.locale', 'zh')
-        }
+        const that = this;
+        app.on('ready', () => {
+            const systemLocale = app.getLocale();
+            const userConfigLocale = that.store.get('system.locale');
+            console.log('StoreManager: constructor: systemLocale: ', systemLocale, ' userConfigLocale: ', userConfigLocale);
+            if (!userConfigLocale) {
+                if (systemLocale === 'zh-CN') {
+                    that.store.set('system.locale', 'zh')
+                } else {
+                    that.store.set('system.locale', 'en')
+                }
+            }
+
+            const locale = that.storeGet('system.locale');
+            setI18nLanguage(locale);
+        });
         if (!this.store.has('aiConfig.globalAIWakeKey')) {
             this.store.set('aiConfig.globalAIWakeKey', 'CommandOrControl+Shift+D')
         }
@@ -42,9 +55,6 @@ class StoreManager {
         this.store.delete('serverPorts.pluginWSServerPort');
         this.store.delete('serverPorts.viaPluginPort');
         this.store.delete('serverPorts.pluginWebPageServerPort');
-
-        const locale = this.storeGet('system.locale');
-        setI18nLanguage(locale);
     }
 
     hasValue(key) {

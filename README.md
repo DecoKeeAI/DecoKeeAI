@@ -1,52 +1,62 @@
 **DecoKeeAI**
 ================
 
-🌟 **您的智能桌面助手** 🌟
+🌟 **Your Smart Desktop Assistant** 🌟
 
-DecoKeeAI 提出了一种通过 AI 技术与带显示快捷按键相结合的全新人机交互方式，旨在将 AI 应用于桌面 HMI（人机交互）。通过语音控制和新的输入设备（带显示的快捷按键）的结合，让 AI 成为您的智能助手。
+DecoKeeAI introduces a revolutionary human-machine interaction approach by combining AI technology with display-equipped shortcut keys, aiming to integrate AI into desktop HMI (Human-Machine Interface). Through the combination of voice control and new input devices (shortcut keys with displays), AI becomes your intelligent assistant.
 
-✨ 语音配置桌面应用快捷键，一键实现复杂功能<br/>
-✨ 语音启动软件: 通过语音将多个应用配置到带屏幕的按键，实现快速切换应用<br/>
-✨ 语音生成内容: 一键触发 AI 内容生成，不同按键触发不同的应用，通过语音配置和交互，让AI成为全能助手
+✨ Voice-configured desktop application shortcuts: Achieve complex functions with a single command <br/>
+✨ Voice-activated software: Configure multiple applications to display-equipped keys for quick switching through voice commands  <br/>
+✨ Voice-generated content: Trigger AI content generation with a single press; different keys trigger different applications, making AI your versatile assistant through voice configuration and interaction.
 
-**了解更多并加入我们的 GitHub 项目**
+**Learn More and Join Our GitHub Project**
 ------------------------------------------
 
-🔗 [访问 DecoKeeAI 的 GitHub 项目](https://github.com/DecoKeeAI/DecoKeeAI)
+🔗 [Visit DecoKeeAI's GitHub Project](https://github.com/DecoKeeAI/DecoKeeAI)
 
-**关于 DecoKeeAI**
+**About DecoKeeAI**
 -------------------
 
-DecoKeeAI 使用 **vue-cli 5** 和 **Electron 23.0.0** 构建，提供了一个模块化的桌面应用程序模板，具有以下特点：
+DecoKeeAI is built using **vue-cli 5** and **Electron 23.0.0**, providing a modular desktop application template with features like:
 
-* 快速打包
-* 一键多语言切换
-* MDI 图标插件和第三方图标库导入
+* Fast packaging
+* One-click multi-language switching
+* MDI icon plugin and third-party icon library import
+* Support for third-party plugin import (such as HomeAssistant plugins, etc.)
+* Support for mainstream AI model interface calls, including:
+    - OpenAI: gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5-turbo
+    - Groq: llama3-70b-8192
+    - iFlytek: spark3.5-max, spark4-ultra
+    - Qwen: qwen-turbo, qwen-plus, qwen-max, qwen-72b-chat, qwen1.5-32b-chat, qwen1.5-72b-chat, qwen1.5-110b-chat, qwen2-1.5b-instruct, qwen2-7b-instruct, qwen2-72b-instruct
+    - Zhipu AI: glm-3-turbo, glm-4
+    - Custom: Any custom server, as long as it supports OpenAI API calls
+* Support for speech services (STT&TTS):
+    - iFlytek, Microsoft Azure
 
-**语言支持**
+**Language Support**
 --------------------
 
-* 中文
-* [English](https://github.com/DecoKeeAI/DecoKeeAI/README-EN.md)
+* [中文](https://github.com/DecoKeeAI/DecoKeeAI/README-CN.md)
+* English
 
-**开始使用**
+**Get Started**
 ---------------
 
-### **下载并安装**
+### **Download and Install**
 
 ```bash
-https://github.com/DecoKeeAI/releases/**
+https://github.com/DecoKeeAI/DecoKeeAI/releases/download/V0.0.47/DecoKeeAI_Setup_0.0.47.exe
 ```
 
-### **自己编译**
+### **Compile Yourself**
 
-**步骤 1：克隆项目**
+**Step 1: Clone the Project**
 
 ```bash
 git clone https://github.com/DecoKeeAI/DecoKeeAI.git
 ```
 
-**步骤 2：安装依赖项**
+**Step 2: Install Dependencies**
 
 ```bash
 cd DecoKeeAI
@@ -55,11 +65,11 @@ npm install -g @mapbox/node-pre-gyp@1.0.11
 npm config edit
 ```
 
-**注意：** 对于 Windows 用户，您需要安装 `windows-build-tools` 或 Visual Studio 带 C/C++ 环境。
+**Note:** For Windows users, you need to install `windows-build-tools` or Visual Studio with C/C++ environment.
 
-**步骤 3：配置 npm**
+**Step 3: Configure npm**
 
-修改 npm 配置文件，设置 registry、disturl 和 electron_mirror：
+Modify the npm configuration file to set the registry, disturl, and electron_mirror:
 ```bash
 registry=https://registry.npmmirror.com/
 disturl=https://electronjs.org/headers
@@ -68,33 +78,33 @@ ELECTRON_CUSTOM_DIR={{ version }}
 node_gyp=C:\Users\xxxx\AppData\Roaming\npm\node_modules\node-gyp\bin\node-gyp.js
 ```
 
-**步骤 4：安装依赖项**
+**Step 4: Install Dependencies**
 
 ```bash
 npm install
 ```
 
-**步骤 5：启动应用程序**
+**Step 5: Start the Application**
 
 ```bash
 npm run go
 ```
 
-**步骤 6：打包应用程序（可选）**
+**Step 6: Package the Application (Optional)**
 
-在对应的平台上运行以下命令：
+Run the following command on the corresponding platform:
 ```bash
-npm run buildapp:<平台>
+npm run buildapp:<platform>
 ```
 
-**常见问题**
--------------
+**FAQ**
+----
 
-* **编译错误**
+* **Compilation Errors**
 
-如果您在编译过程中遇到问题，请检查以下：
+If you encounter issues during compilation, check the following:
 
-* 在 Ubuntu 上，如果您遇到与 `X11/extensions/XTest.h` 相关的错误，请安装以下包：
+* On Ubuntu, if you encounter errors related to `X11/extensions/XTest.h`, install the following package:
 ```bash
 sudo apt-get install libxtst-dev
 ```
