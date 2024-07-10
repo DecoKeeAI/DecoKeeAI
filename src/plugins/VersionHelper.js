@@ -4,7 +4,7 @@ import config from "../../package.json";
 export const updateConfigs = {
     versionCheckUrl: "https://raw.github.com/DecoKeeAI/DecoKeeAI/main/ota/latest.json",
     downloadUrlPrefix: "https://github.com/DecoKeeAI/DecoKeeAI/releases/download/V",
-    cnVersionCheckUrl: "https://gitee.com/decokeeai/decokee-ai/raw/master/ota/latest.json",
+    cnVersionCheckUrl: "https://gitee.com/decokeeai/decokee-ai/raw/main/ota/latest.json",
     cnDownloadUrlPrefix: "https://gitee.com/decokeeai/decokee-ai/releases/download/V"
 }
 
