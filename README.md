@@ -20,7 +20,18 @@ DecoKeeAI introduces a revolutionary human-machine interaction approach by combi
 DecoKeeAI is built using **vue-cli 5** and **Electron 23.0.0**, providing a modular desktop application template with features like:
 
 * Fast packaging
-* One-click multi-language switching
+* One-click multi-language switchingHere is the translation:
+* Supported features:
+  - Hotkey shortcuts
+  - Open/close file or program
+  - Pre-compiled text input
+  - Open specific websites
+  - Multimedia control
+  - Command line execution
+  - Audio player
+  - Multi-function execution
+  - Switch between multiple configuration sets at will
+  - Dynamic configuration switching based on foreground application
 * MDI icon plugin and third-party icon library import
 * Support for third-party plugin import (such as HomeAssistant plugins, etc.)
 * Support for mainstream AI model interface calls, including:
