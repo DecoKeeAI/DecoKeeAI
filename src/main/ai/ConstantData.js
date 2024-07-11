@@ -49,6 +49,7 @@ export const AI_SUPPORT_FUNCTIONS = {
     OPEN_APPLICATION: 'openApplication',
     CLOSE_APPLICATION: 'closeApplication',
     WRITE_TO_DOCUMENT: 'writeToDocument',
+    GENERATE_REPORT: 'generateReport',
 };
 
 export const OPEN_AI_IPC_MESSAGE = {
@@ -479,8 +480,6 @@ export function getChatPrePromptMsg(message, engineType) {
         default:
         case AI_ENGINE_TYPE.GroqChat:
         case AI_ENGINE_TYPE.OpenAI:
-        case AI_ENGINE_TYPE.ZhiPuChat:
-        case AI_ENGINE_TYPE.QWenChat:
         case AI_ENGINE_TYPE.CustomEngine:
             return [
                 {
@@ -499,7 +498,7 @@ export function getChatPrePromptMsg(message, engineType) {
                         '## Expectation: \n' +
                         '   Only reply with JSON format: ```{"userRequestAction": ""}```, do not reply any explanation other than the request JSON response. \n' +
                         '       **userRequestAction** supported items are: \n' +
-                        '           *operatingComputer*: When assistance with operating a computer is needed.\n' +
+                        '           *operatingComputer*: When assistance with operating a computer is needed. i.e: open application, write documents, generate report etc.\n' +
                         '           *generateConfiguration*: When assistance with generating/modifying keyboard/hotkeys configurations is needed.\n' +
                         "           *standardChat**: When not meet any of other 'userRequestAction'.\n",
                 },
@@ -510,9 +509,15 @@ export function getChatPrePromptMsg(message, engineType) {
             ];
         case AI_ENGINE_TYPE.XYF:
         case AI_ENGINE_TYPE.ArixoChat:
+        case AI_ENGINE_TYPE.ZhiPuChat:
+        case AI_ENGINE_TYPE.QWenChat:
             return [
                 {
                     role: 'system',
+                    content: '你是小呆，一名计算机技术专家，你可以帮我操作电脑回答我的问题。尽量避免过多的技术细节，但在必要时使用它们'
+                },
+                {
+                    role: 'user',
                     content:
                         '## Role: \n' +
                         '   你是小呆，一名计算机技术专家，你可以帮我操作电脑回答我的问题。尽量避免过多的技术细节，但在必要时使用它们。\n' +
@@ -526,14 +531,12 @@ export function getChatPrePromptMsg(message, engineType) {
                         '## Expectation: \n' +
                         '   仅使用JSON格式 ```{"userRequestAction"：""}``` 来回复，不要回复请求JSON响应以外的任何解释。\n' +
                         '       **userRequestAction** 支持的项目包含以下信息:\n' +
-                        '           *operatingComputer*: 当需要帮助操作电脑时，如打开/关闭某一个程序，打开浏览器等操作。\n' +
+                        '           *operatingComputer*: 当需要帮助操作电脑时，如打开/关闭某一个程序，生成/写入文档, 生成报告等。\n' +
                         '           *generateConfiguration*: 当需要生成/修改键盘/快捷键配置的帮助时。\n' +
-                        "           *standardChat*: 当不符合其他 'userRequestAction' 的项目时。\n",
-                },
-                {
-                    role: 'user',
-                    content: message,
-                },
+                        "           *standardChat*: 当不符合其他 'userRequestAction' 的项目时。\n" +
+                        "## Request:\n" +
+                        "  我的问题是: " + message
+                }
             ];
     }
 }
@@ -688,7 +691,7 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
         '\n' +
         '   - **Hotkey (hotkey) and Hotkey Switch (hotkeySwitch)**, Supported operations:\n' +
         "       - `key`: Key values only suppoerted for nodejs library 'roobotjs', lited as following values: ```\" " + JSON.stringify(SUPPORT_KEY_INPUTS) + "\"```. " +
-        "Support single key and combination keys using the '+' sign. When set to hotkeySwitch, need two `key` in the list. \n" +
+        "Support single key and combination keys using the '+' sign. When set to 'hotkeySwitch', need two `key` in the list. Note: 'hotkeySwitch' only support two `key`s in actions list. \n" +
         '\n' +
         '   - **Text (text)**, Supported operations:\n' +
         '       - `text`: Predefined text input.\n' +
@@ -794,6 +797,7 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
             switch (engineType) {
                 case AI_ENGINE_TYPE.XYF:
                 case AI_ENGINE_TYPE.ArixoChat:
+                case AI_ENGINE_TYPE.ZhiPuChat:
                     finalRequestPrompt = chineseRequestConfigPrompt + ' 用户请求: ' + message;
                     break;
                 default:
@@ -801,7 +805,6 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
                 case AI_ENGINE_TYPE.GroqChat:
                 case AI_ENGINE_TYPE.CustomEngine:
                 case AI_ENGINE_TYPE.OpenAI:
-                case AI_ENGINE_TYPE.ZhiPuChat:
                     finalRequestPrompt = englishRequestConfigPrompt
                         .replace('{{promptReplyLanguage}}', 'chinese')
                         .replace('{{moreDetailsRequired}}', '抱歉，请提供更多信息');
@@ -835,8 +838,6 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
         default:
         case AI_ENGINE_TYPE.GroqChat:
         case AI_ENGINE_TYPE.OpenAI:
-        case AI_ENGINE_TYPE.ZhiPuChat:
-        case AI_ENGINE_TYPE.QWenChat:
         case AI_ENGINE_TYPE.CustomEngine:
             return [
                 {
@@ -851,6 +852,8 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
             ];
         case AI_ENGINE_TYPE.XYF:
         case AI_ENGINE_TYPE.ArixoChat:
+        case AI_ENGINE_TYPE.ZhiPuChat:
+        case AI_ENGINE_TYPE.QWenChat:
             return [
                 {
                     role: 'system',
@@ -883,8 +886,9 @@ export function getPCOperationBotPrePrompt(message, engineType) {
         '\n' +
         '## Result: \n' +
         '   Only reply with following format with a line break character at end of each key:\n' +
+        '\n' +
         '       **UserRequestAction**: determines what does user need to do. Supported Items are: \n' +
-        '           *' + AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION + "*: Open an system default application like 'SystemSettings', 'Calculator', etc. or third party application on computer. " +
+        '           *' + AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION + "*: Open an system default application like 'SystemSettings', 'Calculator', etc. or third party application on computer. \n" +
         "When '" + AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION + "' is set also need set 'actionDetail' with a list of possible application's name strings based on following condition:\n" +
         "               - If user requested to open system default application, then set it with a prefix of 'OpenSystemApp: ' then followed with command line that can be used in terminal to open user requested application.\n" +
         "               - If user requested to open third part application, then fill the list with application's name for both Chinese and English, also set the last item to the link could open in web browser.\n" +
@@ -892,12 +896,18 @@ export function getPCOperationBotPrePrompt(message, engineType) {
         "When '" + AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION + "' is set also need set 'actionDetail' with a list of possible application's name strings based on following condition:\n" +
         "               - If user requested to close system default application, then set it with a prefix of 'CloseSystemApp: ' then followed with the name appears in windows tasklist.\n" +
         "               - If user requested to close third part application, then fill the list with application's name for both Chinese and English. \n" +
-        '           *' + AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT + '*:  Write the user requested message to specific location, such as cursor, or file. ' +
-        "When '" + AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT + "' is set also need set 'actionDetail' the location need to write the output:\n" +
-        "               - 'cursor': write output message to the cursor location.\n" +
-        "               - 'file': write output message to a file. \n" +
-        "       **ActionDetail**: A JSON string array of 'userRequestAction' action result\n" +
-        "       **OutputData**: String based response like essay or chat response, the 'OutputData' must use the same language as the one used in my request.";
+        '           *' + AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT + '*: Write the user requested message to specific location, such as cursor, or file. ' +
+        "When '" + AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT + "' is set also need set 'actionDetail' with following output details:\n" +
+        "               - 'outputFormat': Indicate write output message to the 'cursor' location or to a 'file'. If user not indicate the location, then set to default 'file'. \n" +
+        "               - 'fileType': Indicate the file type user need output with when set 'file' as output location in 'outputFormat'. i.e: doc, txt. Default is doc.\n" +
+        '           *' + AI_SUPPORT_FUNCTIONS.GENERATE_REPORT + '*: Generate a report to file. ' +
+        "When '" + AI_SUPPORT_FUNCTIONS.GENERATE_REPORT + "' is set also need set 'actionDetail' with following output details:\n" +
+        "               - 'outputFormat': Indicate write output message to the 'cursor' location or to a 'file'. If user not indicate the location, then set to default 'file'. \n" +
+        "               - 'fileType': Indicate the file type user need output with when set 'file' as output location in 'outputFormat'. Default is doc.\n" +
+        "\n" +
+        "       **ActionDetail**: A JSON object array of 'userRequestAction' action result.\n" +
+        "\n" +
+        "       **OutputData**: String based response like essay, report or chat response, the 'OutputData' must use the same language as the one used in my request.";
 
     let chineseRequestOperationPrompt =
         '' +
@@ -925,31 +935,37 @@ export function getPCOperationBotPrePrompt(message, engineType) {
         "               - 如果用户请求关闭系统默认应用程序，则将其设置为在 Windows 任务列表中出现的名称，并带有前缀 'CloseSystemApp: '，然后是应用程序名称。\n" +
         "               - 如果用户请求关闭第三方应用程序，则用中文和英文填写应用程序的名称到 'actionDetail' 列表中。\n" +
         '           *' + AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT + '*:  将用户请求的消息写入特定位置，如光标或文件。' +
-        "当设置了 '" + AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT + "' 时，还需要设置 'actionDetail' 为输出的位置: \n" +
-        "               - 'cursor': 将输出消息写入光标位置。\n" +
-        "               - 'file': 将输出消息写入文件。\n" +
-        "       **ActionDetail**：'userRequestAction' 动作结果的JSON字符串数组。\n" +
-        "       **OutputData**：基于字符串的响应，如论文或聊天响应，'OutputData' 必须使用与我的请求所用的语言相同的语言。";
+        "当设置了 '" + AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT + "' 时，还需要设置带有输出详细信息列表的 'actionDetail': \n" +
+        "               - 'outputFormat': 表示将输出消息写入 'cursor' 位置或 'file'。如果用户未指示位置，则设置为默认的 'file' \n" +
+        "               - 'fileType': 当 'outputFormat' 为 'file' 时，同时需要提供用户需要输出的文件类型。如：doc，txt。默认为doc。\n" +
+        '           *' + AI_SUPPORT_FUNCTIONS.GENERATE_REPORT + '*: 生成用户请求归档的报告。 ' +
+        "当设置了 '" + AI_SUPPORT_FUNCTIONS.GENERATE_REPORT + "' 时，还需要设置带有输出详细信息列表的 'actionDetail':\n" +
+        "               - 'outputFormat': 表示将输出消息写入 'cursor' 位置或 'file'。如果用户未指示位置，则设置为默认的 'file' \n" +
+        "               - 'fileType': 当 'outputFormat' 为 'file' 时，同时需要提供用户需要输出的文件类型。默认为doc。\n" +
+        "       **ActionDetail**：'userRequestAction' 动作结果的JSON数组。\n" +
+        "       **OutputData**：基于字符串的响应，如论文, 报告内容或聊天回复，'OutputData' 必须使用与我的请求所用的语言相同的语言。\n" +
+        "## Request:\n" +
+        "  我的问题是: " + message;
 
     switch (engineType) {
         case AI_ENGINE_TYPE.ArixoChat:
         case AI_ENGINE_TYPE.XYF:
+        case AI_ENGINE_TYPE.QWenChat:
+        case AI_ENGINE_TYPE.ZhiPuChat:
             return [
                 {
                     role: 'system',
-                    content: chineseRequestOperationPrompt,
+                    content: '你是小呆，一名计算机技术专家，你可以帮我操作电脑回答我的问题。尽量避免过多的技术细节，但在必要时使用它们',
                 },
                 {
                     role: 'user',
-                    content: message,
+                    content: chineseRequestOperationPrompt,
                 },
             ];
         default:
         case AI_ENGINE_TYPE.CustomEngine:
-        case AI_ENGINE_TYPE.QWenChat:
         case AI_ENGINE_TYPE.GroqChat:
         case AI_ENGINE_TYPE.OpenAI:
-        case AI_ENGINE_TYPE.ZhiPuChat:
             return [
                 {
                     role: 'system',
@@ -979,12 +995,12 @@ export function getNormalChatPrePrompt(message, language, locationInfo) {
         default:
         case 'zh':
             promptMsg =
-                '你是小呆，你将扮演一个日常生活工作助理，并使用中文对用户的问题做出精确的回答。注意不要使用任何的特殊字符，表情和emoji在你的回复中。';
+                '你是小呆，你将扮演一个日常生活工作助理，并使用中文对用户的问题做出精确的回答。注意不要使用任何的特殊字符，markdown，表情和emoji在你的回复中。';
             extraDetailInfo = '我所在的城市为: {{city}}, 当前的时间为: {{currentDateTime}}, 时区为: {{timezone}}。';
             break;
         case 'en':
             promptMsg =
-                "You are Dekie, you will act as an assistant for daily life and work and give precise answers in English to users' questions. Note that do not use any special characters, expressions or emojis in your responses. ";
+                "You are Dekie, you will act as an assistant for daily life and work and give precise answers in English to users' questions. Note that do not use any special characters, markdown, expressions or emojis in your responses. ";
             extraDetailInfo =
                 'My city is: {{city}}, the current time is: {{currentDateTime}}, and the time zone is: {{timezone}}';
             break;

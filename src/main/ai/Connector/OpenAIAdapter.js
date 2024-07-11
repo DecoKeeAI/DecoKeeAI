@@ -330,6 +330,10 @@ class OpenAIAdapter {
                 break;
             case 'glm-3-turbo':
             case 'glm-4':
+            case 'glm-4-0520':
+            case 'glm-4-air':
+            case 'glm-4-airx':
+            case 'glm-4-flash':
                 baseUrl = 'https://open.bigmodel.cn/api/paas/v4/';
                 break;
             default:

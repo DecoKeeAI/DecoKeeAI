@@ -150,7 +150,7 @@ export default class {
         console.log('AzureAudioEngine: cancelCurrentRecognize');
         this.recognizeRequestId = -1;
 
-        if (this.recognizeEngine) {
+        if (this.recognizeEngine !== undefined) {
 
             if (this.recognizeEngine.pushStream) {
                 this.recognizeEngine.pushStream.close();
@@ -167,14 +167,12 @@ export default class {
     cancelCurrentTTSConvert() {
         console.log('AzureAudioEngine: cancelCurrentTTSConvert');
 
-        if (this.ttsEngine) {
-            if (this.ttsEngine.pushStream) {
-                this.ttsEngine.pushStream.close();
-            }
+        if (this.ttsEngine && this.ttsEngine.pushStream) {
+            this.ttsEngine.pushStream.close();
+        }
 
-            if (this.ttsEngine.synthesizer) {
-                this.ttsEngine.synthesizer.close();
-            }
+        if (this.ttsEngine && this.ttsEngine.synthesizer) {
+            this.ttsEngine.synthesizer.close();
         }
 
         this.ttsConvertRequestId = -1;

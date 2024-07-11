@@ -39,7 +39,7 @@ DecoKeeAI 提出了一种通过 AI 技术与带显示快捷按键相结合的全
     - Groq: llama3-70b-8192
     - 讯飞星火: spark3.5-max, spark4-ultra
     - 通义千问: qwen-turbo, qwen-plus, qwen-max, qwen-72b-chat, qwen1.5-32b-chat, qwen1.5-72b-chat, qwen1.5-110b-chat, qwen2-1.5b-instruct, qwen2-7b-instruct, qwen2-72b-instruct
-    - 智谱AI: glm-3-turbo, glm-4
+    - 智谱AI: glm-4-0520, glm-4, glm-4-air, glm-4-airx, glm-4-flash, glm-3-turbo
     - 自定义: 任意自定义服务器，只需支持 openAI API 调用即可
 * 支持语音服务 (STT&TTS)：
     - 讯飞星火, Microsoft Azure

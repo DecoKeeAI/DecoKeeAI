@@ -37,7 +37,7 @@ import XFYAdapter from '@/main/ai/Connector/XFYAdapter';
 import OpenAIAdapter from '@/main/ai/Connector/OpenAIAdapter';
 import logger from '@/plugins/logOutput';
 import Constants from '@/utils/Constants';
-import { clipboard, ipcMain, shell, app } from 'electron';
+import {app, clipboard, ipcMain, shell} from 'electron';
 import {
     AI_SUPPORT_FUNCTIONS,
     CHAT_TYPE,
@@ -47,13 +47,13 @@ import {
     getPCOperationBotPrePrompt,
     KEY_CONFIG_OBJ,
 } from '@/main/ai/ConstantData';
-import { i18nRender } from '@/plugins/i18n';
-import { KeyConfiguration } from '@/plugins/KeyConfiguration';
+import {i18nRender} from '@/plugins/i18n';
+import {KeyConfiguration} from '@/plugins/KeyConfiguration';
 
-import { loadPCInstalledApps } from '@/main/ai/SystemInstalledAppLoader';
-import { isURL, randomString } from '@/utils/Utils';
+import {loadPCInstalledApps} from '@/main/ai/SystemInstalledAppLoader';
+import {isURL, randomString} from '@/utils/Utils';
 import WebSpeechAudioAdapter from '@/main/ai/Connector/WebSpeechAudioAdapter';
-import { deepCopy } from '@/utils/ObjectUtil';
+import {deepCopy} from '@/utils/ObjectUtil';
 
 const { exec } = require('child_process');
 const levenshtein = require('fast-levenshtein');
@@ -335,6 +335,10 @@ class AIManager {
                 break
             case 'glm-3-turbo':
             case 'glm-4':
+            case 'glm-4-0520':
+            case 'glm-4-air':
+            case 'glm-4-airx':
+            case 'glm-4-flash':
                 engineType = AI_ENGINE_TYPE.ZhiPuChat;
                 break
             default:
@@ -550,7 +554,7 @@ class AIManager {
             model: requestModelName,
             messages: chatHistory,
             stream: true,
-            max_tokens: 2000,
+            max_tokens: 2048,
             temperature: temperature,
             top_p: topP
         }
@@ -610,6 +614,10 @@ class AIManager {
                 break
             case 'glm-3-turbo':
             case 'glm-4':
+            case 'glm-4-0520':
+            case 'glm-4-air':
+            case 'glm-4-airx':
+            case 'glm-4-flash':
                 chatEngineType = AI_ENGINE_TYPE.ZhiPuChat;
                 break
             default:
@@ -898,7 +906,7 @@ class AIManager {
 
                 this._decodeOperateActionData(chatResponseMsg, status === 2);
 
-                if (!operatePCContext.actionProcessDone && operatePCContext.actionType !== '' && operatePCContext.actionDetail.length > 0) {
+                if (!operatePCContext.actionProcessDone && operatePCContext.actionType !== '' && operatePCContext.actionDetail && operatePCContext.actionDetail.length > 0) {
 
                     this._handleUserRequestActions(requestId, operatePCContext.actionType, operatePCContext.actionDetail, operatePCContext.actionOutput, status === 2);
                     if (operatePCContext.actionType === AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION || operatePCContext.actionType === AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION) {
@@ -981,8 +989,7 @@ class AIManager {
 
                 const regExp = new RegExp(Object.keys(replacements).join("|"), "g");
 
-                const dataStartIdx = message.indexOf('**ActionDetail**:') + 18;
-                let decodeSubMsg = message.substring(dataStartIdx, message.lastIndexOf(']') + 1).trim();
+                let decodeSubMsg = message.substring(message.indexOf('['), message.lastIndexOf(']') + 1).trim();
 
                 if (decodeSubMsg.startsWith('*')) {
                     decodeSubMsg = decodeSubMsg.substring(1);
@@ -998,6 +1005,7 @@ class AIManager {
                 );
 
                 operatePCContext.stage = OPERATION_STAGE.STAGE_DECODE_OUTPUT;
+                operatePCContext.streamChunkMsg = '';
 
                 if (message !== '') {
                     chatResponseMsg = message;
@@ -1271,11 +1279,17 @@ class AIManager {
         console.log('AIManager: convertConfigDataToProtocolConfig: After convert ConfigList: ' + JSON.stringify(oldConfig));
 
         let haveKnobData = false;
-            oldConfig.forEach(configInfo => {
-                if (!haveKnobData && configInfo.keyCode === '0,1') {
-                    haveKnobData = true;
-                }
-            });
+        oldConfig = oldConfig.map(configInfo => {
+            if (configInfo.config.type === '') {
+                configInfo.config.icon = '';
+            }
+
+            if (!haveKnobData && configInfo.keyCode === '0,1') {
+                haveKnobData = true;
+            }
+
+            return configInfo;
+        });
 
         if (!haveKnobData) {
             oldConfig.push(tempAssistantObj);
@@ -1315,169 +1329,171 @@ class AIManager {
             }
         }
 
+        switch (newConfigItem.config.functionType) {
+            case 'hotkey':
+            case 'hotkeySwitch':
+                newConfigItem.config.actions = newConfigItem.config.actions.map(actionItem => {
+                    if (actionItem.operationName === 'key' ) {
+                        let hotKeyValue = actionItem.operationValue.toLowerCase().trim();
+                        if (hotKeyValue === 'ctrl') {
+                            hotKeyValue = hotKeyValue.replace('ctrl', 'control');
+                            actionItem.operationValue = hotKeyValue;
+                            return actionItem;
+                        }
 
-        if (newConfigItem.config.functionType === 'hotkey' || newConfigItem.config.functionType === 'hotkeySwitch') {
-            newConfigItem.config.actions = newConfigItem.config.actions.map(actionItem => {
-                if (actionItem.operationName === 'key' ) {
-                    let hotKeyValue = actionItem.operationValue.toLowerCase().trim();
-                    if (hotKeyValue === 'ctrl') {
-                        hotKeyValue = hotKeyValue.replace('ctrl', 'control');
+                        if (hotKeyValue === 'windows') {
+                            hotKeyValue = hotKeyValue.replace('windows', 'command');
+                            actionItem.operationValue = hotKeyValue;
+                            return actionItem;
+                        }
+
+                        if (hotKeyValue === 'win') {
+                            hotKeyValue = hotKeyValue.replace('win', 'command');
+                            actionItem.operationValue = hotKeyValue;
+                            return actionItem;
+                        }
+
+                        if (hotKeyValue.endsWith('esc')) {
+                            hotKeyValue = hotKeyValue.replace('esc', 'escape');
+                            actionItem.operationValue = hotKeyValue;
+                            return actionItem;
+                        }
+
+                        if (hotKeyValue.includes('ctrl+')) {
+                            hotKeyValue = hotKeyValue.replace('ctrl+', 'control+');
+                        }
+
+                        if (hotKeyValue.includes('+ctrl')) {
+                            hotKeyValue = hotKeyValue.replace('+ctrl', '+control');
+                        }
+
+                        if (hotKeyValue.includes('windows+')) {
+                            hotKeyValue = hotKeyValue.replace('windows+', 'command+');
+                        }
+
+                        if (hotKeyValue.includes('+windows')) {
+                            hotKeyValue = hotKeyValue.replace('+windows', '+command');
+                        }
+
+                        if (hotKeyValue.includes('win+')) {
+                            hotKeyValue = hotKeyValue.replace('win+', 'command+');
+                        }
+
+                        if (hotKeyValue.includes('+win')) {
+                            hotKeyValue = hotKeyValue.replace('+win', 'command+');
+                        }
+
                         actionItem.operationValue = hotKeyValue;
-                        return actionItem;
+
                     }
+                    return actionItem;
+                });
 
-                    if (hotKeyValue === 'windows') {
-                        hotKeyValue = hotKeyValue.replace('windows', 'command');
-                        actionItem.operationValue = hotKeyValue;
-                        return actionItem;
+                if (newConfigItem.config.functionType === 'hotkeySwitch') {
+                    if (oldConfigItem.config.alterIcon === undefined || oldConfigItem.config.alterIcon === ''
+                        || oldConfigItem.config.alterIcon.startsWith('0-')) {
+                        oldConfigItem.config.alterIcon = configToResIdMap.get(newConfigItem.config.functionType + 'Alter');
                     }
-
-                    if (hotKeyValue === 'win') {
-                        hotKeyValue = hotKeyValue.replace('win', 'command');
-                        actionItem.operationValue = hotKeyValue;
-                        return actionItem;
+                    if (oldConfigItem.config.alterTitle === undefined) {
+                        oldConfigItem.config.alterTitle = oldConfigItem.config.title;
                     }
-
-                    if (hotKeyValue.endsWith('esc')) {
-                        hotKeyValue = hotKeyValue.replace('esc', 'escape');
-                        actionItem.operationValue = hotKeyValue;
-                        return actionItem;
-                    }
-
-                    if (hotKeyValue.includes('ctrl+')) {
-                        hotKeyValue = hotKeyValue.replace('ctrl+', 'control+');
-                    }
-
-                    if (hotKeyValue.includes('+ctrl')) {
-                        hotKeyValue = hotKeyValue.replace('+ctrl', '+control');
-                    }
-
-                    if (hotKeyValue.includes('windows+')) {
-                        hotKeyValue = hotKeyValue.replace('windows+', 'command+');
-                    }
-
-                    if (hotKeyValue.includes('+windows')) {
-                        hotKeyValue = hotKeyValue.replace('+windows', '+command');
-                    }
-
-                    if (hotKeyValue.includes('win+')) {
-                        hotKeyValue = hotKeyValue.replace('win+', 'command+');
-                    }
-
-                    if (hotKeyValue.includes('+win')) {
-                        hotKeyValue = hotKeyValue.replace('+win', 'command+');
-                    }
-
-                    actionItem.operationValue = hotKeyValue;
-
                 }
-                return actionItem;
-            });
-
-            if (newConfigItem.config.functionType === 'hotkeySwitch') {
-                if (oldConfigItem.config.alterIcon === undefined || oldConfigItem.config.alterIcon === ''
-                    || oldConfigItem.config.alterIcon.startsWith('0-')) {
-                    oldConfigItem.config.alterIcon = configToResIdMap.get(newConfigItem.config.functionType + 'Alter');
-                }
-                if (oldConfigItem.config.alterTitle === undefined) {
-                    oldConfigItem.config.alterTitle = oldConfigItem.config.title;
-                }
-            }
-
-        } else if (newConfigItem.config.functionType === 'media') {
-            newConfigItem.config.actions = newConfigItem.config.actions.map(actionItem => {
-                const tempOperationValue = actionItem.operationName.toLowerCase().trim();
-                if (actionItem.operationName !== 'key') {
-                    actionItem.operationValue = tempOperationValue;
-                    actionItem.operationName = 'key';
-                } else {
-                    actionItem.operationValue = tempOperationValue;
-                }
-                return actionItem;
-            });
-        } else if (newConfigItem.config.functionType === 'multiActions') {
-            if (!newConfigItem.config.subActions) {
-                if (newConfigItem.config.actions) {
-                    let configActions = [];
-                    if (newConfigItem.config.actions[0].operationName && newConfigItem.config.actions[0].operationName === 'subActions') {
-                        configActions = newConfigItem.config.actions[0].operationValue;
-                    } else if (newConfigItem.config.actions[0].subActions) {
-                        configActions = newConfigItem.config.actions[0].subActions;
+                break;
+            case 'media':
+                newConfigItem.config.actions = newConfigItem.config.actions.map(actionItem => {
+                    const tempOperationValue = actionItem.operationName.toLowerCase().trim();
+                    if (actionItem.operationName !== 'key') {
+                        actionItem.operationValue = tempOperationValue;
+                        actionItem.operationName = 'key';
                     } else {
-                        configActions = newConfigItem.config.actions;
+                        actionItem.operationValue = tempOperationValue;
                     }
+                    return actionItem;
+                });
+                break;
+            case 'multiActions': {
+                if (!newConfigItem.config.subActions && !newConfigItem.config.actions) break;
 
-                    newConfigItem.config.subActions = [];
-                    for (let i = 0; i < configActions.length; i++) {
-                        const subActionInfo = configActions[i];
-                        subActionInfo.config = deepCopy(subActionInfo);
-
-                        if (!subActionInfo.config.title) {
-                            subActionInfo.config.title = {
-                                text: '',
-                                pos: 'bot',
-                                size: 8,
-                                color: '#FFFFFF',
-                                display: true,
-                                style: 'bold|italic|underline',
-                                resourceId: ''
-                            }
-                        }
-                        if (!subActionInfo.config.icon) {
-                            subActionInfo.config.icon = ''
-                        }
-
-                        if (!subActionInfo.title) {
-                            subActionInfo.title = '';
-                        } else {
-                            subActionInfo.config.title = {
-                                text: subActionInfo.title,
-                                pos: 'bot',
-                                size: 8,
-                                color: '#FFFFFF',
-                                display: true,
-                                style: 'bold|italic|underline',
-                                resourceId: ''
-                            }
-                        }
-
-                        subActionInfo.config.functionType = subActionInfo.config.config.functionType;
-                        subActionInfo.config.actions = subActionInfo.config.config.actions;
-
-                        subActionInfo.config.gap = 100;
-                        subActionInfo.config.pressTime = 100;
-                        subActionInfo.isMultiAction = true;
-                        subActionInfo.multiActionIndex = i;
-                        subActionInfo.multiActionsKeyCode = keyCode;
-
-                        console.log('AIManager: _convertActionItemData: Before process subActionInfo: ' + JSON.stringify(subActionInfo));
-
-                        const convertedData = await this._convertActionItemData(subActionInfo, subActionInfo, keyCode);
-
-                        const newConfigData = convertedData[0];
-
-                        if (newConfigData.config.config.actions) {
-                            newConfigData.config.type = newConfigData.config.config.functionType;
-                            newConfigData.childrenName = newConfigData.config.config.functionType;
-                            newConfigData.config.actions = newConfigData.config.config.actions.map(item => {
-                                return {
-                                    type: item.operationName,
-                                    value: item.operationValue
-                                };
-                            });
-                        }
-
-                        delete newConfigData.title;
-                        delete newConfigData.icon;
-                        delete newConfigData.config.config;
-
-                        newConfigItem.config.subActions.push(newConfigData);
-                    }
-                    delete newConfigItem.config.actions;
+                let configActions = [];
+                if (newConfigItem.config.actions[0].operationName && newConfigItem.config.actions[0].operationName === 'subActions') {
+                    configActions = newConfigItem.config.actions[0].operationValue;
+                } else if (newConfigItem.config.actions[0].subActions) {
+                    configActions = newConfigItem.config.actions[0].subActions;
+                } else {
+                    configActions = newConfigItem.config.actions;
                 }
-            }
 
-            console.log('AIManager: _convertActionItemData: After process multi action: final newConfigItem: ' + JSON.stringify(newConfigItem));
+                newConfigItem.config.subActions = [];
+                for (let i = 0; i < configActions.length; i++) {
+                    const subActionInfo = configActions[i];
+                    subActionInfo.config = deepCopy(subActionInfo);
+
+                    if (!subActionInfo.config.title) {
+                        subActionInfo.config.title = {
+                            text: '',
+                            pos: 'bot',
+                            size: 8,
+                            color: '#FFFFFF',
+                            display: true,
+                            style: 'bold|italic|underline',
+                            resourceId: ''
+                        }
+                    }
+                    if (!subActionInfo.config.icon) {
+                        subActionInfo.config.icon = ''
+                    }
+
+                    if (!subActionInfo.title) {
+                        subActionInfo.title = '';
+                    } else {
+                        subActionInfo.config.title = {
+                            text: subActionInfo.title,
+                            pos: 'bot',
+                            size: 8,
+                            color: '#FFFFFF',
+                            display: true,
+                            style: 'bold|italic|underline',
+                            resourceId: ''
+                        }
+                    }
+
+                    subActionInfo.config.functionType = subActionInfo.config.config.functionType;
+                    subActionInfo.config.actions = subActionInfo.config.config.actions;
+
+                    subActionInfo.config.gap = 100;
+                    subActionInfo.config.pressTime = 100;
+                    subActionInfo.isMultiAction = true;
+                    subActionInfo.multiActionIndex = i;
+                    subActionInfo.multiActionsKeyCode = keyCode;
+
+                    console.log('AIManager: _convertActionItemData: Before process subActionInfo: ' + JSON.stringify(subActionInfo));
+
+                    const convertedData = await this._convertActionItemData(subActionInfo, subActionInfo, keyCode);
+
+                    const newConfigData = convertedData[0];
+
+                    if (newConfigData.config.config.actions) {
+                        newConfigData.config.type = newConfigData.config.config.functionType;
+                        newConfigData.childrenName = newConfigData.config.config.functionType;
+                        newConfigData.config.actions = newConfigData.config.config.actions.map(item => {
+                            return {
+                                type: item.operationName,
+                                value: item.operationValue
+                            };
+                        });
+                    }
+
+                    delete newConfigData.title;
+                    delete newConfigData.icon;
+                    delete newConfigData.config.config;
+
+                    newConfigItem.config.subActions.push(newConfigData);
+                }
+                delete newConfigItem.config.actions;
+
+                console.log('AIManager: _convertActionItemData: After process multi action: final newConfigItem: ' + JSON.stringify(newConfigItem));
+                break;
+            }
         }
 
         return [oldConfigItem, newConfigItem];
@@ -1612,27 +1628,14 @@ class AIManager {
                     ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.ok'));
                 }
 
-                if (operatePCContext.streamChunkMsg.length >= 30 || isLastAction) {
-                    if (actionDetail[0] === 'cursor') {
-                        writeOutputToKeyInput(operatePCContext.streamChunkMsg);
-                    } else if (actionDetail[0] === 'file') {
-                        if (!operatePCContext.outputFilePath) {
-                            const pcDocumentPath = app.getPath('documents');
-                            operatePCContext.outputFilePath = path.join(pcDocumentPath, 'DecoKeeAI-Generated-' + Date.now() + '.txt');
+                if ((operatePCContext.streamChunkMsg && operatePCContext.streamChunkMsg.length >= 30) || isLastAction) {
+                    const outputDetail = actionDetail[0];
+                    if (outputDetail.outputFormat) {
+                        if (outputDetail.outputFormat === 'cursor') {
+                            writeOutputToKeyInput(operatePCContext.streamChunkMsg);
+                        } else {
+                            this._outputDataToFile(actionDetail[0], isLastAction);
                         }
-                        fs.appendFile(operatePCContext.outputFilePath, operatePCContext.streamChunkMsg, err => {
-                            if (err) {
-                                console.error(err);
-                            } else {
-                                console.log('AIManager: Output to file append successful!');
-
-                                if (isLastAction) {
-                                    setTimeout(() => {
-                                        shell.openPath(operatePCContext.outputFilePath);
-                                    }, 300);
-                                }
-                            }
-                        });
                     }
                     operatePCContext.streamChunkMsg = '';
                 }
@@ -1645,7 +1648,58 @@ class AIManager {
                     isPendingChatFinish = false;
                 }
                 break;
+            case AI_SUPPORT_FUNCTIONS.GENERATE_REPORT:
+
+                if (!operatePCContext.writeProcessStart) {
+                    operatePCContext.writeProcessStart = true;
+                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.ok'));
+                }
+
+                if ((operatePCContext.streamChunkMsg && operatePCContext.streamChunkMsg.length >= 30) || isLastAction) {
+                    this._outputDataToFile(actionDetail[0], isLastAction);
+                }
+                if (isLastAction) {
+                    console.log('AIManager: handleUserRequestActions: WRITE_TO_DOCUMENT: actionDetail: ', actionDetail, ' actionOutput: ', actionOutput);
+
+                    operatePCContext.streamChunkMsg = '';
+                    operatePCContext.actionProcessDone = true;
+                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.finishedOutput'));
+                    isPendingChatFinish = false;
+                }
+                break;
         }
+    }
+
+    _outputDataToFile(outputDetail, isLastAction) {
+        if (!operatePCContext.outputFilePath) {
+            const pcDocumentPath = app.getPath('documents');
+
+            let fileExt = '.doc';
+            if (outputDetail.fileType) {
+                console.log('AI generate output with fileType: ', outputDetail.fileType);
+
+                if (outputDetail.fileType === 'txt') {
+                    fileExt = '.txt';
+                }
+            }
+
+            operatePCContext.outputFilePath = path.join(pcDocumentPath, 'DecoKeeAI-Generated-' + Date.now() + fileExt);
+        }
+        fs.appendFile(operatePCContext.outputFilePath, operatePCContext.streamChunkMsg, err => {
+            if (err) {
+                console.error(err);
+            } else {
+                console.log('AIManager: Output to file append successful!');
+
+                if (isLastAction) {
+                    setTimeout(() => {
+                        shell.openPath(operatePCContext.outputFilePath);
+                    }, 300);
+                }
+            }
+        });
+
+        operatePCContext.streamChunkMsg = '';
     }
 
     _openApplication(applicationPath, execCmd) {
@@ -1833,6 +1887,10 @@ class AIManager {
                 break
             case 'glm-3-turbo':
             case 'glm-4':
+            case 'glm-4-0520':
+            case 'glm-4-air':
+            case 'glm-4-airx':
+            case 'glm-4-flash':
                 aiEngineType = AI_ENGINE_TYPE.ZhiPuChat;
                 break
             case 'spark3.5':
@@ -1875,7 +1933,7 @@ class AIManager {
             params = {
                 model: requestModelName,
                 messages: [],
-                max_tokens: 1024,
+                max_tokens: 2048,
                 temperature: 0.1,
                 stream: false
             }
@@ -1914,7 +1972,8 @@ class AIManager {
                     aiAssistantChatAdapter.setChatResponseListener((requestId, status, message) => {
                         this._handleChatResponse(requestId, status, message).catch(err => {
                             console.log('AIManager: handleAIAssistantProcess: CHAT_TYPE.CHAT_TYPE_OPERATE_PC _handleChatResponse detected error: ', err);
-                            this._showAssistantError(requestId);
+                            this.setAssistantProcessFailed();
+                            ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
                         });
                     });
                     chatMsgs = getPCOperationBotPrePrompt(message, aiEngineType);
@@ -1935,7 +1994,9 @@ class AIManager {
                     aiAssistantChatAdapter.setChatResponseListener((requestId, status, message) => {
                         this._handleChatResponse(requestId, status, message).catch(err => {
                             console.log('AIManager: handleAIAssistantProcess: CHAT_TYPE.CHAT_TYPE_NORMAL _handleChatResponse detected error: ', err);
-                            this._showAssistantError(requestId);
+
+                            this.setAssistantProcessFailed();
+                            ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
                         });
                     });
                     const deviceLocationInfo = appManager.storeManager.storeGet('system.deviceLocationInfo');
