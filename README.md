@@ -56,7 +56,7 @@ DecoKeeAI is built using **vue-cli 5** and **Electron 23.0.0**, providing a modu
 ### **Download and Install**
 
 ```bash
-https://github.com/DecoKeeAI/DecoKeeAI/releases/download/V0.0.47/DecoKeeAI_Setup_0.0.47.exe
+https://github.com/DecoKeeAI/DecoKeeAI/releases/download/V0.0.49/DecoKeeAI_Setup_0.0.49.exe
 ```
 
 ### **Compile Yourself**
