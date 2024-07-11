@@ -541,7 +541,7 @@ export function getChatPrePromptMsg(message, engineType) {
     }
 }
 
-export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language, engineType, deviceLayoutConfig) {
+export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language, engineType, deviceLayoutConfig, recentApps) {
     console.log('ConstantData: getKeyConfigBotPrePrompt: engineType: ' + engineType);
 
     let maxKeySupport = 6,
@@ -654,6 +654,20 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
 
     console.log('getKeyConfigBotPrePrompt: Max key array support: ' + maxKeySupport);
 
+    let platform = 'windows';
+    switch (process.platform) {
+        default:
+        case 'win32':
+            platform = 'windows'
+            break;
+        case 'darwin':
+            platform = 'macos'
+            break;
+        case 'linux':
+            platform = 'linux'
+            return;
+    }
+
     const englishRequestConfigPrompt =
         '\n' +
         '## Role: ' +
@@ -709,8 +723,29 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
         '   - **Stop Audio Playback (stopAudio)**, Supported operations:\n' +
         '       - No specific operations.\n' +
         '\n' +
+        '   - **Open Application (openApplication)**, Supported operations:\n' +
+        "       - `appName`: An string array of third part application's name for both Chinese and English .\n" +
+        '\n' +
+        '   - **Close Application (closeApplication)**, Supported operations:\n' +
+        "       - `appName`: An string array of third part application's name for both Chinese and English .\n" +
+        '\n' +
+        '   - **Open System Application (openSystemApplication)**, Supported operations:\n' +
+        "       - `cmdLine`: A command line that can be used in terminal to open user requested system default application.\n" +
+        '\n' +
+        '   - **Close System Application (closeSystemApplication)**, Supported operations:\n' +
+        "       - `cmdLine`: A command line that can be used in terminal to close user requested system default application.\n" +
+        '\n' +
+        '   - **Terminal (cmd)**, Supported operations:\n' +
+        "       - `cmdLine`: A command line that can use in the terminal to execute.\n" +
+        '\n' +
         '   - **Multiactions (multiActions)**, Supported operations:\n' +
         "       - `subActions`: A list of 'ConfigDetail' that contains one or more <functionType> and process them one by one. \n" +
+        '\n' +
+        '   3. I\'m using a ' + platform + ' system.\n' +
+        '   4. I have the following recent applications used on my computer, only use this information when I need config for recent applications:\n' +
+        '```json' +
+        JSON.stringify(recentApps) +
+        '```' +
         '\n' +
         '## Tasks: \n' +
         "   Modify the configuration content of the user's device according to the above information and only reply with JSON object to user's request with below conditions:\n" +
@@ -779,6 +814,30 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
         '       - **停止音频播放 (stopAudio)**:\n' +
         '           - 没有特定的操作。\n' +
         '\n' +
+        '   - **打开应用程序 (openApplication)**:\n' +
+        "       - `appName`: 一个字符串数组，包含第三方应用程序的中文和英文名称。\n" +
+        '\n' +
+        '   - **关闭应用程序 (closeApplication)**:\n' +
+        "       - `appName`: 一个字符串数组，包含第三方应用程序的中文和英文名称。\n" +
+        '\n' +
+        '   - **打开系统应用程序 (openSystemApplication)**:\n' +
+        "       - `cmdLine`: 可以在终端中使用的命令行，用于打开用户请求的系统默认应用程序。\n" +
+        '\n' +
+        '   - **关闭系统应用程序 (closeSystemApplication)**:\n' +
+        "       - `cmdLine`: 可以在终端中使用的命令行，用于关闭用户请求的系统默认应用程序。\n" +
+        '\n' +
+        '   - **终端命令行 (cmd)**, Supported operations:\n' +
+        "       - `cmdLine`: 可以在终端中执行的命令行。\n" +
+        '\n' +
+        '   - **多重操作 (multiActions)**, Supported operations:\n' +
+        "       - `subActions`: 一个包含一条或多条<函数类型>的 'ConfigDetail' 列表，并逐个处理它们。\n" +
+        '\n' +
+        '   3. 我使用的是 ' + platform + ' 系统.\n' +
+        '   4. 我电脑上最近使用的应用程序如下, 注意：只在我需要你来配置最近应用程序时再使用这些信息:\n' +
+        '```json' +
+        JSON.stringify(recentApps) +
+        '```' +
+        '\n' +
         '## Tasks: ' +
         '   根据上述信息修改用户设备的配置内容，并仅以 JSON 对象回复用户的请求，需满足以下条件，注意不要写解释:\n' +
         '\n' +
@@ -797,10 +856,10 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
             switch (engineType) {
                 case AI_ENGINE_TYPE.XYF:
                 case AI_ENGINE_TYPE.ArixoChat:
-                case AI_ENGINE_TYPE.ZhiPuChat:
                     finalRequestPrompt = chineseRequestConfigPrompt + ' 用户请求: ' + message;
                     break;
                 default:
+                case AI_ENGINE_TYPE.ZhiPuChat:
                 case AI_ENGINE_TYPE.QWenChat:
                 case AI_ENGINE_TYPE.GroqChat:
                 case AI_ENGINE_TYPE.CustomEngine:
@@ -869,6 +928,20 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
 }
 
 export function getPCOperationBotPrePrompt(message, engineType) {
+    let platform = 'windows';
+    switch (process.platform) {
+        default:
+        case 'win32':
+            platform = 'windows'
+            break;
+        case 'darwin':
+            platform = 'macos'
+            break;
+        case 'linux':
+            platform = 'linux'
+            return;
+    }
+
     const englishRequestOperationPrompt =
         '' +
         '## Role: \n' +
@@ -879,7 +952,7 @@ export function getPCOperationBotPrePrompt(message, engineType) {
         'You should use your knowledge of computer science, network infrastructure, and IT security to solve my problem. ' +
         'It would be helpful to use intelligent, simple, and easy to understand language that is suitable for people of all levels in your answer. ' +
         'It is helpful to gradually explain your solution with key points. Try to avoid too many technical details, but use them when necessary. ' +
-        "I'm using a Windows system. I hope you can reply with a solution instead of writing any explanation and reply my question based on below steps: \n" +
+        "I'm using a " + platform + " system. I hope you can reply with a solution instead of writing any explanation and reply my question based on below steps: \n" +
         '\n' +
         '## Action:\n' +
         '   Determine what kind of operation I need for assist with operating the computer.\n' +
@@ -894,7 +967,7 @@ export function getPCOperationBotPrePrompt(message, engineType) {
         "               - If user requested to open third part application, then fill the list with application's name for both Chinese and English, also set the last item to the link could open in web browser.\n" +
         '           *' + AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION + "*:  Close an system default application like 'SystemSettings', 'Calculator', etc. or third party application on computer. " +
         "When '" + AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION + "' is set also need set 'actionDetail' with a list of possible application's name strings based on following condition:\n" +
-        "               - If user requested to close system default application, then set it with a prefix of 'CloseSystemApp: ' then followed with the name appears in windows tasklist.\n" +
+        "               - If user requested to close system default application, then set it with a prefix of 'CloseSystemApp: ' then followed with the name appears in " + platform + " tasklist.\n" +
         "               - If user requested to close third part application, then fill the list with application's name for both Chinese and English. \n" +
         '           *' + AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT + '*: Write the user requested message to specific location, such as cursor, or file. ' +
         "When '" + AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT + "' is set also need set 'actionDetail' with following output details:\n" +
@@ -918,7 +991,7 @@ export function getPCOperationBotPrePrompt(message, engineType) {
         '你应该利用你的计算机科学、网络基础设施和IT安全知识来解决我的问题。\n' +
         '在你的答案中使用智能、简单、易于理解的语言，适合各个层次的人，这将很有帮助。\n' +
         '逐步用关键点解释你的解决方案是有帮助的。尽量避免过多的技术细节，但在必要时使用它们。\n' +
-        '我使用的是Windows系统。我希望你能给出一个解决方案，而不是写任何解释，并根据以下步骤回答我的问题：\n' +
+        '我使用的是 ' + platform + ' 系统。我希望你能给出一个解决方案，而不是写任何解释，并根据以下步骤回答我的问题：\n' +
         '\n' +
         '## Action: \n' +
         '   确定我需要什么样的操作来帮助操作计算机。\n' +
@@ -928,11 +1001,11 @@ export function getPCOperationBotPrePrompt(message, engineType) {
         '       **UserRequestAction**: 用户需要做的事情。支持的项目有: \n' +
         '           *' + AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION + "：打开计算机上的系统默认应用程序，如 'SystemSettings'（系统设置）、'Calculator'（计算器）等，或第三方应用程序。" +
         "当设置 '" + AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION + "' 时，还需要使用 'actionDetail' 设置一系列可能的应用程序名称字符串，基于以下条件：\n" +
-        "               - 如果用户请求打开系统默认/自带的应用程序，则将其设置为在 Windows 任务列表中出现的名称，并带有前缀 'OpenSystemApp: '，然后是可在终端中用于打开用户请求的应用程序的命令行。\n" +
+        "               - 如果用户请求打开系统默认/自带的应用程序，则将其设置为在 " + platform + " 任务列表中出现的名称，并带有前缀 'OpenSystemApp: '，然后是可在终端中用于打开用户请求的应用程序的命令行。\n" +
         "               - 如果用户请求打开第三方应用程序，则用中文和英文填写应用程序的名称到 'actionDetail' 列表中，并将最后一项设置为可以在网络浏览器中打开的链接。\n" +
         '           *' + AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION + "：关闭计算机上的系统默认应用程序，如 'SystemSettings'（系统设置）、'Calculator'（计算器）等，或第三方应用程序。" +
         "当设置 '" + AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION + "' 时，还需要使用 'actionDetail' 设置一系列可能的应用程序名称字符串，基于以下条件：\n" +
-        "               - 如果用户请求关闭系统默认应用程序，则将其设置为在 Windows 任务列表中出现的名称，并带有前缀 'CloseSystemApp: '，然后是应用程序名称。\n" +
+        "               - 如果用户请求关闭系统默认应用程序，则将其设置为在 " + platform + " 任务列表中出现的名称，并带有前缀 'CloseSystemApp: '，然后是应用程序名称。\n" +
         "               - 如果用户请求关闭第三方应用程序，则用中文和英文填写应用程序的名称到 'actionDetail' 列表中。\n" +
         '           *' + AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT + '*:  将用户请求的消息写入特定位置，如光标或文件。' +
         "当设置了 '" + AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT + "' 时，还需要设置带有输出详细信息列表的 'actionDetail': \n" +

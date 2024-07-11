@@ -1193,7 +1193,7 @@ class AIManager {
             console.log('AIManager: convertConfigDataToProtocolConfig: generated new config data: ' + JSON.stringify(oldConfig));
         }
 
-        console.log('AIManager: convertConfigDataToProtocolConfig: before convert Old: ' + JSON.stringify(oldConfig) + ' New: ' + JSON.stringify(newConfigData));
+        console.log('AIManager: convertConfigDataToProtocolConfig: before convert Old: ' + JSON.stringify(oldConfig) + '\n New: ' + JSON.stringify(newConfigData));
 
         let haveNewConfig = false;
 
@@ -1492,6 +1492,131 @@ class AIManager {
                 delete newConfigItem.config.actions;
 
                 console.log('AIManager: _convertActionItemData: After process multi action: final newConfigItem: ' + JSON.stringify(newConfigItem));
+                break;
+            }
+            case 'openApplication':
+            case 'closeApplication': {
+                if (!newConfigItem.config.actions || newConfigItem.config.actions.length < 1 || newConfigItem.config.actions[0].operationName !== 'appName' || newConfigItem.config.actions[0].operationValue.length < 1) break;
+
+                let processApplicationInfo = undefined;
+                newConfigItem.config.actions[0].operationValue.forEach(requestAppName => {
+                    const appInfo = this._findAppInfo(requestAppName);
+
+                    if (appInfo === undefined) return;
+
+                    if (processApplicationInfo === undefined) {
+                        processApplicationInfo = appInfo;
+                        return;
+                    }
+
+                    if (appInfo.levenshteinDistance < processApplicationInfo.levenshteinDistance) {
+                        processApplicationInfo = appInfo;
+                    }
+                });
+
+                const isClose = newConfigItem.config.functionType === 'closeApplication';
+
+                oldConfigItem.childrenName = isClose ? 'close' : 'open';
+                oldConfigItem.config.type = isClose ? 'close' : 'open';
+
+                if (processApplicationInfo === undefined) {
+                    newConfigItem.config.actions = [{
+                        operationName: 'path',
+                        operationValue: ''
+                    }];
+                } else {
+                    newConfigItem.config.actions = [{
+                        operationName: 'path',
+                        operationValue: processApplicationInfo.appInfo.appLaunchPath
+                    }];
+
+                    oldConfigItem.config.icon = (await appManager.resourcesManager.getAppIconInfo(processApplicationInfo.appInfo.appLaunchPath)).id;
+
+                    console.log('AIManager: _convertActionItemData: after check app info: oldConfigItem: ', oldConfigItem);
+                }
+
+                if (isClose) {
+                    newConfigItem.config.actions.push({
+                        operationName: 'force',
+                        operationValue: 1
+                    });
+                }
+                break;
+            }
+            case 'openSystemApplication':
+            case 'closeSystemApplication': {
+                if (!newConfigItem.config.actions || newConfigItem.config.actions.length < 1 || newConfigItem.config.actions[0].operationName !== 'cmdLine' || newConfigItem.config.actions[0].operationValue.length < 1) break;
+
+                let cmdLine = newConfigItem.config.actions[0].operationValue;
+
+                if (cmdLine === undefined) {
+                    cmdLine = '';
+                }
+
+                if (cmdLine !== '' && cmdLine !== ' ') {
+                    if (newConfigItem.config.functionType === 'openSystemApplication') {
+
+                        switch (process.platform) {
+                            case 'win32':
+                                if (!cmdLine.startsWith('start ')) {
+
+                                    if (cmdLine === 'ms-settings') {
+                                        cmdLine += ':';
+                                    }
+
+                                    cmdLine = 'start ' + cmdLine;
+                                }
+                                break;
+                            case 'darwin':
+                                // TODO: MacOS cmd fix check
+                                break;
+                            case 'linux':
+                                // TODO: Linux cmd fix check
+                                break;
+                        }
+                    } else {
+                        switch (process.platform) {
+                            case 'win32':
+                                if (!cmdLine.includes(' /f ') && !cmdLine.endsWith('/f')) {
+                                    cmdLine += ' /f';
+                                }
+                                break;
+                            case 'darwin':
+                                // TODO: MacOS cmd fix check
+                                break;
+                            case 'linux':
+                                if (!cmdLine.includes(' -9 ')) {
+                                    cmdLine += ' -9';
+                                }
+                                break;
+                        }
+
+                    }
+                }
+
+
+                oldConfigItem.childrenName = 'cmd';
+                oldConfigItem.config.type = 'cmd';
+
+                newConfigItem.config.actions = [{
+                    operationName: 'text',
+                    operationValue: cmdLine
+                }];
+                break;
+            }
+            case 'cmd': {
+                if (!newConfigItem.config.actions || newConfigItem.config.actions.length < 1 || newConfigItem.config.actions[0].operationName !== 'cmdLine' || newConfigItem.config.actions[0].operationValue.length < 1) break;
+
+                let cmdLine = newConfigItem.config.actions[0].operationValue;
+
+                if (cmdLine === undefined) {
+                    cmdLine = '';
+                }
+
+                newConfigItem.config.actions = [{
+                    operationName: 'text',
+                    operationValue: cmdLine
+                }];
                 break;
             }
         }
@@ -1979,7 +2104,9 @@ class AIManager {
                     chatMsgs = getPCOperationBotPrePrompt(message, aiEngineType);
                 } else if (responseConfigData.userRequestAction === "generateConfiguration") {
                     aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_KEY_CONFIG);
-                    chatMsgs = getKeyConfigBotPrePrompt(message, deviceActiveProfile, currentLanguage, aiEngineType, deviceLayoutConfig);
+                    const recentApps = await getRecentApps();
+                    console.log('AIManager: handleAIAssistantProcess: recentApps: ', recentApps);
+                    chatMsgs = getKeyConfigBotPrePrompt(message, deviceActiveProfile, currentLanguage, aiEngineType, deviceLayoutConfig, recentApps);
                     try {
                         const processPrompt = i18nRender('assistantConfig.generatingConfig');
                         console.log('AIManager: handleAIAssistantProcess: Request PlayTTS: ' + processPrompt);
@@ -2271,6 +2398,88 @@ function splitByLastPunctuation(text) {
         // 如果没有找到标点符号，则返回原字符串和空字符串
         return [text, ''];
     }
+}
+
+async function getRecentApps() {
+    let recentApps = [];
+    switch (process.platform) {
+        case 'win32':
+            recentApps = await getRecentAppsWindows();
+            break;
+        case 'darwin':
+            recentApps = await getRecentAppsMac();
+            break;
+        case 'linux':
+            // TODO: Linux cmd fix check
+            break;
+    }
+
+    const uniqueAppList = [];
+
+    for (let i = 0; i < recentApps.length; i++) {
+        const appInfo = recentApps[i];
+
+        if (appInfo.path === '----') continue;
+
+        if (uniqueAppList.findIndex(uAppInfo => uAppInfo.name === appInfo.name && uAppInfo.path === appInfo.path) !== -1) continue;
+
+        uniqueAppList.push(appInfo);
+    }
+
+    return uniqueAppList;
+}
+
+function getRecentAppsWindows() {
+    return new Promise((resolve, reject) => {
+        // eslint-disable-next-line
+        exec('powershell "chcp 65001; Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { $_.Description + \'|\' + $_.Path }"', (error, stdout, stderr) => {
+            if (error) {
+                reject(error);
+            } else {
+
+                const apps = stdout.split('\n').filter(line => line.includes('|')).map(line => {
+                    const parts = line.trim().split('|');
+                    let appName = parts[0].trim();
+                    const appPath = parts[1].trim();
+
+                    if (appName === '') {
+                        appName = path.parse(path.basename(appPath)).name
+                    }
+                    return {
+                        name: appName,
+                        path: appPath
+                    };
+                });
+                resolve(apps);
+            }
+        });
+    });
+}
+
+function getRecentAppsMac() {
+    return new Promise((resolve, reject) => {
+        const script = `
+      tell application "System Events"
+        set recentApps to {}
+        repeat with processItem in (every process whose background only is false)
+          set end of recentApps to {name: name of processItem, path: POSIX path of (path to application (name of processItem))}
+        end repeat
+        return recentApps
+      end tell
+    `;
+        // eslint-disable-next-line
+        exec(`osascript -e '${script}'`, (error, stdout, stderr) => {
+            if (error) {
+                reject(error);
+            } else {
+                const apps = stdout.split(',').map(line => {
+                    const [name, path] = line.split(': ');
+                    return { name, path };
+                });
+                resolve(apps.filter(app => app.path));
+            }
+        });
+    });
 }
 
 export default AIManager;
