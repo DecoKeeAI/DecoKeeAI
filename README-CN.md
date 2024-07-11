@@ -56,7 +56,7 @@ DecoKeeAI 提出了一种通过 AI 技术与带显示快捷按键相结合的全
 ### **下载并安装**
 
 ```bash
-https://github.com/DecoKeeAI/DecoKeeAI/releases/download/V0.0.47/DecoKeeAI_Setup_0.0.47.exe
+https://github.com/DecoKeeAI/DecoKeeAI/releases/download/V0.0.49/DecoKeeAI_Setup_0.0.49.exe
 ```
 
 ### **自己编译**
