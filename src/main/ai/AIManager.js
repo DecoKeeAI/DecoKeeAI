@@ -906,10 +906,10 @@ class AIManager {
 
                 this._decodeOperateActionData(chatResponseMsg, status === 2);
 
-                if (!operatePCContext.actionProcessDone && operatePCContext.actionType !== '' && operatePCContext.actionDetail && operatePCContext.actionDetail.length > 0) {
+                if (!operatePCContext.actionProcessDone && operatePCContext.actionType !== '' && operatePCContext.actionDetail) {
 
                     this._handleUserRequestActions(requestId, operatePCContext.actionType, operatePCContext.actionDetail, operatePCContext.actionOutput, status === 2);
-                    if (operatePCContext.actionType === AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION || operatePCContext.actionType === AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION) {
+                    if (operatePCContext.actionDetail.length > 0 && (operatePCContext.actionType === AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION || operatePCContext.actionType === AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION)) {
                         operatePCContext.actionProcessDone = true;
                         isPendingChatFinish = false;
                     }
@@ -1631,6 +1631,7 @@ class AIManager {
         let applicationName = '';
         switch (requestFunction) {
             case AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION:
+                if (actionDetail.length === 0) break;
                 console.log('AIManager: handleUserRequestActions: OPEN_APPLICATION Do user action: ' + actionDetail);
 
                 actionDetail.forEach(requestAppName => {
@@ -1698,6 +1699,7 @@ class AIManager {
                 ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.applicationNotFound'));
                 break;
             case AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION:
+                if (actionDetail.length === 0) break;
                 console.log('AIManager: handleUserRequestActions: CLOSE_APPLICATION Do user action: ' + actionDetail);
 
                 actionDetail.forEach(requestAppName => {
@@ -1747,6 +1749,7 @@ class AIManager {
                 }
                 break;
             case AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT:
+                if (actionDetail.length === 0) break;
 
                 if (!operatePCContext.writeProcessStart) {
                     operatePCContext.writeProcessStart = true;
@@ -1774,6 +1777,7 @@ class AIManager {
                 }
                 break;
             case AI_SUPPORT_FUNCTIONS.GENERATE_REPORT:
+                if (actionDetail.length === 0) break;
 
                 if (!operatePCContext.writeProcessStart) {
                     operatePCContext.writeProcessStart = true;
@@ -1792,6 +1796,32 @@ class AIManager {
                     isPendingChatFinish = false;
                 }
                 break;
+            case AI_SUPPORT_FUNCTIONS.EXECUTE_CMD: {
+
+                let actionData = actionDetail;
+
+                if (actionDetail instanceof Array) {
+                    if (actionDetail.length === 0) break;
+                    actionData = actionDetail[0];
+                }
+
+                if (!isLastAction) break;
+                console.log('AIManager: handleUserRequestActions: EXECUTE_CMD Do user action: ' + actionData);
+
+                // eslint-disable-next-line
+                exec(actionData.cmdLine, (error, stdout, stderr) => {
+                    if (error) {
+                        console.log('AIManager: handleUserRequestActions: EXEC shutdown error');
+                    } else {
+                        operatePCContext.actionProcessDone = true;
+                        ttsEngineAdapter.playTTS(requestId, actionData.greetingMessage);
+                        isPendingChatFinish = false;
+                    }
+                });
+
+                break;
+            }
+
         }
     }
 
@@ -2101,7 +2131,7 @@ class AIManager {
                             ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
                         });
                     });
-                    chatMsgs = getPCOperationBotPrePrompt(message, aiEngineType);
+                    chatMsgs = getPCOperationBotPrePrompt(message, aiEngineType, currentLanguage);
                 } else if (responseConfigData.userRequestAction === "generateConfiguration") {
                     aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_KEY_CONFIG);
                     const recentApps = await getRecentApps();

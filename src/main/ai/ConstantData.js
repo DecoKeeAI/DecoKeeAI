@@ -50,6 +50,7 @@ export const AI_SUPPORT_FUNCTIONS = {
     CLOSE_APPLICATION: 'closeApplication',
     WRITE_TO_DOCUMENT: 'writeToDocument',
     GENERATE_REPORT: 'generateReport',
+    EXECUTE_CMD: 'executeCommand',
 };
 
 export const OPEN_AI_IPC_MESSAGE = {
@@ -927,7 +928,7 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
     }
 }
 
-export function getPCOperationBotPrePrompt(message, engineType) {
+export function getPCOperationBotPrePrompt(message, engineType, currentLanguage) {
     let platform = 'windows';
     switch (process.platform) {
         default:
@@ -942,7 +943,7 @@ export function getPCOperationBotPrePrompt(message, engineType) {
             return;
     }
 
-    const englishRequestOperationPrompt =
+    let englishRequestOperationPrompt =
         '' +
         '## Role: \n' +
         '   You are Dekie, a computer technology expert. You can assist me to operate my computer for my questions. ' +
@@ -977,10 +978,14 @@ export function getPCOperationBotPrePrompt(message, engineType) {
         "When '" + AI_SUPPORT_FUNCTIONS.GENERATE_REPORT + "' is set also need set 'actionDetail' with following output details:\n" +
         "               - 'outputFormat': Indicate write output message to the 'cursor' location or to a 'file'. If user not indicate the location, then set to default 'file'. \n" +
         "               - 'fileType': Indicate the file type user need output with when set 'file' as output location in 'outputFormat'. Default is doc.\n" +
+        '           *' + AI_SUPPORT_FUNCTIONS.EXECUTE_CMD + '*: Execute a command line in terminal, i.e: shutdown/power off. ' +
+        "When '" + AI_SUPPORT_FUNCTIONS.EXECUTE_CMD + "' is set also need set 'actionDetail' with following output details:\n" +
+        "               - 'cmdLine': A command line that can be used in terminal to open user requested system default application. \n" +
+        "               - 'greetingMessage': A friendly and interesting brief greeting about user request functionality, must use {{promptReplyLanguage}} to reply.\n" +
         "\n" +
         "       **ActionDetail**: A JSON object array of 'userRequestAction' action result.\n" +
         "\n" +
-        "       **OutputData**: String based response like essay, report or chat response, the 'OutputData' must use the same language as the one used in my request.";
+        "       **OutputData**: String based response like essay, report or chat response, the 'OutputData' must use {{promptReplyLanguage}} to reply my request.";
 
     let chineseRequestOperationPrompt =
         '' +
@@ -1038,7 +1043,20 @@ export function getPCOperationBotPrePrompt(message, engineType) {
         default:
         case AI_ENGINE_TYPE.CustomEngine:
         case AI_ENGINE_TYPE.GroqChat:
-        case AI_ENGINE_TYPE.OpenAI:
+        case AI_ENGINE_TYPE.OpenAI: {
+            const regExp = new RegExp("{{promptReplyLanguage}}", 'g');
+
+            switch (currentLanguage) {
+                case 'zh':
+                    englishRequestOperationPrompt = englishRequestOperationPrompt
+                        .replace(regExp, 'chinese')
+                    break;
+                case 'en':
+                    englishRequestOperationPrompt = englishRequestOperationPrompt
+                        .replace(regExp, 'english')
+                    break;
+            }
+
             return [
                 {
                     role: 'system',
@@ -1049,6 +1067,7 @@ export function getPCOperationBotPrePrompt(message, engineType) {
                     content: message,
                 },
             ];
+        }
     }
 }
 
