@@ -14,12 +14,15 @@ DecoKeeAI 提出了一种通过 AI 技术与带显示快捷按键相结合的全
 
 🔗 [访问 DecoKeeAI 的 GitHub 项目](https://github.com/DecoKeeAI/DecoKeeAI)
 
+配套的安卓端控制器<br/>
+🔗 [访问 DecoKeeMobile 的 GitHub 项目](https://github.com/DecoKeeAI/DecoKeeMobile)
+
 **关于 DecoKeeAI**
 -------------------
 
 ### DecoKeeAI 使用 **vue-cli 5** 和 **Electron 23.0.0** 构建，提供了一个模块化的桌面应用程序模板，具有以下特点：
 
-* 快速打包
+* 跨平台快速打包 (Windows, Linux, MacOS)
 * 一键多语言切换
 * 支持功能：
     - 按键快捷键
@@ -34,9 +37,9 @@ DecoKeeAI 提出了一种通过 AI 技术与带显示快捷按键相结合的全
     - 根据前台应用动态切换配置
 * MDI 图标插件和第三方图标库导入
 * 支持三方插件导入 (如 HomeAssistant 插件等)
-* 支持主流AI大模型接口调用包含：(API key需自行在对应平台中注册并在设置中填入，若想取得最好的体验，建议使用Groq的llama3或GPT 4o)
+* 支持主流AI大模型接口调用包含：(API key需自行在对应平台中注册并在设置中填入，若想取得最好的体验，建议使用 Groq 的 llama3-70b-8192 或 OpenAI 的 gpt-4o)
     - OpenAI: gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5-turbo
-    - Groq: llama3-70b-8192
+    - Groq (速度最快！目前免费！！！): llama3-70b-8192
     - 讯飞星火: spark3.5-max, spark4-ultra
     - 通义千问: qwen-turbo, qwen-plus, qwen-max, qwen-72b-chat, qwen1.5-32b-chat, qwen1.5-72b-chat, qwen1.5-110b-chat, qwen2-1.5b-instruct, qwen2-7b-instruct, qwen2-72b-instruct
     - 智谱AI: glm-4-0520, glm-4, glm-4-air, glm-4-airx, glm-4-flash, glm-3-turbo
@@ -55,11 +58,13 @@ DecoKeeAI 提出了一种通过 AI 技术与带显示快捷按键相结合的全
 
 ### **下载并安装**
 
-```bash
-https://github.com/DecoKeeAI/DecoKeeAI/releases/download/V0.0.49/DecoKeeAI_Setup_0.0.49.exe
-```
+[Windows 程序](https://github.com/DecoKeeAI/DecoKeeAI/releases)
 
-### **自己编译**
+[配套安卓软件](https://github.com/DecoKeeAI/DecoKeeMobile/releases)
+
+
+**自己编译**
+--------------
 
 **步骤 1：克隆项目**
 

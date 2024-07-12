@@ -14,12 +14,15 @@ DecoKeeAI introduces a revolutionary human-machine interaction approach by combi
 
 🔗 [Visit DecoKeeAI's GitHub Project](https://github.com/DecoKeeAI/DecoKeeAI)
 
+Companion Android controller<br/>
+🔗 [Visit the DecoKeeMobile GitHub project](https://github.com/DecoKeeAI/DecoKeeMobile) 
+
 **About DecoKeeAI**
 -------------------
 
 DecoKeeAI is built using **vue-cli 5** and **Electron 23.0.0**, providing a modular desktop application template with features like:
 
-* Fast packaging
+* Cross-platform fast packaging (Windows, Linux, MacOS)
 * One-click multi-language switchingHere is the translation:
 * Supported features:
   - Hotkey shortcuts
@@ -34,9 +37,9 @@ DecoKeeAI is built using **vue-cli 5** and **Electron 23.0.0**, providing a modu
   - Dynamic configuration switching based on foreground application
 * MDI icon plugin and third-party icon library import
 * Support for third-party plugin import (such as HomeAssistant plugins, etc.)
-* Support for mainstream AI model interface calls, including:
+* Support for mainstream AI model interface calls, including: (API keys need to be registered on the corresponding platform and filled in the settings. For the best experience, it is recommended to use Groq's llama3-70b-8192 or OpenAI' gpt-4o)
     - OpenAI: gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5-turbo
-    - Groq: llama3-70b-8192
+    - Groq (Fastest in response. FREE at the moment !!!!!!): llama3-70b-8192
     - iFlytek: spark3.5-max, spark4-ultra
     - Qwen: qwen-turbo, qwen-plus, qwen-max, qwen-72b-chat, qwen1.5-32b-chat, qwen1.5-72b-chat, qwen1.5-110b-chat, qwen2-1.5b-instruct, qwen2-7b-instruct, qwen2-72b-instruct
     - Zhipu AI: glm-4-0520, glm-4, glm-4-air, glm-4-airx, glm-4-flash, glm-3-turbo
@@ -55,11 +58,12 @@ DecoKeeAI is built using **vue-cli 5** and **Electron 23.0.0**, providing a modu
 
 ### **Download and Install**
 
-```bash
-https://github.com/DecoKeeAI/DecoKeeAI/releases/download/V0.0.49/DecoKeeAI_Setup_0.0.49.exe
-```
+[Windows Application](https://github.com/DecoKeeAI/DecoKeeAI/releases)
 
-### **Compile Yourself**
+[Android Application](https://github.com/DecoKeeAI/DecoKeeMobile/releases)
+
+**Compile Yourself**
+--------------------
 
 **Step 1: Clone the Project**
 
