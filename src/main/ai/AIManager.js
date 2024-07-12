@@ -1546,6 +1546,14 @@ class AIManager {
                         });
                     }
 
+                    if (recentAppInfo !== undefined) {
+                        const appExeIconInfo = (await appManager.resourcesManager.getAppIconInfo(recentAppInfo.path));
+
+                        if (appExeIconInfo !== undefined && appExeIconInfo.id !== undefined) {
+                            oldConfigItem.config.icon = appExeIconInfo.id;
+                        }
+                    }
+
                     newConfigItem.config.actions = [{
                         operationName: 'path',
                         operationValue: (recentAppInfo === undefined ? "" : recentAppInfo.path)
@@ -1558,12 +1566,12 @@ class AIManager {
 
                     const appExeIconInfo = (await appManager.resourcesManager.getAppIconInfo(processApplicationInfo.appInfo.appLaunchPath));
 
-                    if (appExeIconInfo !== undefined) {
+                    if (appExeIconInfo !== undefined && appExeIconInfo.id !== undefined) {
                         oldConfigItem.config.icon = appExeIconInfo.id;
                     }
 
-                    console.log('AIManager: _convertActionItemData: after check app info: oldConfigItem: ', oldConfigItem);
                 }
+                console.log('AIManager: _convertActionItemData: after check app info: oldConfigItem: ', oldConfigItem);
 
                 if (isClose) {
                     newConfigItem.config.actions.push({

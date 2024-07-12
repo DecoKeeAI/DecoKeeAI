@@ -762,7 +762,9 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
         '\n' +
         '---\n' +
         '\n' +
-        "Reply to user's request in {{promptReplyLanguage}} using the above steps.";
+        "Reply to user's request in {{promptReplyLanguage}} using the above steps. \n" +
+        "## Request:\n" +
+        "  My request is: " + message;
 
     let chineseRequestConfigPrompt =
         '## Role: ' +
@@ -848,7 +850,10 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
         "               - `ConfigDetail` 对应每个键生成的<配置数据>; 注意：如果设置了 'ConfigDetail.config.functionType'，则必须填写 'ConfigDetail.icon'。\n" +
         '           - `requestMsg` 仅支持`New configuration`或`Modify configuration`.\n' +
         '   2. 如果需要生成新的配置, 忽略键盘当前的按键配置然后再生成.\n' +
-        '   3. 如果需要更多信息，请回复 ```{"requestMsg":"抱歉，请提供更多信息。"}```.';
+        '   3. 如果需要更多信息，请回复 ```{"requestMsg":"抱歉，请提供更多信息。"}```.' +
+        "使用{{promptReplyLanguage}}回复用户的请求。 \n" +
+        "## Request:\n" +
+        "  我的请求是: " + message;
 
     let finalRequestPrompt = '';
     switch (language) {
@@ -857,7 +862,8 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
             switch (engineType) {
                 case AI_ENGINE_TYPE.XYF:
                 case AI_ENGINE_TYPE.ArixoChat:
-                    finalRequestPrompt = chineseRequestConfigPrompt + ' 用户请求: ' + message;
+                    finalRequestPrompt = chineseRequestConfigPrompt
+                        .replace('{{promptReplyLanguage}}', '中文');
                     break;
                 default:
                 case AI_ENGINE_TYPE.ZhiPuChat:
@@ -868,8 +874,6 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
                     finalRequestPrompt = englishRequestConfigPrompt
                         .replace('{{promptReplyLanguage}}', 'chinese')
                         .replace('{{moreDetailsRequired}}', '抱歉，请提供更多信息');
-
-                    finalRequestPrompt += ' User request: ' + message;
                     break;
             }
             break;
@@ -877,7 +881,8 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
             switch (engineType) {
                 case AI_ENGINE_TYPE.XYF:
                 case AI_ENGINE_TYPE.ArixoChat:
-                    finalRequestPrompt = englishRequestConfigPrompt + ' User request: ' + message;
+                    finalRequestPrompt = chineseRequestConfigPrompt
+                        .replace('{{promptReplyLanguage}}', '英文');
                     break;
                 default:
                 case AI_ENGINE_TYPE.QWenChat:
@@ -888,7 +893,6 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
                     finalRequestPrompt = englishRequestConfigPrompt
                         .replace('{{promptReplyLanguage}}', 'english')
                         .replace('{{moreDetailsRequired}}', 'Sorry, please provide more details');
-                    finalRequestPrompt += ' User request: ' + message;
                     break;
             }
             break;
@@ -985,7 +989,9 @@ export function getPCOperationBotPrePrompt(message, engineType, currentLanguage)
         "\n" +
         "       **ActionDetail**: A JSON object array of 'userRequestAction' action result.\n" +
         "\n" +
-        "       **OutputData**: String based response like essay, report or chat response, the 'OutputData' must use {{promptReplyLanguage}} to reply my request.";
+        "       **OutputData**: String based response like essay, report or chat response, the 'OutputData' must use {{promptReplyLanguage}} to reply my request.\n" +
+        "## Request:\n" +
+        "  My question is: " + message;
 
     let chineseRequestOperationPrompt =
         '' +
@@ -1060,11 +1066,11 @@ export function getPCOperationBotPrePrompt(message, engineType, currentLanguage)
             return [
                 {
                     role: 'system',
-                    content: englishRequestOperationPrompt,
+                    content: 'You are Dekie, a computer technology expert. You can assist me to operate my computer for my questions.',
                 },
                 {
                     role: 'user',
-                    content: message,
+                    content: englishRequestOperationPrompt,
                 },
             ];
         }
