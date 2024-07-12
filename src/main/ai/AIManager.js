@@ -133,6 +133,8 @@ let currentRequestId = '';
 
 let audioSendTimer = undefined;
 
+let currentRecentApps = undefined;
+
 let alterToneMap = new Map();
 
 
@@ -300,6 +302,10 @@ class AIManager {
                 }
             });
         });
+
+        setTimeout(() => {
+            checkRecentApps();
+        }, 5000);
     }
 
     setAssistantEngineModel(engineModel) {
@@ -995,7 +1001,14 @@ class AIManager {
                     decodeSubMsg = decodeSubMsg.substring(1);
                 }
 
-                operatePCContext.actionDetail = JSON.parse(decodeSubMsg.replace(regExp, (matched) => replacements[matched]));
+                try {
+                    operatePCContext.actionDetail = JSON.parse(decodeSubMsg.replace(regExp, (matched) => replacements[matched]));
+                } catch (err) {
+                    if (decodeSubMsg.startsWith("[{") && decodeSubMsg.endsWith("}]")) {
+                        decodeSubMsg = '[' + decodeSubMsg.substring(2, decodeSubMsg.length - 2) + ']';
+                    }
+                    operatePCContext.actionDetail = JSON.parse(decodeSubMsg.replace(regExp, (matched) => replacements[matched]));
+                }
 
                 message = message.substring(message.lastIndexOf(']') + 2);
 
@@ -1520,9 +1533,22 @@ class AIManager {
                 oldConfigItem.config.type = isClose ? 'close' : 'open';
 
                 if (processApplicationInfo === undefined) {
+                    let recentAppInfo = undefined;
+
+                    const recentApps = await getRecentApps();
+                    if (recentApps && recentApps.length > 0) {
+                        newConfigItem.config.actions[0].operationValue.forEach(requestAppName => {
+                            const appInfo = recentApps.find(recentAppInfo => recentAppInfo.name === requestAppName);
+
+                            if (appInfo !== undefined) {
+                                recentAppInfo = appInfo;
+                            }
+                        });
+                    }
+
                     newConfigItem.config.actions = [{
                         operationName: 'path',
-                        operationValue: ''
+                        operationValue: (recentAppInfo === undefined ? "" : recentAppInfo.path)
                     }];
                 } else {
                     newConfigItem.config.actions = [{
@@ -1530,7 +1556,11 @@ class AIManager {
                         operationValue: processApplicationInfo.appInfo.appLaunchPath
                     }];
 
-                    oldConfigItem.config.icon = (await appManager.resourcesManager.getAppIconInfo(processApplicationInfo.appInfo.appLaunchPath)).id;
+                    const appExeIconInfo = (await appManager.resourcesManager.getAppIconInfo(processApplicationInfo.appInfo.appLaunchPath));
+
+                    if (appExeIconInfo !== undefined) {
+                        oldConfigItem.config.icon = appExeIconInfo.id;
+                    }
 
                     console.log('AIManager: _convertActionItemData: after check app info: oldConfigItem: ', oldConfigItem);
                 }
@@ -2431,16 +2461,68 @@ function splitByLastPunctuation(text) {
 }
 
 async function getRecentApps() {
+
+    switch (process.platform) {
+        case 'win32': {
+            // recentApps = await getRecentAppsWindows();
+            const currentOpenApps = await getWindowsCurrentOpenAPPs();
+
+            const uniqueAppList = [];
+
+            for (let i = 0; i < currentOpenApps.length; i++) {
+                const appInfo = currentOpenApps[i];
+
+                if (appInfo.path === '----' || appInfo.path === '' || appInfo.path.endsWith('\\SystemSettings.exe') || appInfo.path.includes('\\WINDOWS\\SystemApps\\')) continue;
+
+                if (uniqueAppList.findIndex(uAppInfo => uAppInfo.name === appInfo.name && uAppInfo.path === appInfo.path) !== -1) continue;
+
+                uniqueAppList.push(appInfo);
+            }
+
+            for (let i = 0; i < currentRecentApps.length; i++) {
+                const appInfo = currentRecentApps[i];
+
+                if (appInfo.path === '----' || appInfo.path === '') continue;
+
+                if (uniqueAppList.findIndex(uAppInfo => uAppInfo.name === appInfo.name && uAppInfo.path === appInfo.path) !== -1) continue;
+
+                uniqueAppList.push(appInfo);
+            }
+
+            return uniqueAppList;
+        }
+        case 'darwin':
+        case 'linux':
+            return currentRecentApps;
+    }
+}
+
+async function checkRecentApps() {
+    try {
+        currentRecentApps = await getPCRecentApps();
+        console.log('AIManager: checkRecentApps: currentRecentApps: ', currentRecentApps);
+    } catch (err) {
+        console.log('AIManager: checkRecentApps: detect error: ', err)
+    }
+
+    setTimeout(() => {
+        checkRecentApps();
+    }, 60 * 60 * 1000);
+}
+
+async function getPCRecentApps() {
     let recentApps = [];
     switch (process.platform) {
         case 'win32':
-            recentApps = await getRecentAppsWindows();
+            recentApps = await getRecentApplicationsWindows();
+
+            console.log('WindowsRecentApps: ', recentApps);
             break;
         case 'darwin':
-            recentApps = await getRecentAppsMac();
+            recentApps = await getRecentApplicationsMacOS();
             break;
         case 'linux':
-            // TODO: Linux cmd fix check
+            recentApps = await getRecentApplicationsLinux();
             break;
     }
 
@@ -2459,7 +2541,7 @@ async function getRecentApps() {
     return uniqueAppList;
 }
 
-function getRecentAppsWindows() {
+function getWindowsCurrentOpenAPPs() {
     return new Promise((resolve, reject) => {
         // eslint-disable-next-line
         exec('powershell "chcp 65001; Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { $_.Description + \'|\' + $_.Path }"', (error, stdout, stderr) => {
@@ -2486,28 +2568,240 @@ function getRecentAppsWindows() {
     });
 }
 
-function getRecentAppsMac() {
-    return new Promise((resolve, reject) => {
-        const script = `
-      tell application "System Events"
-        set recentApps to {}
-        repeat with processItem in (every process whose background only is false)
-          set end of recentApps to {name: name of processItem, path: POSIX path of (path to application (name of processItem))}
-        end repeat
-        return recentApps
-      end tell
-    `;
-        // eslint-disable-next-line
-        exec(`osascript -e '${script}'`, (error, stdout, stderr) => {
-            if (error) {
-                reject(error);
-            } else {
-                const apps = stdout.split(',').map(line => {
-                    const [name, path] = line.split(': ');
-                    return { name, path };
-                });
-                resolve(apps.filter(app => app.path));
+function getProgID(extension) {
+    return new Promise((resolve) => {
+        exec(`reg query HKEY_CLASSES_ROOT\\${extension}`, (err, stdout) => {
+            if (err) {
+                console.warn(`Error querying ProgID for extension ${extension}:`, err);
+                return resolve(null);
             }
+            const match = stdout.match(/REG_SZ\s+(.+)/);
+            if (match) {
+                resolve(match[1].trim());
+            } else {
+                console.warn(`No ProgID found for extension ${extension}`);
+                resolve(null);
+            }
+        });
+    });
+}
+
+function getAppForProgID(progID) {
+    return new Promise((resolve) => {
+        exec(`reg query HKEY_CLASSES_ROOT\\${progID}\\shell\\open\\command`, (err, stdout) => {
+            if (err) {
+                console.warn(`Error querying command for ProgID ${progID}:`, err);
+                return resolve(null);
+            }
+            const match = stdout.match(/"([^"]+)"/);
+            if (match) {
+                resolve(match[1].trim());
+            } else {
+                console.warn(`No command found for ProgID ${progID}`);
+                resolve(null);
+            }
+        });
+    });
+}
+
+function getAppName(appPath) {
+    return new Promise((resolve) => {
+        exec(`powershell -command "(Get-Item '${appPath}').VersionInfo.ProductName"`, (err, stdout) => {
+            if (err) {
+                console.warn(`Error getting app name for ${appPath}:`, err);
+                return resolve(path.basename(appPath)); // 返回文件名作为备用
+            }
+            resolve(stdout.trim() || path.basename(appPath));
+        });
+    });
+}
+
+function batchExec(commands, batchSize = 40) {
+    const batches = [];
+    for (let i = 0; i < commands.length; i += batchSize) {
+        batches.push(commands.slice(i, i + batchSize).join(';'));
+    }
+    return batches;
+}
+
+async function getRecentApplicationsWindows() {
+    console.log('CheckWindows RecentApp Start');
+    return new Promise((resolve, reject) => {
+        const recentFolder = path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'Recent');
+        fs.readdir(recentFolder, async (err, files) => {
+            if (err) {
+                console.error(`Error reading Recent folder:`, err);
+                return reject(err);
+            }
+
+            const lnkFiles = files.filter(file => file.endsWith('.lnk'));
+            if (lnkFiles.length === 0) {
+                return resolve([]);
+            }
+
+            console.log('CheckWindows RecentApp Total lnkFiles length: ', lnkFiles.length);
+
+            const commands = lnkFiles.map(file => {
+                const fullPath = path.join(recentFolder, file);
+                return `(New-Object -ComObject WScript.Shell).CreateShortcut('${fullPath}').TargetPath`;
+            });
+
+            console.log('CheckWindows RecentApp Total commands length: ', commands.length);
+
+            const targetPaths = [];
+            const batches = batchExec(commands);
+            console.log('CheckWindows RecentApp Split batches: ', batches.length);
+
+            for (const batch of batches) {
+                try {
+                    const batchResult = await new Promise((resolve, reject) => {
+                        exec(`powershell -command "${batch}"`, (err, stdout) => {
+                            if (err) return reject(err);
+                            resolve(stdout.trim().split('\r\n').filter(Boolean));
+                        });
+                    });
+                    targetPaths.push(...batchResult);
+                } catch (err) {
+                    console.error(`Error executing batch:`, err);
+                }
+            }
+
+            console.log('CheckWindows RecentApp After batches exec targetPaths.length: ', targetPaths.length);
+
+            const fileTypes = new Set();
+            const recentApps = new Map();
+
+            targetPaths.forEach(targetPath => {
+                const ext = path.extname(targetPath);
+                if (ext) {
+                    fileTypes.add(ext);
+                }
+            });
+
+            // Query ProgIDs and application paths in parallel
+            const appPromises = Array.from(fileTypes).map(async (ext) => {
+                const progID = await getProgID(ext);
+                if (progID) {
+                    const appPath = await getAppForProgID(progID);
+
+                    if (appPath && appPath.toLowerCase().endsWith('.exe')) {
+                        const appName = await getAppName(appPath);
+                        recentApps.set(appPath, { name: appName, path: appPath });
+                    }
+                }
+            });
+
+            await Promise.all(appPromises);
+            console.log('CheckWindows RecentApp After get all Info: ', Array.from(recentApps.values()).length);
+            resolve(Array.from(recentApps.values()));
+        });
+    });
+}
+
+function getRecentApplicationsMacOS() {
+    return new Promise((resolve, reject) => {
+        exec('mdfind "kMDItemLastUsedDate > $time.now(-7d)"', (err, stdout) => {
+            if (err) return reject(err);
+
+            const files = stdout.trim().split('\n');
+            const recentApps = new Map();
+
+            if (files.length === 0) {
+                return resolve([]);
+            }
+
+            let remaining = files.length;
+
+            files.forEach(file => {
+                exec(`mdls -name kMDItemCFBundleIdentifier -r "${file}"`, (err, stdout) => {
+                    if (err) return reject(err);
+
+                    const appIdentifier = stdout.trim();
+                    if (appIdentifier) {
+                        exec(`osascript -e 'id of app "${appIdentifier}"'`, (err, stdout) => {
+                            const appPath = stdout.trim();
+                            if (appPath) {
+                                exec(`osascript -e 'name of app id "${appIdentifier}"'`, (err, stdout) => {
+                                    const appName = stdout.trim();
+                                    if (appName) {
+                                        recentApps.set(appIdentifier, { name: appName, path: appPath });
+                                    }
+
+                                    remaining--;
+                                    if (remaining === 0) {
+                                        resolve(Array.from(recentApps.values()));
+                                    }
+                                });
+                            } else {
+                                remaining--;
+                                if (remaining === 0) {
+                                    resolve(Array.from(recentApps.values()));
+                                }
+                            }
+                        });
+                    } else {
+                        remaining--;
+                        if (remaining === 0) {
+                            resolve(Array.from(recentApps.values()));
+                        }
+                    }
+                });
+            });
+        });
+    });
+}
+
+function getRecentApplicationsLinux() {
+    return new Promise((resolve, reject) => {
+        exec('find ~ -type f -atime -7', (err, stdout) => {
+            if (err) return reject(err);
+
+            const files = stdout.trim().split('\n');
+            const recentApps = new Map();
+
+            if (files.length === 0) {
+                return resolve([]);
+            }
+
+            let remaining = files.length;
+
+            files.forEach(file => {
+                exec(`xdg-mime query filetype "${file}"`, (err, stdout) => {
+                    if (err) return reject(err);
+
+                    const mimeType = stdout.trim();
+                    if (mimeType) {
+                        exec(`xdg-mime query default "${mimeType}"`, (err, stdout) => {
+                            if (err) return reject(err);
+
+                            const app = stdout.trim();
+                            if (app) {
+                                exec(`basename "${app}"`, (err, stdout) => {
+                                    const appName = stdout.trim();
+                                    if (appName) {
+                                        recentApps.set(app, { name: appName, path: app });
+                                    }
+
+                                    remaining--;
+                                    if (remaining === 0) {
+                                        resolve(Array.from(recentApps.values()));
+                                    }
+                                });
+                            } else {
+                                remaining--;
+                                if (remaining === 0) {
+                                    resolve(Array.from(recentApps.values()));
+                                }
+                            }
+                        });
+                    } else {
+                        remaining--;
+                        if (remaining === 0) {
+                            resolve(Array.from(recentApps.values()));
+                        }
+                    }
+                });
+            });
         });
     });
 }

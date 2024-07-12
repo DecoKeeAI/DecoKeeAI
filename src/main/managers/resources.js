@@ -1464,7 +1464,7 @@ class ResourcesManager {
                 return;
             }
 
-            app.getFileIcon(appPath)
+            app.getFileIcon(appPath, { size: "large" })
                 .then(icon => {
                     const parentDir = path.join(that.userDataPath, ICON_INSTALL_PATH, 'CustomSelect');
                     const outputPath = path.join(parentDir, `${fileNameWithoutExt}.png`);

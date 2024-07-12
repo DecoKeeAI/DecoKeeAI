@@ -927,7 +927,7 @@ export default {
                     const fileName = fileList[fileList.length - 1].split('.exe');
                     console.log(fileName[0]);
                     window.app
-                        .getFileIcon(result.filePaths[0])
+                        .getFileIcon(result.filePaths[0], { size: "large" })
                         .then(icon => {
                             const outputPath = window.path.join(window.userDataPath, `${fileName[0]}.png`);
                             console.log('临时文件', outputPath);
