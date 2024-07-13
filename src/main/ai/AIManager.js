@@ -60,6 +60,10 @@ const levenshtein = require('fast-levenshtein');
 const path = require('path');
 const fs = require('fs');
 
+
+const htmlDocx = require('html-docx-js');
+const showdown = require('showdown');
+
 export const AI_ENGINE_TYPE = {
     XYF: 0,
     OpenAI: 1,
@@ -137,7 +141,6 @@ let currentRecentApps = undefined;
 
 let alterToneMap = new Map();
 
-
 let assistantDeviceSN = '';
 let assistantDeviceInfo = undefined;
 
@@ -168,6 +171,8 @@ let aiChatModelType = '';
 let appManager = undefined;
 
 let outputRobot = undefined;
+
+let markdownConverter = undefined;
 
 const OPERATION_STAGE = {
     STAGE_DECODE_END: 0,
@@ -910,11 +915,11 @@ class AIManager {
                 fullChatResponseMsg += message;
                 chatResponseMsg += message;
 
-                this._decodeOperateActionData(chatResponseMsg, status === 2);
+                this._decodeOperateActionData(requestId, chatResponseMsg, status === 2);
 
                 if (!operatePCContext.actionProcessDone && operatePCContext.actionType !== '' && operatePCContext.actionDetail) {
 
-                    this._handleUserRequestActions(requestId, operatePCContext.actionType, operatePCContext.actionDetail, operatePCContext.actionOutput, status === 2);
+                    await this._handleUserRequestActions(requestId, operatePCContext.actionType, operatePCContext.actionDetail, operatePCContext.actionOutput, status === 2);
                     if (operatePCContext.actionDetail.length > 0 && (operatePCContext.actionType === AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION || operatePCContext.actionType === AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION)) {
                         operatePCContext.actionProcessDone = true;
                         isPendingChatFinish = false;
@@ -938,7 +943,7 @@ class AIManager {
 
     }
 
-    _decodeOperateActionData(message, isLast = false) {
+    _decodeOperateActionData(requestId, message, isLast = false) {
         switch (operatePCContext.stage) {
             case OPERATION_STAGE.STAGE_DECODE_ACTION:
                 if (!message.includes('**UserRequestAction**:') || (!isLast && !message.includes('\n'))) {
@@ -971,14 +976,16 @@ class AIManager {
 
                 operatePCContext.stage = OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL;
 
+                ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.ok'));
+
                 if (message !== '') {
                     chatResponseMsg = message;
-                    this._decodeOperateActionData(message, isLast);
+                    this._decodeOperateActionData(requestId, message, isLast);
                     return;
                 }
                 break;
             case OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: {
-                if (!message.includes('**ActionDetail**:') || (!isLast && !message.includes('\n')) || !message.includes(']')) {
+                if (!message.includes('**ActionDetail**:') || !message.includes('**OutputData**:') || (!isLast && !message.includes('\n')) || !message.includes(']')) {
                     return;
                 }
 
@@ -993,9 +1000,11 @@ class AIManager {
                     '“': '"'
                 };
 
+                const tempMsg = message.substring(0, message.indexOf('**OutputData**:'));
+
                 const regExp = new RegExp(Object.keys(replacements).join("|"), "g");
 
-                let decodeSubMsg = message.substring(message.indexOf('['), message.lastIndexOf(']') + 1).trim();
+                let decodeSubMsg = tempMsg.substring(tempMsg.indexOf('['), tempMsg.lastIndexOf(']') + 1).trim();
 
                 if (decodeSubMsg.startsWith('*')) {
                     decodeSubMsg = decodeSubMsg.substring(1);
@@ -1010,7 +1019,7 @@ class AIManager {
                     operatePCContext.actionDetail = JSON.parse(decodeSubMsg.replace(regExp, (matched) => replacements[matched]));
                 }
 
-                message = message.substring(message.lastIndexOf(']') + 2);
+                message = message.substring(message.includes('**OutputData**:'));
 
                 console.log(
                     'AIManager: handleChatResponse: OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: operatePCContext.actionType: ActionDetail: ', operatePCContext.actionDetail,
@@ -1022,7 +1031,7 @@ class AIManager {
 
                 if (message !== '') {
                     chatResponseMsg = message;
-                    this._decodeOperateActionData(message, isLast);
+                    this._decodeOperateActionData(requestId, message, isLast);
                     return;
                 }
                 break;
@@ -1662,12 +1671,20 @@ class AIManager {
         return [oldConfigItem, newConfigItem];
     }
 
-    _handleUserRequestActions(requestId, requestFunction, actionDetail, actionOutput, isLastAction) {
+    async _handleUserRequestActions(requestId, requestFunction, actionDetail, actionOutput, isLastAction) {
         let processApplicationInfo = undefined;
         let processSystemAppInfo = undefined;
         let applicationUrl = '';
         let applicationName = '';
+        requestFunction = requestFunction.replace(':', '');
+
         switch (requestFunction) {
+            default:
+                operatePCContext.actionProcessDone = true;
+                operatePCContext.streamChunkMsg = '';
+                isPendingChatFinish = false;
+                this.setAssistantProcessDone();
+                break;
             case AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION:
                 if (actionDetail.length === 0) break;
                 console.log('AIManager: handleUserRequestActions: OPEN_APPLICATION Do user action: ' + actionDetail);
@@ -1791,7 +1808,6 @@ class AIManager {
 
                 if (!operatePCContext.writeProcessStart) {
                     operatePCContext.writeProcessStart = true;
-                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.ok'));
                 }
 
                 if ((operatePCContext.streamChunkMsg && operatePCContext.streamChunkMsg.length >= 30) || isLastAction) {
@@ -1799,14 +1815,16 @@ class AIManager {
                     if (outputDetail.outputFormat) {
                         if (outputDetail.outputFormat === 'cursor') {
                             writeOutputToKeyInput(operatePCContext.streamChunkMsg);
-                        } else {
-                            this._outputDataToFile(actionDetail[0], isLastAction);
+                            operatePCContext.streamChunkMsg = '';
                         }
                     }
-                    operatePCContext.streamChunkMsg = '';
                 }
                 if (isLastAction) {
                     console.log('AIManager: handleUserRequestActions: WRITE_TO_DOCUMENT: actionDetail: ', actionDetail, ' actionOutput: ', actionOutput);
+
+                    if (actionDetail[0].outputFormat === 'file') {
+                        await this._markdownToDoc(operatePCContext.streamChunkMsg);
+                    }
 
                     operatePCContext.streamChunkMsg = '';
                     operatePCContext.actionProcessDone = true;
@@ -1819,14 +1837,12 @@ class AIManager {
 
                 if (!operatePCContext.writeProcessStart) {
                     operatePCContext.writeProcessStart = true;
-                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.ok'));
                 }
 
-                if ((operatePCContext.streamChunkMsg && operatePCContext.streamChunkMsg.length >= 30) || isLastAction) {
-                    this._outputDataToFile(actionDetail[0], isLastAction);
-                }
                 if (isLastAction) {
-                    console.log('AIManager: handleUserRequestActions: WRITE_TO_DOCUMENT: actionDetail: ', actionDetail, ' actionOutput: ', actionOutput);
+                    console.log('AIManager: handleUserRequestActions: GENERATE_REPORT: actionDetail: ', actionDetail, ' actionOutput: ', actionOutput);
+
+                    await this._markdownToDoc(operatePCContext.streamChunkMsg);
 
                     operatePCContext.streamChunkMsg = '';
                     operatePCContext.actionProcessDone = true;
@@ -1863,36 +1879,50 @@ class AIManager {
         }
     }
 
-    _outputDataToFile(outputDetail, isLastAction) {
-        if (!operatePCContext.outputFilePath) {
-            const pcDocumentPath = app.getPath('documents');
+    async _markdownToDoc(mdContent) {
 
-            let fileExt = '.doc';
-            if (outputDetail.fileType) {
-                console.log('AI generate output with fileType: ', outputDetail.fileType);
+        mdContent = mdContent.trim();
 
-                if (outputDetail.fileType === 'txt') {
-                    fileExt = '.txt';
-                }
-            }
-
-            operatePCContext.outputFilePath = path.join(pcDocumentPath, 'DecoKeeAI-Generated-' + Date.now() + fileExt);
+        if (mdContent.startsWith('```')) {
+            mdContent = mdContent.substring(3);
         }
-        fs.appendFile(operatePCContext.outputFilePath, operatePCContext.streamChunkMsg, err => {
-            if (err) {
-                console.error(err);
-            } else {
-                console.log('AIManager: Output to file append successful!');
 
-                if (isLastAction) {
-                    setTimeout(() => {
-                        shell.openPath(operatePCContext.outputFilePath);
-                    }, 300);
-                }
-            }
-        });
+        if (mdContent.endsWith('```')) {
+            mdContent = mdContent.substring(0, mdContent.length - 3);
+        }
 
-        operatePCContext.streamChunkMsg = '';
+        // const htmlFragment = marked.parse(operatePCContext.streamChunkMsg);
+        if (markdownConverter === undefined) {
+            markdownConverter = new showdown.Converter({
+                tables: true,
+                simpleLineBreaks: true,
+                tasklists: true,
+                simplifiedAutoLink: true,
+                headerLevelStart: 3,
+                completeHTMLDocument: true,
+                emoji: true,
+                underline: true,
+                moreStyling: true
+            });
+            markdownConverter.setFlavor('github');
+        }
+        const htmlFragment = markdownConverter.makeHtml(mdContent);
+
+        console.log('AIManager: handleUserRequestActions: GENERATE_REPORT: htmlFragment: ', htmlFragment);
+
+        const docxBlob = htmlDocx.asBlob(htmlFragment);
+
+        const pcDocumentPath = app.getPath('documents');
+
+        const outputPath = path.join(pcDocumentPath, 'DecoKeeAI-Generated-' + Date.now() + '.docx');
+
+        const buffer = Buffer.from(await docxBlob.arrayBuffer());
+
+        fs.writeFileSync(outputPath, buffer);
+
+        setTimeout(() => {
+            shell.openPath(outputPath);
+        }, 300);
     }
 
     _openApplication(applicationPath, execCmd) {

@@ -169,7 +169,7 @@ export default {
 
                 const that = this;
                 if (useStream) {
-                    const chatContext = await this.awaitWithTimeout(openai.chat.completions.create(params), 5000);
+                    const chatContext = await this.awaitWithTimeout(openai.chat.completions.create(params), 10000);
                     for await (const chunk of chatContext) {
                         if (chunk.choices[0].delta.content === undefined) continue;
 

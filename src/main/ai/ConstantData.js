@@ -978,7 +978,7 @@ export function getPCOperationBotPrePrompt(message, engineType, currentLanguage)
         "When '" + AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT + "' is set also need set 'actionDetail' with following output details:\n" +
         "               - 'outputFormat': Indicate write output message to the 'cursor' location or to a 'file'. If user not indicate the location, then set to default 'file'. \n" +
         "               - 'fileType': Indicate the file type user need output with when set 'file' as output location in 'outputFormat'. i.e: doc, txt. Default is doc.\n" +
-        '           *' + AI_SUPPORT_FUNCTIONS.GENERATE_REPORT + '*: Generate a report to file. ' +
+        '           *' + AI_SUPPORT_FUNCTIONS.GENERATE_REPORT + '*: Generate a report to file. \'OutputData\' required to be markdown format. ' +
         "When '" + AI_SUPPORT_FUNCTIONS.GENERATE_REPORT + "' is set also need set 'actionDetail' with following output details:\n" +
         "               - 'outputFormat': Indicate write output message to the 'cursor' location or to a 'file'. If user not indicate the location, then set to default 'file'. \n" +
         "               - 'fileType': Indicate the file type user need output with when set 'file' as output location in 'outputFormat'. Default is doc.\n" +
@@ -1022,7 +1022,7 @@ export function getPCOperationBotPrePrompt(message, engineType, currentLanguage)
         "当设置了 '" + AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT + "' 时，还需要设置带有输出详细信息列表的 'actionDetail': \n" +
         "               - 'outputFormat': 表示将输出消息写入 'cursor' 位置或 'file'。如果用户未指示位置，则设置为默认的 'file' \n" +
         "               - 'fileType': 当 'outputFormat' 为 'file' 时，同时需要提供用户需要输出的文件类型。如：doc，txt。默认为doc。\n" +
-        '           *' + AI_SUPPORT_FUNCTIONS.GENERATE_REPORT + '*: 生成用户请求归档的报告。 ' +
+        '           *' + AI_SUPPORT_FUNCTIONS.GENERATE_REPORT + '*: 生成用户请求归档的报告， \'OutputData\' 必须为 markdown 格式。' +
         "当设置了 '" + AI_SUPPORT_FUNCTIONS.GENERATE_REPORT + "' 时，还需要设置带有输出详细信息列表的 'actionDetail':\n" +
         "               - 'outputFormat': 表示将输出消息写入 'cursor' 位置或 'file'。如果用户未指示位置，则设置为默认的 'file' \n" +
         "               - 'fileType': 当 'outputFormat' 为 'file' 时，同时需要提供用户需要输出的文件类型。默认为doc。\n" +

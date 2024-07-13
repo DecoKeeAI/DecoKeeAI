@@ -17,12 +17,14 @@ module.exports = {
         externals: {
             "node-hid": 'commonjs node-hid',
             "font-carrier": 'commonjs font-carrier',
-            "clipboard": 'commonjs clipboard'
+            "clipboard": 'commonjs clipboard',
+            "html-docx-js": 'commonjs html-docx-js'
         },
         electronBuilder: {
             externals: [
                 "font-carrier",
-                "clipboard"
+                "clipboard",
+                "html-docx-js"
             ],
             customFileProtocol: "./",
             nodeIntegration: true,
