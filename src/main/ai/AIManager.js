@@ -946,25 +946,19 @@ class AIManager {
     _decodeOperateActionData(requestId, message, isLast = false) {
         switch (operatePCContext.stage) {
             case OPERATION_STAGE.STAGE_DECODE_ACTION:
-                if (!message.includes('**UserRequestAction**:') || (!isLast && !message.includes('\n'))) {
+                if (!message.includes('*UserRequestAction*:') || (!isLast && !message.includes('\n'))) {
                     return;
                 }
 
                 operatePCContext.actionType = message
-                    .substring(message.includes('**UserRequestAction**:') + 22, message.indexOf('\n'))
+                    .substring(message.indexOf('*UserRequestAction*:') + 20, message.indexOf('\n'))
                     .trim();
 
                 if (operatePCContext.actionType.endsWith('\\')) {
                     operatePCContext.actionType = operatePCContext.actionType.substring(0, operatePCContext.actionType.length - 1);
                 }
 
-                if (operatePCContext.actionType.startsWith('*')) {
-                    operatePCContext.actionType = operatePCContext.actionType.substring(1);
-                }
-
-                if (operatePCContext.actionType.endsWith('*')) {
-                    operatePCContext.actionType = operatePCContext.actionType.substring(0, operatePCContext.actionType.length - 1);
-                }
+                operatePCContext.actionType = operatePCContext.actionType.replace(/\*/g, '');
 
                 message = message.substring(message.indexOf('\n') + 1);
 
@@ -985,7 +979,7 @@ class AIManager {
                 }
                 break;
             case OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: {
-                if (!message.includes('**ActionDetail**:') || !message.includes('**OutputData**:') || (!isLast && !message.includes('\n')) || !message.includes(']')) {
+                if (!message.includes('*ActionDetail*:') || (!isLast && (!message.includes('*OutputResponse*:') || !message.includes('\n')))) {
                     return;
                 }
 
@@ -997,17 +991,17 @@ class AIManager {
                 const replacements = {
                     '\n': '',
                     "'": '"',
-                    '“': '"'
+                    '“': '"',
+                    '：': ':'
                 };
 
-                const tempMsg = message.substring(0, message.indexOf('**OutputData**:'));
+                const tempMsg = message.substring(0, message.indexOf('*OutputResponse*:'));
 
                 const regExp = new RegExp(Object.keys(replacements).join("|"), "g");
 
-                let decodeSubMsg = tempMsg.substring(tempMsg.indexOf('['), tempMsg.lastIndexOf(']') + 1).trim();
-
-                if (decodeSubMsg.startsWith('*')) {
-                    decodeSubMsg = decodeSubMsg.substring(1);
+                let decodeSubMsg = tempMsg;
+                if (tempMsg.includes('[') && tempMsg.includes(']')) {
+                    decodeSubMsg = tempMsg.substring(tempMsg.indexOf('['), tempMsg.lastIndexOf(']') + 1).trim();
                 }
 
                 try {
@@ -1015,11 +1009,35 @@ class AIManager {
                 } catch (err) {
                     if (decodeSubMsg.startsWith("[{") && decodeSubMsg.endsWith("}]")) {
                         decodeSubMsg = '[' + decodeSubMsg.substring(2, decodeSubMsg.length - 2) + ']';
+                        operatePCContext.actionDetail = JSON.parse(decodeSubMsg.replace(regExp, (matched) => replacements[matched]));
+                    } else {
+
+
+                        const lines = decodeSubMsg.split('\n').filter(line => line.trim() !== '');
+                        const result = {};
+
+                        console.log('AIManager: handleChatResponse: OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: Decoding decodeSubMsg: ', decodeSubMsg, ' lines: ', lines);
+                        lines.forEach(line => {
+                            console.log('AIManager: handleChatResponse: OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: Decoding line: ', line);
+                            let [key, value] = line.split(':').map(part => part.trim());
+                            console.log('AIManager: handleChatResponse: OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: Decoding key: ', key, ' value: ', value, ' Includes: ', key.includes('- '));
+
+                            if (key.includes('- ')) {
+                                key = key.replace('- ', '').trim();
+                            }
+
+                            console.log('AIManager: handleChatResponse: OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: After Decoding key: ', key, ' value: ', value);
+
+                            result[key] = value;
+                        });
+
+                        console.log('AIManager: handleChatResponse: OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: After Decoding result: ', result);
+
+                        operatePCContext.actionDetail = result;
                     }
-                    operatePCContext.actionDetail = JSON.parse(decodeSubMsg.replace(regExp, (matched) => replacements[matched]));
                 }
 
-                message = message.substring(message.includes('**OutputData**:'));
+                message = message.substring(message.indexOf('*OutputResponse*:'));
 
                 console.log(
                     'AIManager: handleChatResponse: OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: operatePCContext.actionType: ActionDetail: ', operatePCContext.actionDetail,
@@ -1039,8 +1057,8 @@ class AIManager {
             case OPERATION_STAGE.STAGE_DECODE_OUTPUT: {
 
                 let chunkedMsg = '';
-                if (message.includes('**OutputData**:')) {
-                    operatePCContext.actionOutput = message.substring(message.indexOf('**OutputData**:') + 15);
+                if (message.includes('*OutputResponse*:')) {
+                    operatePCContext.actionOutput = message.substring(message.indexOf('*OutputResponse*:') + 17);
                     if (operatePCContext.actionOutput === '') {
                         operatePCContext.actionOutput = ' ';
                     }
@@ -1687,7 +1705,11 @@ class AIManager {
                 break;
             case AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION:
                 if (actionDetail.length === 0) break;
-                console.log('AIManager: handleUserRequestActions: OPEN_APPLICATION Do user action: ' + actionDetail);
+                console.log('AIManager: handleUserRequestActions: OPEN_APPLICATION Do user action: ', actionDetail);
+
+                if (Object.prototype.toString.call(actionDetail) !== '[object Array]') {
+                    actionDetail = Object.values(actionDetail);
+                }
 
                 actionDetail.forEach(requestAppName => {
                     if (requestAppName.startsWith('OpenSystemApp: ')) {
@@ -1756,6 +1778,10 @@ class AIManager {
             case AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION:
                 if (actionDetail.length === 0) break;
                 console.log('AIManager: handleUserRequestActions: CLOSE_APPLICATION Do user action: ' + actionDetail);
+
+                if (Object.prototype.toString.call(actionDetail) !== '[object Array]') {
+                    actionDetail = Object.values(actionDetail);
+                }
 
                 actionDetail.forEach(requestAppName => {
                     if (requestAppName.startsWith('CloseSystemApp: ')) {
@@ -2473,7 +2499,7 @@ function resetOperatePCContext() {
     operatePCContext = {
         stage: OPERATION_STAGE.STAGE_DECODE_END,
         actionType: '',
-        actionDetail: [],
+        actionDetail: undefined,
         actionOutput: '',
         actionProcessDone: false
     }
