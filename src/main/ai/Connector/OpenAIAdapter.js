@@ -293,7 +293,10 @@ class OpenAIAdapter {
                 return this.appManager.storeManager.storeGet('aiConfig.openAi.apiKey');
             default:
             case AI_ENGINE_TYPE.CustomEngine:
-                return this.appManager.storeManager.storeGet('aiConfig.customEngine.apiKey');
+            case AI_ENGINE_TYPE.HuoShan: {
+                const aiConfigKeyPrefix = 'aiConfig.' + this.aiEngineModel;
+                return this.appManager.storeManager.storeGet(aiConfigKeyPrefix + '.apiKey');
+            }
             case AI_ENGINE_TYPE.GroqChat:
                 return this.appManager.storeManager.storeGet('aiConfig.groq.apiKey');
             case AI_ENGINE_TYPE.QWenChat:
@@ -336,14 +339,15 @@ class OpenAIAdapter {
             case 'glm-4-flash':
                 baseUrl = 'https://open.bigmodel.cn/api/paas/v4/';
                 break;
-            default:
             case 'llama3-70b-8192':
             case 'gemma-7b-it':
                 baseUrl = 'https://api.groq.com/openai/v1/';
                 break;
-            case 'custom-engine':
-                baseUrl = this.appManager.storeManager.storeGet('aiConfig.customEngine.baseUrl');
+            default: {
+                const aiConfigKeyPrefix = 'aiConfig.' + this.aiEngineModel;
+                baseUrl = this.appManager.storeManager.storeGet(aiConfigKeyPrefix + '.baseUrl');
                 break;
+            }
         }
 
         return baseUrl;

@@ -221,7 +221,7 @@ export default {
 
             contextMenuData: [
                 {
-                    label: '重命名',
+                    label: this.$t('settings.rename'),
                     // icon: "iconfont el-icon-edit-outline",
                     onClick: () => {
                         // this.EiditRowFun();
@@ -229,14 +229,14 @@ export default {
                     },
                 },
                 {
-                    label: '复制',
+                    label: this.$t('settings.copy'),
                     // icon: "icon el-icon-top",
                     onClick: () => {
                         this.copyMenuBtn();
                     },
                 },
                 {
-                    label: '删除',
+                    label: this.$t('settings.delete'),
                     // icon: "icon el-icon-top",
                     onClick: () => {
                         this.deleteDropdownMenu();

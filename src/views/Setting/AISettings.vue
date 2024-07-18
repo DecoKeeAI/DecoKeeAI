@@ -63,28 +63,68 @@
                     <el-input v-model="azureServiceRegion" clearable style="width: 191px"></el-input>
 
                     <el-tooltip placement="top">
-                        <el-link style="line-height: 20px" slot="content" href="https://learn.microsoft.com/zh-cn/azure/ai-services/speech-service/regions" >{{ $t('settings.azureServiceRegionHint') }}</el-link>
-                        <i style="margin-left: 24px" class="el-icon-question"></i>
+                        <el-link
+                            slot="content"
+                            href="https://learn.microsoft.com/zh-cn/azure/ai-services/speech-service/regions"
+                            style="line-height: 20px"
+                        >
+                            {{ $t('settings.azureServiceRegionHint') }}
+                        </el-link>
+                        <i class="el-icon-question" style="margin-left: 24px"></i>
                     </el-tooltip>
                 </el-form-item>
             </template>
 
             <el-form-item :label="$t('settings.aiEngineType')">
-                <el-select v-model="aiModelType" :placeholder="$t('pleaseSelect')" @change="handleAIEngineChanged">
-                    <el-option
-                        v-for="item in aiModelTypeList"
-                        :key="item.value"
-                        :label="item.label"
-                        :value="item.value"
-                    ></el-option>
-                </el-select>
-
-                <el-tooltip v-if="aiModelType === 'custom-engine'" placement="top">
-                    <div style="white-space: pre-wrap; line-height: 20px" slot="content">
-                        {{ $t('settings.customEngineHint') }}
+                <div style="width: 100%; display: flex">
+                    <el-input
+                        ref="editModelLabelBox"
+                        v-if="editNameModel !== undefined"
+                        id="renameInput"
+                        v-model="editNameModel.label"
+                        clearable
+                        maxlength="30"
+                        style="width: 191px"
+                        @blur="onEditBlur()"
+                    />
+                    <div v-else @contextmenu.prevent="onRightClickMenu($event)">
+                        <el-cascader
+                            v-model="selectedModelType"
+                            :options="supportedAIModels"
+                            :props="{ expandTrigger: 'hover', children: 'models' }"
+                            :show-all-levels="false"
+                            @change="handleAIEngineChanged"
+                        >
+                            <template slot-scope="{ node, data }">
+                                <template v-if="!node.isLeaf">
+                                    <span>{{ data.label }}</span>
+                                    <span> ({{ data.models.filter(item => !item.isAddAction).length }}) </span>
+                                </template>
+                                <template v-else>
+                                    <el-button
+                                        v-if="data.isAddAction"
+                                        class="btn-folder"
+                                        icon="el-icon-plus"
+                                        plain
+                                        size="mini"
+                                        style="font-size: 14px"
+                                        type="primary"
+                                        @click="handleAddCustomModel(data.label)"
+                                        >{{ $t('settings.add') }}
+                                    </el-button>
+                                    <span v-else>{{ data.label }}</span>
+                                </template>
+                            </template>
+                        </el-cascader>
                     </div>
-                    <i style="margin-left: 24px" class="el-icon-question"></i>
-                </el-tooltip>
+                    <el-tooltip v-if="aiModelType.startsWith('Custom-')" placement="top" style="margin-top: 8px">
+                        <div slot="content" style="white-space: pre-wrap; line-height: 20px">
+                            {{ $t('settings.customEngineHint') }}
+                        </div>
+                        <i class="el-icon-question" style="margin-left: 24px"></i>
+                    </el-tooltip>
+                </div>
+
             </el-form-item>
             <template v-if="aiModelType.startsWith('spark') || speechEngineType === 'XFY'">
                 <el-form-item label="Spark APPID">
@@ -109,18 +149,47 @@
                     aiModelType.startsWith('qwen1.5-') ||
                     aiModelType.startsWith('qwen2-') ||
                     aiModelType.startsWith('glm-') ||
-                    aiModelType === 'custom-engine'
+                    aiModelType.startsWith('Custom-') ||
+                    aiModelType.startsWith('HuoShan-')
                 "
             >
                 <el-form-item label="API Key">
                     <el-input v-model="openAIAPIKey" clearable style="width: 191px"></el-input>
                 </el-form-item>
-                <template v-if="aiModelType === 'custom-engine'">
+                <template v-if="aiModelType.startsWith('Custom-')">
                     <el-form-item label="Base URL">
                         <el-input v-model="customUrlAddr" clearable style="width: 191px"></el-input>
                     </el-form-item>
                     <el-form-item :label="$t('settings.modelName')">
                         <el-input v-model="customModelName" clearable style="width: 191px"></el-input>
+                    </el-form-item>
+                </template>
+                <template v-else-if="aiModelType.startsWith('HuoShan-')">
+                    <el-form-item :label="$t('settings.entryMethod')">
+                        <el-radio-group v-model="customModelConfigData.huoshanType">
+                            <el-radio label="inference">{{ $t('settings.houshanInference') }} </el-radio>
+                            <el-radio label="chatBot">{{ $t('settings.huoshanAgent') }} </el-radio>
+                        </el-radio-group>
+                    </el-form-item>
+                    <el-form-item :label="$t('settings.useDekiePrompt')">
+                        <el-switch v-model="useDekiePrompt" />
+
+                        <el-tooltip placement="top" style="margin-top: 8px">
+                            <div slot="content" style="white-space: pre-wrap; line-height: 20px">
+                                {{ $t('settings.useDekiePromptHint') }}
+                            </div>
+                            <i class="el-icon-question" style="margin-left: 24px"></i>
+                        </el-tooltip>
+                    </el-form-item>
+                    <el-form-item label="Endpoint/Bot ID">
+                        <el-input v-model="customModelName" clearable style="width: 191px"></el-input>
+
+                        <el-tooltip placement="top" style="margin-top: 8px">
+                            <div slot="content" style="white-space: pre-wrap; line-height: 20px">
+                                <el-link href="https://www.volcengine.com/docs/82379/1267885">{{ $t('settings.huoShanModelHint') }}</el-link>
+                            </div>
+                            <i class="el-icon-question" style="margin-left: 24px"></i>
+                        </el-tooltip>
                     </el-form-item>
                 </template>
             </template>
@@ -133,21 +202,22 @@
                 "
                 :label="$t('settings.webSearch')"
             >
-                <el-switch v-model="enableWebSearch"/>
+                <el-switch v-model="enableWebSearch" />
             </el-form-item>
         </el-form>
 
         <el-button size="mini" style="margin-left: 50%" type="primary" @click="updateAIConfig"
-        >{{ $t('save') }}
+            >{{ $t('save') }}
         </el-button>
     </div>
 </template>
 
 <script>
-import {ipcRenderer} from 'electron';
-import {SPEECH_ENGINE_TYPE} from '@/main/ai/AIManager';
-import {EventType} from 'uiohook-napi';
-import {commonBlur, commonFocus, handleKeyUserInput, transferKeyName} from '@/plugins/hotKeyFun.js';
+import { ipcRenderer } from 'electron';
+import { SPEECH_ENGINE_TYPE } from '@/main/ai/AIManager';
+import { EventType } from 'uiohook-napi';
+import { commonBlur, commonFocus, handleKeyUserInput, transferKeyName } from '@/plugins/hotKeyFun.js';
+import { deepCopy } from '@/utils/ObjectUtil';
 
 export default {
     name: 'AISettings',
@@ -165,36 +235,11 @@ export default {
             defaultSelectedMic: '',
             micSelectList: [],
             aiModelType: 'llama3-70b-8192',
+            selectedModelType: ['Groq', 'llama3-70b-8192'],
             speechEngineType: SPEECH_ENGINE_TYPE.XYF,
-            aiModelTypeList: [
-                {label: 'Groq llama 70B', value: 'llama3-70b-8192'},
-                {label: 'GPT 4o', value: 'gpt-4o'},
-                {label: 'GPT 4 Turbo', value: 'gpt-4-turbo'},
-                {label: 'GPT 4', value: 'gpt-4'},
-                {label: 'GPT 3.5 Turbo', value: 'gpt-3.5-turbo'},
-                {label: 'Spark 3.5 MAX', value: 'spark3.5-max'},
-                {label: 'Spark 4 Ultra', value: 'spark4-ultra'},
-                {label: '通义千问 turbo', value: 'qwen-turbo'},
-                {label: '通义千问 Plus', value: 'qwen-plus'},
-                {label: '通义千问 Max', value: 'qwen-max'},
-                {label: '通义千问 72b-chat', value: 'qwen-72b-chat'},
-                {label: '通义千问1.5 32b-chat', value: 'qwen1.5-32b-chat'},
-                {label: '通义千问1.5 72b-chat', value: 'qwen1.5-72b-chat'},
-                {label: '通义千问1.5 110b-chat', value: 'qwen1.5-110b-chat'},
-                {label: '通义千问2 1.5b-instruct', value: 'qwen2-1.5b-instruct'},
-                {label: '通义千问2 7b-instruct', value: 'qwen2-7b-instruct'},
-                {label: '通义千问2 72b-instruct', value: 'qwen2-72b-instruct'},
-                {label: '智谱 GLM 4 0520', value: 'glm-4-0520'},
-                {label: '智谱 GLM 4', value: 'glm-4'},
-                {label: '智谱 GLM 4 ari', value: 'glm-4-air'},
-                {label: '智谱 GLM 4 arix', value: 'glm-4-airx'},
-                {label: '智谱 GLM 4 flash', value: 'glm-4-flash'},
-                {label: '智谱 GLM 3 Turbo', value: 'glm-3-turbo'},
-                {label: '自定义', value: 'custom-engine'},
-            ],
             speechEngineTypeList: [
-                {label: '科大讯飞', value: SPEECH_ENGINE_TYPE.XYF},
-                {label: 'Microsoft Azure', value: SPEECH_ENGINE_TYPE.AZURE},
+                { label: '科大讯飞', value: SPEECH_ENGINE_TYPE.XYF },
+                { label: 'Microsoft Azure', value: SPEECH_ENGINE_TYPE.AZURE },
             ],
             speechLanguages: [],
             speechLanguageSelectedItem: [],
@@ -204,34 +249,34 @@ export default {
                     label: '英语',
                     value: 'en-US',
                     children: [
-                        {label: 'JennyNeural (女)', value: 'en-US-JennyNeural'},
-                        {label: 'GuyNeural (男)', value: 'en-US-GuyNeural'},
-                        {label: 'AriaNeural (女)', value: 'en-US-AriaNeural'},
-                        {label: 'DavisNeural (男)', value: 'en-US-DavisNeural'},
+                        { label: 'JennyNeural (女)', value: 'en-US-JennyNeural' },
+                        { label: 'GuyNeural (男)', value: 'en-US-GuyNeural' },
+                        { label: 'AriaNeural (女)', value: 'en-US-AriaNeural' },
+                        { label: 'DavisNeural (男)', value: 'en-US-DavisNeural' },
                     ],
                 },
                 {
                     label: '中文 (简体)',
                     value: 'zh-CN',
                     children: [
-                        {label: 'XiaoxiaoNeural (女)', value: 'zh-CN-XiaoxiaoNeural'},
-                        {label: 'YunyangNeural (男)', value: 'zh-CN-YunyangNeural'},
-                        {label: 'YunxiNeural (男)', value: 'zh-CN-YunxiNeural'},
-                        {label: 'YunjianNeural (男)', value: 'zh-CN-YunjianNeural'},
-                        {label: 'HuihuiNeural (男)', value: 'zh-CN-HuihuiNeural'},
-                        {label: 'XiaoyiNeural (女)', value: 'zh-CN-XiaoyiNeural'},
-                        {label: 'XiaochenNeural (女)', value: 'zh-CN-XiaochenNeural'},
-                        {label: 'XiaomengNeural (女)', value: 'zh-CN-XiaomengNeural'},
-                        {label: 'XiaomoNeural (女)', value: 'zh-CN-XiaomoNeural'},
+                        { label: 'XiaoxiaoNeural (女)', value: 'zh-CN-XiaoxiaoNeural' },
+                        { label: 'YunyangNeural (男)', value: 'zh-CN-YunyangNeural' },
+                        { label: 'YunxiNeural (男)', value: 'zh-CN-YunxiNeural' },
+                        { label: 'YunjianNeural (男)', value: 'zh-CN-YunjianNeural' },
+                        { label: 'HuihuiNeural (男)', value: 'zh-CN-HuihuiNeural' },
+                        { label: 'XiaoyiNeural (女)', value: 'zh-CN-XiaoyiNeural' },
+                        { label: 'XiaochenNeural (女)', value: 'zh-CN-XiaochenNeural' },
+                        { label: 'XiaomengNeural (女)', value: 'zh-CN-XiaomengNeural' },
+                        { label: 'XiaomoNeural (女)', value: 'zh-CN-XiaomoNeural' },
                     ],
                 },
                 {
                     label: '中文 (繁体)',
                     value: 'zh-TW',
                     children: [
-                        {label: 'HsiaoChenNeural (女)', value: 'zh-TW-HsiaoChenNeural'},
-                        {label: 'YunJheNeural (男)', value: 'zh-TW-YunJheNeural'},
-                        {label: 'HsiaoYuNeural (女)', value: 'zh-TW-HsiaoYuNeural'},
+                        { label: 'HsiaoChenNeural (女)', value: 'zh-TW-HsiaoChenNeural' },
+                        { label: 'YunJheNeural (男)', value: 'zh-TW-YunJheNeural' },
+                        { label: 'HsiaoYuNeural (女)', value: 'zh-TW-HsiaoYuNeural' },
                     ],
                 },
             ],
@@ -242,6 +287,30 @@ export default {
             assistantHotKey: '',
             keyStatusMap: {},
             enableGlobalHotKey: false,
+            supportedAIModels: [],
+            editNameModel: undefined,
+            rightClickMenu: [
+                {
+                    label: this.$t('settings.rename'),
+                    onClick: e => {
+                        this.renameClicked(e);
+                    },
+                },
+                {
+                    label: this.$t('settings.copy'),
+                    onClick: () => {
+                        this.copyClicked();
+                    },
+                },
+                {
+                    label: this.$t('settings.delete'),
+                    onClick: () => {
+                        this.deleteClicked();
+                    },
+                },
+            ],
+            customModelConfigData: {},
+            useDekiePrompt: true
         };
     },
     created() {
@@ -312,6 +381,34 @@ export default {
         } else {
             this.assistantHotKey = savedHotKeyValue;
         }
+
+        this.supportedAIModels = window.aiManager.getAllSupportedModels();
+
+        this.supportedAIModels = this.supportedAIModels.map(modelGroup => {
+            const newObj = deepCopy(modelGroup);
+            if (newObj.label === 'Custom' || newObj.label === 'HuoShan') {
+                newObj.models.push({
+                    label: newObj.label,
+                    isAddAction: true,
+                });
+            }
+
+            return newObj;
+        });
+
+        console.log('AISettings: Created load modelType: ', modelType);
+
+        this.supportedAIModels.forEach(modelGroup => {
+            const modelInfo = modelGroup.models.find((aiModel) => aiModel.value === modelType);
+
+            if (!modelInfo) return;
+
+            this.selectedModelType = [modelGroup.value, modelType];
+
+            console.log('AISettings: Created Find Selected ModelInfo: ', this.selectedModelType);
+        });
+
+        console.log('AISettings: All supported AIModels: ' + JSON.stringify(this.supportedAIModels));
     },
     activated() {
         console.log('activated');
@@ -327,11 +424,11 @@ export default {
                     if (device.kind === 'audioinput') {
                         console.log(
                             'Filter for input device: Kind: ' +
-                            device.kind +
-                            ' label: ' +
-                            device.label +
-                            ' id: ' +
-                            device.deviceId
+                                device.kind +
+                                ' label: ' +
+                                device.label +
+                                ' id: ' +
+                                device.deviceId
                         );
                     }
                     return device.kind === 'audioinput';
@@ -393,13 +490,44 @@ export default {
             }, 500);
         },
         handleAIEngineChanged() {
-            console.log('handleAIEngineChanged: ', this.aiModelType);
+            console.log('handleAIEngineChanged: ', this.selectedModelType);
+            if (this.selectedModelType.length < 2 || !this.selectedModelType[1]) return;
+            this.aiModelType = this.selectedModelType[1];
             this.loadRelatedAIConfigs();
         },
         saveRelatedAIConfigs() {
             switch (this.aiModelType) {
-                default:
+                default: {
+                    const aiConfigKeyPrefix = 'aiConfig.' + this.aiModelType;
+                    console.log('AISettings: saveRelatedAIConfigs: aiConfigKeyPrefix: ', aiConfigKeyPrefix);
+                    if (!this.openAIAPIKey) {
+                        this.openAIAPIKey = '';
+                    }
+                    window.store.storeSet(aiConfigKeyPrefix +'.apiKey', this.openAIAPIKey);
+                    if (!this.customUrlAddr) {
+                        this.customUrlAddr = '';
+                    }
+
+                    if (this.aiModelType.startsWith('HuoShan-')) {
+                        if (this.customModelConfigData.huoshanType === 'chatBot') {
+                            this.customUrlAddr = 'https://ark.cn-beijing.volces.com/api/v3/bots/';
+                        } else {
+                            this.customUrlAddr = 'https://ark.cn-beijing.volces.com/api/v3/';
+                        }
+                        if (this.useDekiePrompt === undefined) {
+                            this.useDekiePrompt = true;
+                        }
+                        window.store.storeSet(aiConfigKeyPrefix + '.useDekiePrompt', this.useDekiePrompt);
+
+                    }
+
+                    window.store.storeSet(aiConfigKeyPrefix + '.baseUrl', this.customUrlAddr);
+                    if (!this.customModelName) {
+                        this.customModelName = '';
+                    }
+                    window.store.storeSet(aiConfigKeyPrefix + '.modelName', this.customModelName);
                     break;
+                    }
                 case 'spark3.5-max':
                 case 'spark4-ultra':
                     window.store.storeSet('aiConfig.xfy.apiAuth', this.sparkAIConfig);
@@ -443,21 +571,33 @@ export default {
                         window.store.storeSet('aiConfig.openAi.apiKey', this.openAIAPIKey);
                     }
                     break;
-                case 'custom-engine':
-                    if (this.openAIAPIKey !== undefined && this.openAIAPIKey !== '') {
-                        window.store.storeSet('aiConfig.customEngine.apiKey', this.openAIAPIKey);
-                    }
-                    window.store.storeSet('aiConfig.customEngine.baseUrl', this.customUrlAddr);
-                    window.store.storeSet('aiConfig.customEngine.modelName', this.customModelName);
-                    break;
             }
+            this.$message.success(this.$t('save') + ' ' + this.$t('success'));
         },
         loadRelatedAIConfigs() {
+            this.customModelConfigData = {}
             this.customUrlAddr = '';
             switch (this.aiModelType) {
-                default:
-                    this.openAIAPIKey = '';
+                default: {
+
+                    const aiConfigKeyPrefix = 'aiConfig.' + this.aiModelType;
+                    this.customUrlAddr = window.store.storeGet(aiConfigKeyPrefix + '.baseUrl');
+
+                    if (this.aiModelType.startsWith('HuoShan-')) {
+                        if (this.customUrlAddr && this.customUrlAddr.endsWith('/bots/')) {
+                            this.customModelConfigData.huoshanType = 'chatBot';
+                        } else  {
+                            this.customModelConfigData.huoshanType = 'inference';
+                        }
+                        this.useDekiePrompt = window.store.storeGet(aiConfigKeyPrefix + '.useDekiePrompt');
+                        if (this.useDekiePrompt === undefined) {
+                            this.useDekiePrompt = true;
+                        }
+                    }
+                    this.openAIAPIKey = window.store.storeGet(aiConfigKeyPrefix + '.apiKey');
+                    this.customModelName = window.store.storeGet(aiConfigKeyPrefix + '.modelName');
                     break;
+                }
                 case 'spark3.5-max':
                 case 'spark4-ultra':
                     this.sparkAIConfig = window.store.storeGet('aiConfig.xfy.apiAuth');
@@ -498,11 +638,6 @@ export default {
                 case 'gpt-4':
                 case 'gpt-3.5-turbo':
                     this.openAIAPIKey = window.store.storeGet('aiConfig.openAi.apiKey');
-                    break;
-                case 'custom-engine':
-                    this.openAIAPIKey = window.store.storeGet('aiConfig.customEngine.apiKey');
-                    this.customUrlAddr = window.store.storeGet('aiConfig.customEngine.baseUrl');
-                    this.customModelName = window.store.storeGet('aiConfig.customEngine.modelName');
                     break;
             }
         },
@@ -583,6 +718,254 @@ export default {
                 this.$refs.assistantHotKey.blur();
             }
         },
+        handleAddCustomModel(modelLabel) {
+            console.log('AISettings: handleAddCustomModel: ', modelLabel);
+            this.supportedAIModels = this.supportedAIModels.map(modelGroup => {
+                const newGroupObj = deepCopy(modelGroup);
+                if (newGroupObj.label === modelLabel) {
+                    const addBtnObj = newGroupObj.models.pop();
+
+                    let maxId = 0;
+                    newGroupObj.models.forEach((aiModel) => {
+                        if (aiModel.isAddAction) return;
+
+                        if (!aiModel.value.includes('-')) return;
+
+                        const modelId = Number(aiModel.value.split('-')[1]);
+
+                        if (modelId > maxId) {
+                            maxId = modelId;
+                        }
+                    });
+
+                    const newModelType = newGroupObj.value + '-' + (maxId + 1);
+
+                    newGroupObj.models.push({
+                        label: newModelType,
+                        value: newModelType,
+                        canModify: true,
+                        supportedFunctions: 'chat',
+                    });
+
+                    this.selectedModelType[1] = newModelType;
+
+                    newGroupObj.models.push(addBtnObj);
+                }
+
+                return newGroupObj;
+            });
+
+            console.log('AISettings: handleAddCustomModel: After Update: ' + JSON.stringify(this.supportedAIModels));
+
+            window.aiManager.updateSupportedModels(this.supportedAIModels);
+            this.$message.success(this.$t('settings.add') + ' ' + this.$t('success'));
+        },
+        handleUpdateModelName(modelValue, modelName) {
+            console.log('AISettings: handleUpdateModelName: modelValue: ', modelValue, ' ModelName: ', modelName);
+            console.log('AISettings: handleUpdateModelName: supportedAIModels: ', this.supportedAIModels);
+
+            // window.aiManager.updateSupportedModels(this.supportedAIModels);
+        },
+        renameClicked() {
+
+            this.supportedAIModels.forEach(modelGroup => {
+                if (this.editNameModel !== undefined) return;
+
+                if (modelGroup.value !== this.selectedModelType[0]) {
+                    return;
+                }
+
+                const modifyItem = modelGroup.models.find(aiModel => aiModel.value === this.selectedModelType[1]);
+
+                if (modifyItem === undefined) return;
+
+                this.editNameModel = deepCopy(modifyItem);
+            });
+
+            console.log('AISettings: renameClicked: ', this.editNameModel);
+
+            this.$nextTick(() => {
+                this.$refs.editModelLabelBox.focus();
+            });
+
+        },
+        copyClicked() {
+
+            const copyModelType = this.selectedModelType[1];
+
+            console.log('AISettings: copyClicked: ', copyModelType);
+
+            let newModelType = '';
+
+            this.supportedAIModels = this.supportedAIModels.map(modelGroup => {
+                if (modelGroup.value !== this.selectedModelType[0]) return modelGroup;
+
+                const newGroupObj = deepCopy(modelGroup);
+
+                let maxId = 0;
+                newGroupObj.models.forEach((aiModel) => {
+                    if (aiModel.isAddAction) return;
+
+                    const modelId = Number(aiModel.value.split('-')[1]);
+
+                    if (modelId > maxId) {
+                        maxId = modelId;
+                    }
+                });
+
+                const addBtnObj = newGroupObj.models.pop();
+
+                newModelType = modelGroup.value + '-' + (maxId + 1);
+
+                newGroupObj.models.push({
+                    label: newModelType,
+                    value: newModelType,
+                    canModify: true,
+                    supportedFunctions: 'chat',
+                });
+
+                newGroupObj.models.push(addBtnObj);
+
+                return newGroupObj;
+            });
+
+
+            const copyAIConfigKeyPrefix = 'aiConfig.' + copyModelType;
+            const newAIConfigKeyPrefix = 'aiConfig.' + newModelType;
+            console.log('AISettings: saveRelatedAIConfigs: copyAIConfigKeyPrefix: ', copyAIConfigKeyPrefix);
+
+            this.openAIAPIKey = window.store.storeGet(copyAIConfigKeyPrefix + '.apiKey');
+            this.customUrlAddr = window.store.storeGet(copyAIConfigKeyPrefix + '.baseUrl');
+            this.customModelName = window.store.storeGet(copyAIConfigKeyPrefix + '.modelName');
+
+            if (!this.openAIAPIKey) {
+                this.openAIAPIKey = '';
+            }
+            window.store.storeSet(newAIConfigKeyPrefix +'.apiKey', this.openAIAPIKey);
+            if (!this.customUrlAddr) {
+                this.customUrlAddr = '';
+            }
+            window.store.storeSet(newAIConfigKeyPrefix + '.baseUrl', this.customUrlAddr);
+            if (!this.customModelName) {
+                this.customModelName = '';
+            }
+            window.store.storeSet(newAIConfigKeyPrefix + '.modelName', this.customModelName);
+
+            this.selectedModelType[1] = newModelType;
+            window.aiManager.updateSupportedModels(this.supportedAIModels);
+            this.$message.success(this.$t('settings.copy') + ' ' + this.$t('success'));
+        },
+        deleteClicked() {
+            const deleteModelType = this.selectedModelType[1];
+
+            console.log('AISettings: deleteClicked: deleteModelType: ', deleteModelType);
+
+            const that = this;
+
+            let modelName = '';
+            this.supportedAIModels.forEach(modelGroup => {
+                if (modelGroup.value !== this.selectedModelType[0]) return;
+
+                const modelInfo = modelGroup.models.find((aiModel) => aiModel.value === deleteModelType);
+
+                if (!modelInfo) return;
+
+                modelName = modelInfo.label;
+            });
+
+            this.$confirm(that.$t('settings.deleteAIModelConfirm').replace('{{modelName}}', modelName), '', {
+                confirmButtonText: that.$t('confirm'),
+                cancelButtonText: that.$t('cancel'),
+                type: 'warning',
+            }).then(() => {
+                let nextModelType = undefined;
+                this.supportedAIModels = that.supportedAIModels.map(modelGroup => {
+                    if (modelGroup.value !== that.selectedModelType[0]) return modelGroup;
+
+                    const newGroupObj = deepCopy(modelGroup);
+
+                    newGroupObj.models = newGroupObj.models.filter((aiModel) => aiModel.value !== deleteModelType);
+
+                    if (newGroupObj.models.length > 1) {
+                        nextModelType = newGroupObj.models[0].value;
+                    }
+
+                    return newGroupObj;
+                });
+
+                if (nextModelType !== undefined) {
+                    that.selectedModelType[1] = nextModelType;
+                } else {
+                    that.selectedModelType = ['Groq', 'llama3-70b-8192'];
+                }
+                const deleteAIConfigKeyPrefix = 'aiConfig.' + deleteModelType;
+
+                window.store.storeDelete(deleteAIConfigKeyPrefix);
+
+                window.aiManager.updateSupportedModels(that.supportedAIModels);
+
+                that.$message.success(that.$t('settings.delete') + ' ' + that.$t('success'));
+            }).catch(err => {
+                console.log('AISettings: deleteClicked: err: ', err);
+                that.$message.error(that.$t('settings.delete') + ' ' + that.$t('failed'));
+            });
+        },
+        onRightClickMenu(event) {
+            let canModify = false;
+            this.supportedAIModels.forEach(modelGroup => {
+                if (canModify) return;
+
+                if (modelGroup.value !== this.selectedModelType[0]) {
+                    return;
+                }
+
+                const modifyItem = modelGroup.models.find(aiModel => aiModel.value === this.selectedModelType[1] && aiModel.canModify);
+
+                if (modifyItem === undefined) return;
+
+                canModify = true;
+            });
+            this.$contextmenu({
+                items: canModify ? this.rightClickMenu : [this.rightClickMenu[0]],
+                event, // 鼠标事件信息
+                customClass: 'right-click-menu', // 自定义菜单 class
+                zIndex: 5000, // 菜单样式 z-index
+                minWidth: 140, // 主菜单最小宽度
+            });
+            return false;
+        },
+        onEditBlur() {
+            console.log('AISettings: onEditBlur: newLabel', this.editNameModel);
+
+            if (this.editNameModel.label === '') {
+                this.editNameModel = undefined;
+                return;
+            }
+
+            this.supportedAIModels = this.supportedAIModels.map(modelGroup => {
+                if (modelGroup.value !== this.selectedModelType[0]) return modelGroup;
+
+                const newGroupInfo = deepCopy(modelGroup);
+
+                newGroupInfo.models = newGroupInfo.models.map(aiModel => {
+                   if (aiModel.value !== this.editNameModel.value) {
+                       return aiModel;
+                   }
+                    const newAIModel = deepCopy(aiModel);
+
+                    newAIModel.label = this.editNameModel.label;
+
+                    return newAIModel;
+                });
+
+                return newGroupInfo;
+            });
+            console.log('AISettings: onEditBlur: After Rename: ' + JSON.stringify(this.supportedAIModels));
+
+            window.aiManager.updateSupportedModels(this.supportedAIModels);
+
+            this.editNameModel = undefined;
+        }
     },
 };
 </script>

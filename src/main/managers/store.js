@@ -62,6 +62,7 @@ class StoreManager {
     }
 
     storeSet(key, value) {
+        console.log('StoreSet for key: ', key, ' Value: ', value);
         if (key === 'system.locale') {
             setI18nLanguage(value);
 

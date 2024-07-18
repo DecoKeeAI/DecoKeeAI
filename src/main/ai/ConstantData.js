@@ -523,6 +523,7 @@ export function getChatPrePromptMsg(message, engineType) {
         case AI_ENGINE_TYPE.ArixoChat:
         case AI_ENGINE_TYPE.ZhiPuChat:
         case AI_ENGINE_TYPE.QWenChat:
+        case AI_ENGINE_TYPE.HuoShan:
             return [
                 {
                     role: 'system',
@@ -891,6 +892,7 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
                 case AI_ENGINE_TYPE.QWenChat:
                 case AI_ENGINE_TYPE.GroqChat:
                 case AI_ENGINE_TYPE.CustomEngine:
+                case AI_ENGINE_TYPE.HuoShan:
                 case AI_ENGINE_TYPE.OpenAI:
                     finalRequestPrompt = englishRequestConfigPrompt
                         .replace('{{promptReplyLanguage}}', 'chinese')
@@ -908,6 +910,7 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
                 default:
                 case AI_ENGINE_TYPE.QWenChat:
                 case AI_ENGINE_TYPE.CustomEngine:
+                case AI_ENGINE_TYPE.HuoShan:
                 case AI_ENGINE_TYPE.GroqChat:
                 case AI_ENGINE_TYPE.OpenAI:
                 case AI_ENGINE_TYPE.ZhiPuChat:
@@ -939,6 +942,7 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
         case AI_ENGINE_TYPE.ArixoChat:
         case AI_ENGINE_TYPE.ZhiPuChat:
         case AI_ENGINE_TYPE.QWenChat:
+        case AI_ENGINE_TYPE.HuoShan:
             return [
                 {
                     role: 'system',
@@ -1053,6 +1057,7 @@ export function getPCOperationBotPrePrompt(message, engineType, currentLanguage)
         case AI_ENGINE_TYPE.XYF:
         case AI_ENGINE_TYPE.QWenChat:
         case AI_ENGINE_TYPE.ZhiPuChat:
+        case AI_ENGINE_TYPE.HuoShan:
             switch (currentLanguage) {
                 default:
                 case 'en':

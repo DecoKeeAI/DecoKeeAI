@@ -4,7 +4,7 @@
   box-sizing: border-box;
 }
 ol, ul {
-  list-style-type: none;  
+  list-style-type: none;
 }
 
 ::-webkit-scrollbar {
@@ -174,8 +174,17 @@ ol, ul {
   color: #ffffff;
 }
 
-#right-click-menu {
-  background: #3d3d3d;
+.right-click-menu {
+  background-color: #3d3d3d !important;
+  color: white !important;
+}
+
+.right-click-menu .menu_item__available {
+  color: white !important;
+}
+
+.right-click-menu .menu_item__available:hover {
+  background: #9d9d9d !important;
 }
 
 .el-message--success {

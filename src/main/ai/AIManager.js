@@ -64,6 +64,73 @@ const fs = require('fs');
 const htmlDocx = require('html-docx-js');
 const showdown = require('showdown');
 
+// eslint-disable-next-line
+const BUILD_IN_AI_MODELS = [
+    {
+        label: 'Groq',
+        value: 'Groq',
+        models: [
+            {label: 'Groq llama 70B', value: 'llama3-70b-8192', canModify: false, supportedFunctions: 'chat'}
+        ]
+    },
+    {
+        label: 'OpenAI',
+        value: 'OpenAI',
+        models: [
+            {label: 'GPT 4o', value: 'gpt-4o', canModify: false, supportedFunctions: 'chat'},
+            {label: 'GPT 4 Turbo', value: 'gpt-4-turbo', canModify: false, supportedFunctions: 'chat'},
+            {label: 'GPT 4', value: 'gpt-4', canModify:false, supportedFunctions: 'chat'},
+            {label: 'GPT 3.5 Turbo', value: 'gpt-3.5-turbo', canModify:false, supportedFunctions: 'chat'},
+        ]
+    },
+    {
+        label: 'Spark',
+        value: 'Spark',
+        models: [
+            {label: 'Spark 3.5 MAX', value: 'spark3.5-max', canModify:false, supportedFunctions: 'chat'},
+            {label: 'Spark 4 Ultra', value: 'spark4-ultra', canModify:false, supportedFunctions: 'chat'},
+        ]
+    },
+    {
+        label: 'Qwen',
+        value: 'Qwen',
+        models: [
+            {label: '通义千问 turbo', value: 'qwen-turbo', canModify:false, supportedFunctions: 'chat'},
+            {label: '通义千问 Plus', value: 'qwen-plus', canModify:false, supportedFunctions: 'chat'},
+            {label: '通义千问 Max', value: 'qwen-max', canModify:false, supportedFunctions: 'chat'},
+            {label: '通义千问 72b-chat', value: 'qwen-72b-chat', canModify:false, supportedFunctions: 'chat'},
+            {label: '通义千问1.5 32b-chat', value: 'qwen1.5-32b-chat', canModify:false, supportedFunctions: 'chat'},
+            {label: '通义千问1.5 72b-chat', value: 'qwen1.5-72b-chat', canModify:false, supportedFunctions: 'chat'},
+            {label: '通义千问1.5 110b-chat', value: 'qwen1.5-110b-chat', canModify:false, supportedFunctions: 'chat'},
+            {label: '通义千问2 1.5b-instruct', value: 'qwen2-1.5b-instruct', canModify:false, supportedFunctions: 'chat'},
+            {label: '通义千问2 7b-instruct', value: 'qwen2-7b-instruct', canModify:false, supportedFunctions: 'chat'},
+            {label: '通义千问2 72b-instruct', value: 'qwen2-72b-instruct', canModify:false, supportedFunctions: 'chat'},
+        ]
+    },
+    {
+        label: 'ZhiPu',
+        value: 'ZhiPu',
+        models: [
+            {label: '智谱 GLM 4 0520', value: 'glm-4-0520', canModify:false, supportedFunctions: 'chat'},
+            {label: '智谱 GLM 4', value: 'glm-4', canModify:false, supportedFunctions: 'chat'},
+            {label: '智谱 GLM 4 ari', value: 'glm-4-air', canModify:false, supportedFunctions: 'chat'},
+            {label: '智谱 GLM 4 arix', value: 'glm-4-airx', canModify:false, supportedFunctions: 'chat'},
+            {label: '智谱 GLM 4 flash', value: 'glm-4-flash', canModify:false, supportedFunctions: 'chat'},
+            {label: '智谱 GLM 3 Turbo', value: 'glm-3-turbo', canModify:false, supportedFunctions: 'chat'},
+        ]
+    },
+    {
+        label: 'HuoShan',
+        value: 'HuoShan',
+        models: []
+    },
+    {
+        label: 'Custom',
+        value: 'Custom',
+        models: []
+    },
+]
+
 export const AI_ENGINE_TYPE = {
     XYF: 0,
     OpenAI: 1,
@@ -72,7 +139,8 @@ export const AI_ENGINE_TYPE = {
     StandardChat: 4,
     QWenChat: 5,
     ZhiPuChat: 6,
-    CustomEngine: 7
+    CustomEngine: 7,
+    HuoShan: 8
 }
 
 export const SPEECH_ENGINE_TYPE = {
@@ -311,6 +379,67 @@ class AIManager {
         setTimeout(() => {
             checkRecentApps();
         }, 5000);
+
+        this.supportedModels = appManager.storeManager.storeGet('aiConfig.supportedModels');
+
+        if (!this.supportedModels) {
+            this.supportedModels = [];
+        }
+
+        BUILD_IN_AI_MODELS.forEach(modelGroupInfo => {
+            const modelGroupIdx = this.supportedModels.findIndex(tempModelGroupInfo => tempModelGroupInfo.label === modelGroupInfo.label);
+            if (modelGroupIdx === -1) {
+                this.supportedModels.push(modelGroupInfo);
+                return;
+            }
+
+            if (!this.supportedModels[modelGroupIdx].models) {
+                this.supportedModels[modelGroupIdx].models = [];
+            }
+
+            modelGroupInfo.models.forEach(modelInfo => {
+                if (this.supportedModels[modelGroupIdx].models.findIndex(tempModelInfo => tempModelInfo.name === modelInfo.name && tempModelInfo.value === modelInfo.value) > -1) {
+                    return;
+                }
+                this.supportedModels[modelGroupIdx].models.push(modelInfo);
+            })
+
+        });
+
+        appManager.storeManager.storeSet('aiConfig.supportedModels', this.supportedModels);
+    }
+
+    getAllSupportedModels() {
+        return this.supportedModels;
+    }
+
+    updateSupportedModels(supportedAIModels) {
+        const finalSupportedAIModels = [];
+        supportedAIModels.forEach(modelGroup => {
+            const newObj = Object.assign({}, modelGroup);
+            const finalGroupModels = [];
+            newObj.models.forEach(aiModel => {
+                if (aiModel.isAddAction) {
+                    return;
+                }
+
+                finalGroupModels.push({
+                    label: aiModel.label,
+                    value: aiModel.value,
+                    canModify: aiModel.canModify,
+                    supportedFunctions: aiModel.supportedFunctions
+                });
+
+            });
+
+            newObj.models = finalGroupModels;
+
+            finalSupportedAIModels.push(newObj);
+        });
+
+        appManager.storeManager.storeSet('aiConfig.supportedModels', finalSupportedAIModels);
+
+        this.supportedModels = finalSupportedAIModels;
     }
 
     setAssistantEngineModel(engineModel) {
@@ -352,13 +481,16 @@ class AIManager {
             case 'glm-4-flash':
                 engineType = AI_ENGINE_TYPE.ZhiPuChat;
                 break
-            default:
             case 'llama3-70b-8192':
             case 'gemma-7b-it':
                 engineType = AI_ENGINE_TYPE.GroqChat;
                 break
-            case 'custom-engine':
-                engineType = AI_ENGINE_TYPE.CustomEngine;
+            default:
+                if (engineModel.startsWith('HuoShan-')) {
+                    engineType = AI_ENGINE_TYPE.HuoShan;
+                } else {
+                    engineType = AI_ENGINE_TYPE.CustomEngine;
+                }
                 break
         }
 
@@ -373,6 +505,7 @@ class AIManager {
                 break;
             case AI_ENGINE_TYPE.OpenAI:
             case AI_ENGINE_TYPE.CustomEngine:
+            case AI_ENGINE_TYPE.HuoShan:
             case AI_ENGINE_TYPE.ArixoChat:
             case AI_ENGINE_TYPE.GroqChat:
             case AI_ENGINE_TYPE.QWenChat:
@@ -557,8 +690,9 @@ class AIManager {
 
         let requestModelName = aiChatModelType;
 
-        if (aiChatModelType === 'custom-engine') {
-            requestModelName = appManager.storeManager.storeGet('aiConfig.customEngine.modelName');
+        if (aiChatModelType.startsWith('Custom-') || aiChatModelType.startsWith('HuoShan-')) {
+            const aiConfigKeyPrefix = 'aiConfig.' + aiChatModelType;
+            requestModelName = appManager.storeManager.storeGet(aiConfigKeyPrefix + '.modelName');
         }
 
         const params = {
@@ -631,13 +765,16 @@ class AIManager {
             case 'glm-4-flash':
                 chatEngineType = AI_ENGINE_TYPE.ZhiPuChat;
                 break
-            default:
             case 'llama3-70b-8192':
             case 'gemma-7b-it':
                 chatEngineType = AI_ENGINE_TYPE.GroqChat;
                 break
-            case 'custom-engine':
-                chatEngineType = AI_ENGINE_TYPE.CustomEngine;
+            default:
+                if (engineModel.startsWith('HuoShan-')) {
+                    chatEngineType = AI_ENGINE_TYPE.HuoShan;
+                } else {
+                    chatEngineType = AI_ENGINE_TYPE.CustomEngine;
+                }
                 break
         }
 
@@ -652,6 +789,7 @@ class AIManager {
             case AI_ENGINE_TYPE.OpenAI:
             case AI_ENGINE_TYPE.ArixoChat:
             case AI_ENGINE_TYPE.CustomEngine:
+            case AI_ENGINE_TYPE.HuoShan:
             case AI_ENGINE_TYPE.GroqChat:
             case AI_ENGINE_TYPE.StandardChat:
             case AI_ENGINE_TYPE.QWenChat:
@@ -2154,41 +2292,43 @@ class AIManager {
             case 'gpt-3.5-turbo':
                 aiEngineType = AI_ENGINE_TYPE.OpenAI;
                 break
-            default:
             case 'llama3-70b-8192':
             case 'gemma-7b-it':
                 aiEngineType = AI_ENGINE_TYPE.GroqChat;
                 break
-            case 'custom-engine':
-                aiEngineType = AI_ENGINE_TYPE.CustomEngine;
+            default:
+                if (aiAssistantModelType.startsWith('HuoShan-')) {
+                    aiEngineType = AI_ENGINE_TYPE.HuoShan;
+                } else {
+                    aiEngineType = AI_ENGINE_TYPE.CustomEngine;
+                }
                 break
         }
 
         let requestModelName = aiAssistantModelType;
 
-        if (aiAssistantModelType === 'custom-engine') {
-            requestModelName = appManager.storeManager.storeGet('aiConfig.customEngine.modelName');
+        let useDekiePrompt = true;
+        if (aiAssistantModelType.startsWith('Custom-') || aiAssistantModelType.startsWith('HuoShan-')) {
+            const aiConfigKeyPrefix = 'aiConfig.' + aiAssistantModelType;
+            requestModelName = appManager.storeManager.storeGet(aiConfigKeyPrefix + '.modelName');
+
+            const configedUseDekiePrompt = appManager.storeManager.storeGet(aiConfigKeyPrefix + '.useDekiePrompt');
+
+            if (configedUseDekiePrompt !== undefined) {
+                useDekiePrompt = configedUseDekiePrompt;
+            }
+
         }
 
-        // if (aiEngineType === AI_ENGINE_TYPE.GroqChat) {
-        //     params = {
-        //         model: aiAssistantModelType,
-        //         messages: [],
-        //         stream: false,
-        //         max_tokens: 1024,
-        //         temperature: 0.1
-        //     }
-        // } else {
-            params = {
-                model: requestModelName,
-                messages: [],
-                max_tokens: 2048,
-                temperature: 0.1,
-                stream: false
-            }
-        // }
+        params = {
+            model: requestModelName,
+            messages: [],
+            max_tokens: 2048,
+            temperature: 0.1,
+            stream: false
+        }
 
-        if (isNewSession) {
+        if (isNewSession && useDekiePrompt) {
             let preChatMsgs = getChatPrePromptMsg(message, aiEngineType);
             console.log('AIManager: handleAIAssistantProcess: PreChatMessage: ', preChatMsgs);
 
@@ -2262,6 +2402,21 @@ class AIManager {
                 return;
             }
 
+        } else if (isNewSession) {
+            aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_NORMAL);
+            chatMsgs.push({
+                role: "user",
+                content: message
+            });
+
+            aiAssistantChatAdapter.setChatResponseListener((requestId, status, message) => {
+                this._handleChatResponse(requestId, status, message).catch(err => {
+                    console.log('AIManager: handleAIAssistantProcess: CHAT_TYPE.CHAT_TYPE_NORMAL _handleChatResponse detected error: ', err);
+
+                    this.setAssistantProcessFailed();
+                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
+                });
+            });
         } else {
             chatMsgs = assistantChatHistory;
             chatMsgs.push({
