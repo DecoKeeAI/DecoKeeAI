@@ -340,7 +340,12 @@ class OpenAIAdapter {
                 baseUrl = 'https://open.bigmodel.cn/api/paas/v4/';
                 break;
             case 'llama3-70b-8192':
+            case 'llama3-8b-8192':
+            case 'llama3-groq-70b-8192-tool-use-preview':
+            case 'llama3-groq-8b-8192-tool-use-preview':
             case 'gemma-7b-it':
+            case 'gemma2-9b-it':
+            case 'mixtral-8x7b-32768':
                 baseUrl = 'https://api.groq.com/openai/v1/';
                 break;
             default: {

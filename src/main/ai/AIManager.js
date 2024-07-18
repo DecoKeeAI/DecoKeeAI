@@ -70,7 +70,13 @@ const BUILD_IN_AI_MODELS = [
         label: 'Groq',
         value: 'Groq',
         models: [
-            {label: 'Groq llama 70B', value: 'llama3-70b-8192', canModify: false, supportedFunctions: 'chat'}
+            {label: 'Groq llama 70B', value: 'llama3-70b-8192', canModify: false, supportedFunctions: 'chat'},
+            {label: 'Groq llama 8B', value: 'llama3-8b-8192', canModify: false, supportedFunctions: 'chat'},
+            {label: 'Groq llama 70B tool use preview', value: 'llama3-groq-70b-8192-tool-use-preview', canModify: false, supportedFunctions: 'chat'},
+            {label: 'Groq llama 8B tool use preview', value: 'llama3-groq-8b-8192-tool-use-preview', canModify: false, supportedFunctions: 'chat'},
+            {label: 'Groq gemma 7B', value: 'gemma-7b-it', canModify: false, supportedFunctions: 'chat'},
+            {label: 'Groq gemma2 9B', value: 'gemma2-9b-it', canModify: false, supportedFunctions: 'chat'},
+            {label: 'Groq mixtral 8x7b', value: 'mixtral-8x7b-32768', canModify: false, supportedFunctions: 'chat'}
         ]
     },
     {
@@ -320,7 +326,7 @@ class AIManager {
             this.setAssistantEngineModel(newAIAssistantModelType);
 
             let newAiChatModelType = appManager.storeManager.storeGet('aiConfig.chat.modelType');
-            if (!newAiChatModelType) {
+            if (newAiChatModelType === undefined) {
                 newAiChatModelType = 'llama3-70b-8192';
             }
 
@@ -482,7 +488,12 @@ class AIManager {
                 engineType = AI_ENGINE_TYPE.ZhiPuChat;
                 break
             case 'llama3-70b-8192':
+            case 'llama3-8b-8192':
+            case 'llama3-groq-70b-8192-tool-use-preview':
+            case 'llama3-groq-8b-8192-tool-use-preview':
             case 'gemma-7b-it':
+            case 'gemma2-9b-it':
+            case 'mixtral-8x7b-32768':
                 engineType = AI_ENGINE_TYPE.GroqChat;
                 break
             default:
@@ -766,7 +777,12 @@ class AIManager {
                 chatEngineType = AI_ENGINE_TYPE.ZhiPuChat;
                 break
             case 'llama3-70b-8192':
+            case 'llama3-8b-8192':
+            case 'llama3-groq-70b-8192-tool-use-preview':
+            case 'llama3-groq-8b-8192-tool-use-preview':
             case 'gemma-7b-it':
+            case 'gemma2-9b-it':
+            case 'mixtral-8x7b-32768':
                 chatEngineType = AI_ENGINE_TYPE.GroqChat;
                 break
             default:
@@ -2293,7 +2309,12 @@ class AIManager {
                 aiEngineType = AI_ENGINE_TYPE.OpenAI;
                 break
             case 'llama3-70b-8192':
+            case 'llama3-8b-8192':
+            case 'llama3-groq-70b-8192-tool-use-preview':
+            case 'llama3-groq-8b-8192-tool-use-preview':
             case 'gemma-7b-it':
+            case 'gemma2-9b-it':
+            case 'mixtral-8x7b-32768':
                 aiEngineType = AI_ENGINE_TYPE.GroqChat;
                 break
             default:

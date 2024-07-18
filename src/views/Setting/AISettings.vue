@@ -138,20 +138,7 @@
                 </el-form-item>
             </template>
             <template
-                v-if="
-                    aiModelType === 'gpt-4o' ||
-                    aiModelType === 'gpt-4-turbo' ||
-                    aiModelType === 'gpt-4' ||
-                    aiModelType === 'gpt-3.5-turbo' ||
-                    aiModelType === 'llama3-70b-8192' ||
-                    aiModelType === 'gemma-7b-it' ||
-                    aiModelType.startsWith('qwen-') ||
-                    aiModelType.startsWith('qwen1.5-') ||
-                    aiModelType.startsWith('qwen2-') ||
-                    aiModelType.startsWith('glm-') ||
-                    aiModelType.startsWith('Custom-') ||
-                    aiModelType.startsWith('HuoShan-')
-                "
+                v-if="customModelConfigData.supportOpenAICustomConfig"
             >
                 <el-form-item label="API Key">
                     <el-input v-model="openAIAPIKey" clearable style="width: 191px"></el-input>
@@ -194,12 +181,7 @@
                 </template>
             </template>
             <el-form-item
-                v-if="
-                    aiModelType.startsWith('qwen-') ||
-                    aiModelType.startsWith('qwen1.5-') ||
-                    aiModelType.startsWith('qwen2-') ||
-                    aiModelType.startsWith('glm-')
-                "
+                v-if="customModelConfigData.supportWebSearch"
                 :label="$t('settings.webSearch')"
             >
                 <el-switch v-model="enableWebSearch" />
@@ -533,7 +515,12 @@ export default {
                     window.store.storeSet('aiConfig.xfy.apiAuth', this.sparkAIConfig);
                     break;
                 case 'llama3-70b-8192':
+                case 'llama3-8b-8192':
+                case 'llama3-groq-70b-8192-tool-use-preview':
+                case 'llama3-groq-8b-8192-tool-use-preview':
                 case 'gemma-7b-it':
+                case 'gemma2-9b-it':
+                case 'mixtral-8x7b-32768':
                     if (this.openAIAPIKey !== undefined && this.openAIAPIKey !== '') {
                         window.store.storeSet('aiConfig.groq.apiKey', this.openAIAPIKey);
                     }
@@ -577,9 +564,11 @@ export default {
         loadRelatedAIConfigs() {
             this.customModelConfigData = {}
             this.customUrlAddr = '';
+
+            this.customModelConfigData.supportOpenAICustomConfig = true;
+            this.customModelConfigData.supportWebSearch = false;
             switch (this.aiModelType) {
                 default: {
-
                     const aiConfigKeyPrefix = 'aiConfig.' + this.aiModelType;
                     this.customUrlAddr = window.store.storeGet(aiConfigKeyPrefix + '.baseUrl');
 
@@ -600,6 +589,7 @@ export default {
                 }
                 case 'spark3.5-max':
                 case 'spark4-ultra':
+                    this.customModelConfigData.supportOpenAICustomConfig = false;
                     this.sparkAIConfig = window.store.storeGet('aiConfig.xfy.apiAuth');
                     if (!this.sparkAIConfig) {
                         this.sparkAIConfig = {
@@ -610,7 +600,12 @@ export default {
                     }
                     break;
                 case 'llama3-70b-8192':
+                case 'llama3-8b-8192':
+                case 'llama3-groq-70b-8192-tool-use-preview':
+                case 'llama3-groq-8b-8192-tool-use-preview':
                 case 'gemma-7b-it':
+                case 'gemma2-9b-it':
+                case 'mixtral-8x7b-32768':
                     this.openAIAPIKey = window.store.storeGet('aiConfig.groq.apiKey');
                     break;
                 case 'qwen-plus':
@@ -623,6 +618,7 @@ export default {
                 case 'qwen2-1.5b-instruct':
                 case 'qwen2-7b-instruct':
                 case 'qwen2-72b-instruct':
+                    this.customModelConfigData.supportWebSearch = true;
                     this.openAIAPIKey = window.store.storeGet('aiConfig.qwen.apiKey');
                     break;
                 case 'glm-3-turbo':
@@ -631,6 +627,7 @@ export default {
                 case 'glm-4-air':
                 case 'glm-4-airx':
                 case 'glm-4-flash':
+                    this.customModelConfigData.supportWebSearch = true;
                     this.openAIAPIKey = window.store.storeGet('aiConfig.zhipu.apiKey');
                     break;
                 case 'gpt-4o':
