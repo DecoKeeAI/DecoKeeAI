@@ -43,7 +43,8 @@ DecoKeeAI 提出了一种通过 AI 技术与带显示快捷按键相结合的全
     - 讯飞星火: spark3.5-max, spark4-ultra
     - 通义千问: qwen-turbo, qwen-plus, qwen-max, qwen-72b-chat, qwen1.5-32b-chat, qwen1.5-72b-chat, qwen1.5-110b-chat, qwen2-1.5b-instruct, qwen2-7b-instruct, qwen2-72b-instruct
     - 智谱AI: glm-4-0520, glm-4, glm-4-air, glm-4-airx, glm-4-flash, glm-3-turbo
-    - 自定义: 任意自定义服务器，只需支持 openAI API 调用即可
+    - 火山方舟: 可配置多个推理模型或智能体，需自行创建推理模型接入点和和智能体，详情参考 [火山方舟文档](https://www.volcengine.com/docs/82379/1267885)
+    - 自定义: 任意自定义服务器，只需支持 openAI API 调用即可。 可配置多个自定义模型。
 * 支持语音服务 (STT&TTS)：
     - 讯飞星火, Microsoft Azure
 

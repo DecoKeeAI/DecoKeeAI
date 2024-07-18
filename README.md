@@ -43,7 +43,8 @@ DecoKeeAI is built using **vue-cli 5** and **Electron 23.0.0**, providing a modu
     - iFlytek: spark3.5-max, spark4-ultra
     - Qwen: qwen-turbo, qwen-plus, qwen-max, qwen-72b-chat, qwen1.5-32b-chat, qwen1.5-72b-chat, qwen1.5-110b-chat, qwen2-1.5b-instruct, qwen2-7b-instruct, qwen2-72b-instruct
     - Zhipu AI: glm-4-0520, glm-4, glm-4-air, glm-4-airx, glm-4-flash, glm-3-turbo
-    - Custom: Any custom server, as long as it supports OpenAI API calls
+    - Volcano Ark(HuoShan): Supports configuration of multiple Model Inference or Agents, requiring users to create their own Model Inference endpoint and Agents. For more details, please refer to the [Volcano Ark Documentation](https://www.volcengine.com/docs/82379/1267885)
+    - Custom: Any custom server, as long as it supports OpenAI API calls. Configurable with multiple custom models.
 * Support for speech services (STT&TTS):
     - iFlytek, Microsoft Azure
 
