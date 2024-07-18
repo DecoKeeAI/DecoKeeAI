@@ -746,8 +746,16 @@ class XFYAdapter {
 // 鉴权签名
 function getAuthStr(date, host, uri) {
 
-    const sparkAIConfig = storeManager.storeGet('aiConfig.xfy.apiAuth');
+    let sparkAIConfig = storeManager.storeGet('aiConfig.xfy.apiAuth');
     console.log('XYFAdapter: getAuthStr: sparkAIConfig:', sparkAIConfig);
+
+    if (sparkAIConfig === undefined) {
+        sparkAIConfig = {
+            appId: '',
+            apiSecret: '',
+            apiKey: ''
+        }
+    }
 
     config.appid = sparkAIConfig.appId;
     config.apiSecret = sparkAIConfig.apiSecret;
