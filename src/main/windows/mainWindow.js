@@ -216,14 +216,9 @@ class MainWindow {
         });
 
         ipcMain.handle('check-update', async event => {
-            const deviceLocationInfo = this.storeManager.storeGet('system.deviceLocationInfo');
-            let countryCode = 'CN';
 
             try {
-                if (deviceLocationInfo) {
-                    countryCode = deviceLocationInfo.countryCode;
-                }
-                const res = await checkUpdate(countryCode);
+                const res = await checkUpdate();
                 console.log('MainWindow: check-update: res', res);
                 return res;
             } catch (error) {

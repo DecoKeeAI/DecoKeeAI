@@ -757,12 +757,6 @@ export default {
             window.aiManager.updateSupportedModels(this.supportedAIModels);
             this.$message.success(this.$t('settings.add') + ' ' + this.$t('success'));
         },
-        handleUpdateModelName(modelValue, modelName) {
-            console.log('AISettings: handleUpdateModelName: modelValue: ', modelValue, ' ModelName: ', modelName);
-            console.log('AISettings: handleUpdateModelName: supportedAIModels: ', this.supportedAIModels);
-
-            // window.aiManager.updateSupportedModels(this.supportedAIModels);
-        },
         renameClicked() {
 
             this.supportedAIModels.forEach(modelGroup => {

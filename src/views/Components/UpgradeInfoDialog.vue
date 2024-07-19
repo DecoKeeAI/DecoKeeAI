@@ -30,7 +30,6 @@
 </template>
 
 <script>
-import { updateConfigs } from '@/plugins/VersionHelper';
 import { ipcRenderer } from 'electron';
 
 const remote = require('@electron/remote');
@@ -45,17 +44,19 @@ export default {
             showDownloading: false,
             downloadedProgress: 0,
             downloadFilePath: '',
+            downloadUrlPrefix: ''
         };
     },
     methods: {
         hide() {
             this.showDownloading = false;
         },
-        show(newVersion) {
+        show(newVersion, downloadUrlPrefix) {
             console.log('Have new version: ', newVersion);
             this.newVersionNum = newVersion;
             this.dialogVisible = true;
             this.showDownloading = false;
+            this.downloadUrlPrefix = downloadUrlPrefix;
 
             console.log('UpgradeInfoDialog show');
             ipcRenderer.on('downloading', (event, args) => this.handleUpgradeProgress(event, args));
@@ -123,14 +124,7 @@ export default {
                 .resolve(installPath, '..', 'resources', 'app.zip');
             console.log('checkForUpdates: rootDir: ', this.downloadFilePath);
 
-            const deviceLocationInfo = window.store.storeGet('system.deviceLocationInfo');
-            let countryCode = 'CN';
-
-            if (deviceLocationInfo) {
-                countryCode = deviceLocationInfo.countryCode;
-            }
-
-            let downloadUrl = (countryCode === 'CN' ? updateConfigs.cnDownloadUrlPrefix : updateConfigs.downloadUrlPrefix) + this.newVersionNum;
+            let downloadUrl = this.downloadUrlPrefix + this.newVersionNum;
 
             let platInfo;
             platInfo = remote.getGlobal('platform');

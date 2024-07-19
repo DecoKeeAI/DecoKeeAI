@@ -158,7 +158,7 @@ export default {
                     return;
                 }
 
-                this.$refs.upgradeInfoDialog.show(res.version);
+                this.$refs.upgradeInfoDialog.show(res.version, res.downloadUrlPrefix);
             }, 500);
         },
     },
