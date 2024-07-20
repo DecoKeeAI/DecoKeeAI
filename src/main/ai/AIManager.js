@@ -35,7 +35,6 @@
  */
 import XFYAdapter from '@/main/ai/Connector/XFYAdapter';
 import OpenAIAdapter from '@/main/ai/Connector/OpenAIAdapter';
-import logger from '@/plugins/logOutput';
 import Constants from '@/utils/Constants';
 import {app, clipboard, ipcMain, shell} from 'electron';
 import {
