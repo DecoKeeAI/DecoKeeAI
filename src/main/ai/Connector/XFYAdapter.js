@@ -267,7 +267,7 @@ class XFYAdapter {
         }
 
         try {
-            return await awaitWithTimeout(this._sendChatMessage(requestId, params), 60000);
+            return await awaitWithTimeout(this._sendChatMessage(requestId, params), AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
         } catch (err) {
             console.error('XFYAdapter: sendChatMessage: error: ', err);
             this._resetChatProcess();

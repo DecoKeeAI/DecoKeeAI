@@ -179,6 +179,28 @@
                         </el-tooltip>
                     </el-form-item>
                 </template>
+                <template v-else-if="aiModelType.startsWith('Coze-')">
+                    <el-form-item :label="$t('settings.useDekiePrompt')">
+                        <el-switch v-model="useDekiePrompt" />
+
+                        <el-tooltip placement="top" style="margin-top: 8px">
+                            <div slot="content" style="white-space: pre-wrap; line-height: 20px">
+                                {{ $t('settings.useDekiePromptHint') }}
+                            </div>
+                            <i class="el-icon-question" style="margin-left: 24px"></i>
+                        </el-tooltip>
+                    </el-form-item>
+                    <el-form-item label="Bot ID">
+                        <el-input v-model="customModelName" clearable style="width: 191px"></el-input>
+
+                        <el-tooltip placement="top" style="margin-top: 8px">
+                            <div slot="content" style="white-space: pre-wrap; line-height: 20px">
+                                <el-link href="https://www.volcengine.com/docs/82379/1267885">{{ $t('settings.cozeModelHint') }}</el-link>
+                            </div>
+                            <i class="el-icon-question" style="margin-left: 24px"></i>
+                        </el-tooltip>
+                    </el-form-item>
+                </template>
             </template>
             <el-form-item
                 v-if="customModelConfigData.supportWebSearch"
@@ -367,15 +389,15 @@ export default {
         this.supportedAIModels = window.aiManager.getAllSupportedModels();
 
         this.supportedAIModels = this.supportedAIModels.map(modelGroup => {
-            const newObj = deepCopy(modelGroup);
-            if (newObj.label === 'Custom' || newObj.label === 'HuoShan') {
-                newObj.models.push({
-                    label: newObj.label,
+            const newGroupObj = deepCopy(modelGroup);
+            if (newGroupObj.label === 'Custom' || newGroupObj.label === 'HuoShan' || newGroupObj.label === 'Coze') {
+                newGroupObj.models.push({
+                    label: newGroupObj.label,
                     isAddAction: true,
                 });
             }
 
-            return newObj;
+            return newGroupObj;
         });
 
         console.log('AISettings: Created load modelType: ', modelType);
@@ -500,7 +522,11 @@ export default {
                             this.useDekiePrompt = true;
                         }
                         window.store.storeSet(aiConfigKeyPrefix + '.useDekiePrompt', this.useDekiePrompt);
-
+                    } else if (this.aiModelType.startsWith('Coze-')) {
+                        if (this.useDekiePrompt === undefined) {
+                            this.useDekiePrompt = true;
+                        }
+                        window.store.storeSet(aiConfigKeyPrefix + '.useDekiePrompt', this.useDekiePrompt);
                     }
 
                     window.store.storeSet(aiConfigKeyPrefix + '.baseUrl', this.customUrlAddr);
@@ -578,6 +604,11 @@ export default {
                         } else  {
                             this.customModelConfigData.huoshanType = 'inference';
                         }
+                        this.useDekiePrompt = window.store.storeGet(aiConfigKeyPrefix + '.useDekiePrompt');
+                        if (this.useDekiePrompt === undefined) {
+                            this.useDekiePrompt = true;
+                        }
+                    } else if (this.aiModelType.startsWith('Coze-')) {
                         this.useDekiePrompt = window.store.storeGet(aiConfigKeyPrefix + '.useDekiePrompt');
                         if (this.useDekiePrompt === undefined) {
                             this.useDekiePrompt = true;

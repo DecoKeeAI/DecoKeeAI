@@ -40,7 +40,7 @@
 <script>
 import OpenAI from 'openai';
 import { ipcRenderer } from 'electron';
-import { OPEN_AI_IPC_MESSAGE } from '@/main/ai/ConstantData';
+import {AI_CONSTANT_CONFIG, OPEN_AI_IPC_MESSAGE} from '@/main/ai/ConstantData';
 import {deepCopy} from "@/utils/ObjectUtil";
 
 export default {
@@ -200,7 +200,7 @@ export default {
 
                 let chatFrameResponse, chatContext;
                 try {
-                    chatContext = await that.awaitWithTimeout(openai.chat.completions.create(params), 60000);
+                    chatContext = await that.awaitWithTimeout(openai.chat.completions.create(params), AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
                     chatFrameResponse = chatContext.choices[0].message.content;
                 } catch (err) {
                     if (err.code === 'json_validate_failed') {

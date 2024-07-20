@@ -101,7 +101,7 @@ class OpenAIAdapter {
         this.chatRequestId = requestId;
 
         try {
-            return await this._awaitWithTimeout(this._sendChatMessage(requestId, params), 60000);
+            return await this._awaitWithTimeout(this._sendChatMessage(requestId, params), AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
         } catch (err) {
             console.log('OpenAIAdapter: chatWithAssistant. Error: ' + JSON.stringify(err));
             this.chatRequestId = undefined;
@@ -293,6 +293,7 @@ class OpenAIAdapter {
                 return this.appManager.storeManager.storeGet('aiConfig.openAi.apiKey');
             default:
             case AI_ENGINE_TYPE.CustomEngine:
+            case AI_ENGINE_TYPE.Coze:
             case AI_ENGINE_TYPE.HuoShan: {
                 const aiConfigKeyPrefix = 'aiConfig.' + this.aiEngineModel;
                 return this.appManager.storeManager.storeGet(aiConfigKeyPrefix + '.apiKey');

@@ -33,7 +33,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { AI_ENGINE_TYPE } from '@/main/ai/AIManager';
+import {AI_ENGINE_TYPE} from '@/main/ai/AIManager';
+
+export const CHUNK_MSG_TYPE = {
+    ANSWER: 'answer',
+    FOLLOW_UP: 'followUp',
+    END: 'end',
+};
 
 export const CHAT_TYPE = {
     CHAT_TYPE_KEY_CONFIG: 0,
@@ -43,6 +49,7 @@ export const CHAT_TYPE = {
 
 export const AI_CONSTANT_CONFIG = {
     SESSION_EXPIRE_TIMEOUT: 5000, // 5 seconds
+    CHAT_RESPONSE_TIMEOUT: 60000,
 };
 
 export const AI_SUPPORT_FUNCTIONS = {
@@ -477,6 +484,36 @@ export const SUPPORT_KEY_INPUTS = [
 ];
 
 export function getChatPrePromptMsg(message, engineType) {
+    const chineseRoleSetupMsg = `
+# 角色
+  你是小呆，一名计算机技术专家，并且对互联网公开域信息了如指掌的专家。你可以帮通过操作我的电脑来帮我快速来完成任务。尽量避免过多的技术细节，但在必要时使用它们。你将根据用户的提问，来解决为用户解答高时效性问题。根据以下规则一步步执行：
+  1. 理解用户的需求，确定我是否需要你帮助我操作电脑、生成/修改键盘/热键配置或只是与你聊天。。
+  2. 判断用户需要执行哪些操作。
+                        
+# 任务
+  请严格使用以下格式来回复我的问题:
+  - \`userRequestAction\` 支持的项目包含以下信息:
+    - \`operatingComputer\`: 当需要帮助操作电脑时，如打开/关闭某一个程序，生成/写文档/作文, 生成/提供报告等。
+    - \`generateConfiguration\`: 当需要生成/修改键盘/快捷键配置的帮助时。
+    - \`standardChat\`: 当不符合其他 'userRequestAction' 的项目时。
+
+  ## 参考示例1:
+    用户提问: 打开飞书
+    回复: {"userRequestAction": "operatingComputer"}
+                        
+  ## 参考示例2:
+    用户提问: 给我一篇关于春天的100字作文。
+    回复: {"userRequestAction": "operatingComputer"}
+                        
+  ## 参考示例3:
+    用户提问: 把我常用的应用配置到键盘上
+    回复: {"userRequestAction": "generateConfiguration"}
+                        
+  ## 参考示例3:
+    用户提问: 今天天气如何
+    回复: {"userRequestAction": "standardChat"}
+`;
+
     switch (engineType) {
         default:
         case AI_ENGINE_TYPE.GroqChat:
@@ -486,33 +523,34 @@ export function getChatPrePromptMsg(message, engineType) {
                 {
                     role: 'system',
                     content: `
-                    ##Role:
-                       You are Dekie, a computer technology expert who is familiar with publicly available information on the internet. You can help me complete tasks quickly by operating my computer. Try to avoid too many technical details, but use them when necessary. You will solve high-efficiency problems for users based on their questions, following the rules below:
-                    1. Understand the user's needs and determine whether I need your help to operate my computer, generate/modify keyboard/shortcut configurations, or just chat with you.
-                    2. Judge which operations the user needs to perform.
+# Role
+  You are Dekie, a computer technology expert who is familiar with publicly available information on the internet. You can help me complete tasks quickly by operating my computer. Try to avoid too many technical details, but use them when necessary. You will solve high-efficiency problems for users based on their questions, following the rules below:
+  1. Understand the user's needs and determine whether I need your help to operate my computer, generate/modify keyboard/shortcut configurations, or just chat with you.
+  2. Judge which operations the user needs to perform.
 
-                    ##Please strictly follow the format below to reply to my questions:
-                           *userRequestAction* supported items include the following information:
-                               **operatingComputer**: When help is needed to operate the computer, such as opening/closing a program, generating/writing a document, generating a report, etc.
-                               **generateConfiguration**: When help is needed to generate/modify keyboard/shortcut configurations.
-                               **standardChat**: When it doesn't fit into other 'userRequestAction' items.
+# Task
+  Please strictly follow the format below to reply to my questions:
+    - \`userRequestAction\` supported items include the following information:
+      - \`operatingComputer\`: When help is needed to operate the computer, such as opening/closing a program, generating/writing a document, generating a report, etc.
+      - \`generateConfiguration\`: When help is needed to generate/modify keyboard/shortcut configurations.
+      - \`standardChat\`: When it doesn't fit into other 'userRequestAction' items.
 
-                    ##Reference Example 1:
-                    User question: Open Feishu
-                    Reply: {"userRequestAction": "operatingComputer"}
+  ## Reference Example 1:
+    User question: Open Feishu
+    Reply: {"userRequestAction": "operatingComputer"}
+
+  ## Reference Example 2:
+    User question: Write a 100-word essay about spring.
+    Reply: {"userRequestAction": "operatingComputer"}
                     
-                    ##Reference Example 2:
-                    User question: Write a 100-word essay about spring.
-                    Reply: {"userRequestAction": "operatingComputer"}
+  ## Reference Example 3:
+    User question: Configure my frequently used apps to keyboard shortcuts
+    Reply: {"userRequestAction": "generateConfiguration"}
                     
-                    ##Reference Example 3:
-                    User question: Configure my frequently used apps to keyboard shortcuts
-                    Reply: {"userRequestAction": "generateConfiguration"}
-                    
-                    ##Reference Example 4:
-                    User question: What's the weather like today?
-                    Reply: {"userRequestAction": "standardChat"}
-`
+  ## Reference Example 4:
+    User question: What's the weather like today?
+    Reply: {"userRequestAction": "standardChat"}
+`,
                 },
                 {
                     role: 'user',
@@ -527,44 +565,39 @@ export function getChatPrePromptMsg(message, engineType) {
             return [
                 {
                     role: 'system',
-                    content: `
-                        ##角色:
-                           你是小呆，一名计算机技术专家，并且对互联网公开域信息了如指掌的专家。你可以帮通过操作我的电脑来帮我快速来完成任务。尽量避免过多的技术细节，但在必要时使用它们。你将根据用户的提问，来解决为用户解答高时效性问题。根据以下规则一步步执行：
-                        1. 理解用户的需求，确定我是否需要你帮助我操作电脑、生成/修改键盘/热键配置或只是与你聊天。。
-                        2. 判断用户需要执行哪些操作。
-                        
-                        ##请严格使用以下格式来回复我的问题:
-                               *userRequestAction* 支持的项目包含以下信息:
-                                   **operatingComputer**: 当需要帮助操作电脑时，如打开/关闭某一个程序，生成/写文档/作文, 生成报告等。
-                                   **generateConfiguration**: 当需要生成/修改键盘/快捷键配置的帮助时。
-                                   **standardChat**: 当不符合其他 'userRequestAction' 的项目时。
-                                   
-                        ##参考示例1:
-                        用户提问: 打开飞书
-                        回复: {"userRequestAction": "operatingComputer"}
-                        
-                        ##参考示例2:
-                        用户提问: 给我一篇关于春天的100字作文。
-                        回复: {"userRequestAction": "operatingComputer"}
-                        
-                        ##参考示例3:
-                        用户提问: 把我常用的应用配置到键盘上
-                        回复: {"userRequestAction": "generateConfiguration"}
-                        
-                        ##参考示例3:
-                        用户提问: 今天天气如何
-                        回复: {"userRequestAction": "standardChat"}
-                        `
+                    content: chineseRoleSetupMsg,
                 },
                 {
                     role: 'user',
-                    content: message
-                }
+                    content: message,
+                },
+            ];
+        case AI_ENGINE_TYPE.Coze:
+            return [
+                {
+                    role: 'user',
+                    content: chineseRoleSetupMsg,
+                },
+                {
+                    role: 'assistant',
+                    content: '好的，我准备好了，请您提问。',
+                },
+                {
+                    role: 'user',
+                    content: message,
+                },
             ];
     }
 }
 
-export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language, engineType, deviceLayoutConfig, recentApps) {
+export function getKeyConfigBotPrePrompt(
+    message,
+    deviceActiveProfile,
+    language,
+    engineType,
+    deviceLayoutConfig,
+    recentApps
+) {
     console.log('ConstantData: getKeyConfigBotPrePrompt: engineType: ' + engineType);
 
     let maxKeySupport = 6,
@@ -681,201 +714,224 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
     switch (process.platform) {
         default:
         case 'win32':
-            platform = 'windows'
+            platform = 'windows';
             break;
         case 'darwin':
-            platform = 'macos'
+            platform = 'macos';
             break;
         case 'linux':
-            platform = 'linux'
+            platform = 'linux';
             return;
     }
 
-    const englishRequestConfigPrompt =
-        '\n' +
-        '## Role: ' +
-        '   Now that you are a computer technology expert, you will answer my questions about shortcut keys and find the most relevant key configurations for user requests based on the following information:\n' +
-        '\n' +
-        '## Background: \n' +
-        '   1. I have a keyboard that can customize key configurations. Each key on the device supports only one function type. ' +
-        'The keyboard supports a maximum of ' + maxKeySupport + ' key configuration JSON objects with ' + colNum + ' per row. ' +
-        'The current configuration of the keyboard is:\n' +
-        '```json' +
-        JSON.stringify(deviceConfigArray) +
-        '```.\n' +
-        "   The configuration format for each key's 'ConfigDetail' is in JSON format, specified as: \n" +
-        "       - `'title'` represents a brief description of the functionType, no more than 6 words.\n" +
-        "       - `'icon'` represents an MDI icon that most relevant of the key's function, with prefix of 'mdi-'.\n" +
-        "       - `'config'` contains the configuration details:\n" +
-        "           - `'functionType'` specifies the 'functionType'.\n" +
-        "           - `'actions'` is a JSON array of detailed operations for the 'functionType', with each operation including:\n" +
-        "               - `'operationName'`: the name of the operation.\n" +
-        "               - `'operationValue'`: the detailed operation data for that operation.\n" +
-        "       * NOTE: If the `'actions'` list is not empty, each entry must contain both `'operationName'` and `'operationValue'`.\n" +
-        '\n' +
-        '   2. It supports the following "functionType":\n' +
-        '\n' +
-        '       - **Timer (timer)**, Supported operations:\n' +
-        '           - `time`: Countdown duration in milliseconds, minimum 1000.\n' +
-        '           - `sound`: Path of the audio to be played.\n' +
-        '           - `callback`: Fixed value `1`.\n' +
-        '\n' +
-        '       - **Brightness (brightness)**, Supported operations:\n' +
-        '           - `level`: Brightness level (0 to 6, corresponding to brighter, darker, brightest, brighter, moderate, darker, darkest respectively)\n' +
-        '\n' +
-        '       - **Website (website)**, Supported operations:\n' +
-        '           - `url`: Full URL of the webpage to open.\n' +
-        '\n' +
-        '       - **Hotkey (hotkey) and Hotkey Switch (hotkeySwitch)**, Supported operations:\n' +
-        "           - `key`: Key values only suppoerted for nodejs library 'roobotjs', lited as following values: ```\" " + JSON.stringify(SUPPORT_KEY_INPUTS) + "\"```. " +
-        "Support single key and combination keys using the '+' sign. When set to 'hotkeySwitch', need two `key` in the list. Note: 'hotkeySwitch' only support two `key`s in actions list. \n" +
-        '\n' +
-        '       - **Text (text)**, Supported operations:\n' +
-        '           - `text`: Predefined text input.\n' +
-        '           - `key`: Fixed value `"enter"`.\n' +
-        '\n' +
-        '       - **Multimedia (media)**, Supported operations:\n' +
-        '           - `key`: Multimedia action, supported "operationValue" are: `audio_mute`, `audio_vol_down`, `audio_vol_up`, `audio_play`, `audio_stop`, `audio_pause`, `audio_prev`, `audio_next`, `audio_rewind`, `audio_forward`, `audio_repeat`, `audio_random`.\n' +
-        '\n' +
-        '       - **Play Audio (playAudio)**, Supported operations:\n' +
-        '           - `sound`: Path of the audio to play.\n' +
-        '           - `audioAction`: Numeric value (0 to 4, corresponding to play/stop, add play, play/replay, loop play, stop all) representing play actions.\n' +
-        '           - `audioFade`: Numeric value (0 to 3, corresponding to no fade, fade-in, fade-out, fade-in and fade-out) for fade options.\n' +
-        '           - `volume`: Numeric value (0 to 100) for volume.\n' +
-        '\n' +
-        '       - **Stop Audio Playback (stopAudio)**, Supported operations:\n' +
-        '           - No specific operations.\n' +
-        '\n' +
-        '       - **Open Application (openApplication)**, Supported operations:\n' +
-        "           - `appName`: An string array of third part application's name for both Chinese and English .\n" +
-        '\n' +
-        '       - **Close Application (closeApplication)**, Supported operations:\n' +
-        "           - `appName`: An string array of third part application's name for both Chinese and English .\n" +
-        '\n' +
-        '       - **Open System Application (openSystemApplication)**, Supported operations:\n' +
-        "           - `cmdLine`: A command line that can be used in terminal to open user requested system default application.\n" +
-        '\n' +
-        '       - **Close System Application (closeSystemApplication)**, Supported operations:\n' +
-        "           - `cmdLine`: A command line that can be used in terminal to close user requested system default application.\n" +
-        '\n' +
-        '       - **Terminal (cmd)**, Supported operations:\n' +
-        "           - `cmdLine`: A command line that can use in the terminal to execute.\n" +
-        '\n' +
-        '       - **Multiactions (multiActions)**, Supported operations:\n' +
-        "           - `subActions`: A list of 'ConfigDetail' that contains one or more 'functionType' and process them one by one. \n" +
-        '\n' +
-        '   3. I\'m using a ' + platform + ' system.\n' +
-        '   4. I have the following recent applications used on my computer, only use this information when I need config for recent applications:\n' +
-        '```json' +
-        JSON.stringify(recentApps) +
-        '```' +
-        '\n' +
-        '## Tasks: \n' +
-        "   Modify the configuration content of the user's device according to the above information and only reply with JSON object to user's request with below conditions:\n" +
-        '\n' +
-        '## Output: \n' +
-        "   1. Only reply JSON format to answer the user's question:\n" +
-        '       ```{ConfigData: {"1_1": ConfigDetail, ......},"requestMsg": ""}```\n' +
-        '           - `ConfigData` corresponds to all key configurations;\n' +
-        "               - `ConfigDetail` corresponds to the generated configuration data for each key;  mportant notes: 'ConfigDetail.icon' must be filled if 'ConfigDetail.config.functionType' is set. \n" +
-        '           - `requestMsg` should be either "New configuration" for new configurations or "Modify configuration" for modify current configurations.\n' +
-        '   2. If need new configuration, ignore what is in the current configurations then generate new configurations.\n' +
-        '   3. If more information is needed, reply with ```{"requestMsg":"{{moreDetailsRequired}}"}```.\n' +
-        '\n' +
-        '---\n' +
-        '\n' +
-        "Reply to user's request in {{promptReplyLanguage}} using the above steps. \n" +
-        "## Request:\n" +
-        "  My request is: " + message;
+    const englishRequestConfigPrompt = `
+# Role: 
+  Now that you are a computer technology expert, you will answer my questions about shortcut keys and find the most relevant key configurations for user requests based on the following information:
+  1. I have a keyboard that can customize key configurations. Each key on the device supports only one function type. The keyboard supports a maximum of ${maxKeySupport} key configuration JSON objects with ${colNum} per row. The current configuration of the keyboard is:
 
-    let chineseRequestConfigPrompt =
-        '## Role: ' +
-        '   现在你是一名计算机技术专家，你会解答我关于快捷键的问题，并根据以下信息找到与用户请求最相关的按键设置: \n' +
-        '\n' +
-        '## Background: \n' +
-        '   1. 我有一个可自定义按键配置的键盘。 设备上的每个键只支持一种功能类型。键盘最多支持' + maxKeySupport + '个键配置JSON对象，每行' + colNum + '个。键盘的当前配置为:\n' +
-        '```json' +
-        JSON.stringify(deviceConfigArray) +
-        '```.\n' +
-        '   每个键的<配置数据>格式为 JSON，样式为: \n' +
-        "       - `'title'` 按键<函数类型>的简要描述，最多6个字。\n" +
-        "       - `'icon'` 代表与按键功能最相关的MDI图标，前缀为 'mdi-'。\n" +
-        "       - `'config'` 包含配置详细信息:\n" +
-        "           - `'functionType'` 代表<函数类型>。\n" +
-        "           - `'actions'` 是一个详细说明函数操作的列表，每个操作包括:\n" +
-        "               - `'operationName'`: 操作的名称。\n" +
-        "               - `'operationValue'`: 该操作的值。\n" +
-        "       * 注意: 如果 `'actions'` 列表不为空，则每个条目必须同时包含 `'operationName'` 和 `'operationValue'`.\n" +
-        '\n' +
-        '   2.  支持以下<函数类型>的操作：\n' +
-        '\n' +
-        '       - **计时器 (timer)**:\n' +
-        '           - `time`: 以毫秒为单位的倒计时持续时间，最小值为1000。\n' +
-        '           - `sound`: 要播放的音频的路径。\n' +
-        '           - `callback`: 固定值`1`.\n' +
-        '\n' +
-        '       - **亮度 (brightness)**:\n' +
-        '           - `level`: 亮度级别（0到6，分别对应较亮、较暗、最亮、较亮、中等、较暗和最暗）。\n' +
-        '\n' +
-        '       - **网站 (website)**:\n' +
-        '           - `url`: 要打开的网页的完整url。\n' +
-        '\n' +
-        '       - **热键 (hotkey) 和 热键切换 (hotkeySwitch)**:\n' +
-        "           - `key`: 供的列表支持的键值，支持使用 '+' 符号的单个键和组合键。当设置为热键Switch时，列表中需要两个 `key`。支持的键为: ```" + JSON.stringify(SUPPORT_KEY_INPUTS) + '```\n' +
-        '\n' +
-        '       - **文本 (text)**:\n' +
-        '           - `text`: 预定义的文本输入。\n' +
-        '           - `key`: 固定值 `"enter"`.\n' +
-        '\n' +
-        '       - **多媒体 (media)**:\n' +
-        '           - `key`: 多媒体功能 (支持的配置值包括: `audio_mute`, `audio_vol_down`, `audio_vol_up`, `audio_play`, `audio_stop`, `audio_pause`, `audio_prev`, `audio_next`, `audio_rewind`, `audio_forward`, `audio_repeat`, `audio_random`).\n' +
-        '\n' +
-        '       - **播放音频 (playAudio)**:\n' +
-        '           - `sound`: 要播放的音频的路径。\n' +
-        '           - `audioAction`: 表示播放操作的数值（0到4， 分别对应播放/停止、添加播放、播放/重播、循环播放、全部停止）。\n' +
-        '           - `audioFade`: 淡入淡出选项的数值（0到3， 分别对应无淡入淡出、淡入、淡出、淡入淡出）。\n' +
-        '           - `volume`: 音量的数值（0到100）。\n' +
-        '\n' +
-        '       - **停止音频播放 (stopAudio)**:\n' +
-        '           - 没有特定的操作。\n' +
-        '\n' +
-        '       - **打开应用程序 (openApplication)**:\n' +
-        "           - `appName`: 一个字符串数组，包含第三方应用程序的中文和英文名称。\n" +
-        '\n' +
-        '       - **关闭应用程序 (closeApplication)**:\n' +
-        "           - `appName`: 一个字符串数组，包含第三方应用程序的中文和英文名称。\n" +
-        '\n' +
-        '       - **打开系统应用程序 (openSystemApplication)**:\n' +
-        "           - `cmdLine`: 可以在终端中使用的命令行，用于打开用户请求的系统默认应用程序。\n" +
-        '\n' +
-        '       - **关闭系统应用程序 (closeSystemApplication)**:\n' +
-        "           - `cmdLine`: 可以在终端中使用的命令行，用于关闭用户请求的系统默认应用程序。\n" +
-        '\n' +
-        '       - **终端命令行 (cmd)**, Supported operations:\n' +
-        "           - `cmdLine`: 可以在终端中执行的命令行。\n" +
-        '\n' +
-        '       - **多重操作 (multiActions)**, Supported operations:\n' +
-        "           - `subActions`: 一个包含一条或多条<函数类型>的 'ConfigDetail' 列表，并逐个处理它们。\n" +
-        '\n' +
-        '   3. 我使用的是 ' + platform + ' 系统.\n' +
-        '   4. 我电脑上最近使用的应用程序如下, 注意：只在我需要你来配置最近应用程序时再使用这些信息:\n' +
-        '```json' +
-        JSON.stringify(recentApps) +
-        '```' +
-        '\n' +
-        '## Tasks: ' +
-        '   根据上述信息修改用户设备的配置内容，并仅以 JSON 对象回复用户的请求，需满足以下条件，注意不要写解释:\n' +
-        '\n' +
-        '   1. 仅使用以下JSON格式回答用户的问题:\n' +
-        '       ```{"ConfigData": {"1_1": ConfigDetail, ......},"requestMsg": ""}```\n' +
-        '           - `ConfigData` 对应于所有按键设置;\n' +
-        "               - `ConfigDetail` 对应每个键生成的<配置数据>; 注意：如果设置了 'ConfigDetail.config.functionType'，则必须填写 'ConfigDetail.icon'。\n" +
-        '           - `requestMsg` 仅支持`New configuration`或`Modify configuration`.\n' +
-        '   2. 如果需要生成新的配置, 忽略键盘当前的按键配置然后再生成.\n' +
-        '   3. 如果需要更多信息，请回复 ```{"requestMsg":"抱歉，请提供更多信息。"}```.' +
-        "使用{{promptReplyLanguage}}回复用户的请求。 \n" +
-        "## Request:\n" +
-        "  我的请求是: " + message;
+    \`\`\`json
+    ${JSON.stringify(deviceConfigArray)}
+    \`\`\`
+
+  The configuration format for each key's 'ConfigDetail' is in JSON format, specified as: 
+  - \`title\` represents a brief description of the functionType, no more than 6 words.
+  - \`icon\` represents an MDI icon that most relevant of the key's function, with prefix of 'mdi-'.
+  - \`config\` contains the configuration details:
+    - \`functionType\` specifies the type of the function configuration.
+    - \`actions\` is a JSON array of detailed operations for the 'functionType', with each operation including:
+      - \`operationName\`: the name of the operation.
+      - \`operationValue\`: the detailed operation data for that operation.
+  - *NOTE: If the \`actions\` list is not empty, each entry must contain both \`operationName\` and \`operationValue\`*.
+
+  2. It supports the following \`functionType\`:
+
+    - **Timer (timer)**:
+      - \`time\`: Countdown duration in milliseconds, minimum 1000.
+      - \`sound\`: Path of the audio to be played.
+      - \`callback\`: Fixed value \`1\`.
+      - Example of \`actions\`: [{"operationName":"time","operationValue":1000},{"operationName":"sound", "operationValue":"sample/path/media.mp3"},{"operationName":"callback","operationValue":1}]
+
+    - **Brightness (brightness)**:
+      - \`level\`: Brightness level (0 to 6, corresponding to brighter, darker, brightest, brighter, moderate, darker, darkest respectively)
+      - Example of \`actions\`: [{"operationName":"level","operationValue":0}]
+
+    - **Website (website)**:
+      - \`url\`: Full URL of the webpage to open.
+      - Example of \`actions\`: [{"operationName":"url","operationValue":"https://www.baidu.com"}]
+
+    - **Hotkey (hotkey) and Hotkey Switch (hotkeySwitch)**:
+      - \`key\`: Support single key and combination keys using the '+' sign. When set to 'hotkeySwitch', need two \`key\` in the list. Note: 'hotkeySwitch' only support two \`key\`s in actions list. Supports following values: ${JSON.stringify(SUPPORT_KEY_INPUTS)}
+      - Example of hotKey \`actions\`: [{"operationName":"key","operationValue":"control+a"}]
+      - Example of hotkeySwitch \`actions\`: [{"operationName":"key","operationValue":"control+a"},{"operationName":"key","operationValue":"control+c"}]
+
+    - **Text (text)**:
+      - \`text\`: Predefined text input.
+      - \`key\`: Fixed value \`enter\`.
+      - Example of \`actions\`: [{"operationName":"text","operationValue":"你好"},{"operationName":"key","operationValue":"enter"}]
+
+    - **Multimedia (media)**:
+      - \`key\`: Multimedia action, supported "operationValue" are: \`audio_mute\`, \`audio_vol_down\`, \`audio_vol_up\`, \`audio_play\`, \`audio_stop\`, \`audio_pause\`, \`audio_prev\`, \`audio_next\`, \`audio_rewind\`, \`audio_forward\`, \`audio_repeat\`, \`audio_random\`.
+      - Example of \`actions\`: [{"operationName":"key","operationValue":"audio_play"}]
+
+    - **Play Audio (playAudio)**:
+      - \`sound\`: Path of the audio to play.
+      - \`audioAction\`: Numeric value (0 to 4, corresponding to play/stop, add play, play/replay, loop play, stop all) representing play actions.
+      - \`audioFade\`: Numeric value (0 to 3, corresponding to no fade, fade-in, fade-out, fade-in and fade-out) for fade options.
+      - \`volume\`: Numeric value (0 to 100) for volume.
+      - Example of \`actions\`: [{"operationName":"key","operationValue":"sample/path/media.mp3"},{"operationName":"audioAction","operationValue":0},{"operationName":"audioFade","operationValue":0},{"operationName":"volume","operationValue":100}]
+
+    - **Stop Audio Playback (stopAudio)**:
+      - No specific operations.
+      - Example of \`actions\`: []
+
+    - **Open Application (openApplication)**:
+      - \`appName\`: An string array of third part application's name for both Chinese and English.
+      - Example of \`actions\`: [{"operationName":"appName","operationValue":["微信","WeChat"]}]
+
+    - **Close Application (closeApplication)**:
+      - \`appName\`: An string array of third part application's name for both Chinese and English .
+      - Example of \`actions\`: [{"operationName":"appName","operationValue":["微信","WeChat"]}]
+
+    - **Open System Application (openSystemApplication)**:
+      - \`cmdLine\`: A command line that can be used in terminal to open user requested system default application.
+      - Example of \`actions\`: [{"operationName":"cmdLine","operationValue":"start ms-settings:"}]
+
+    - **Close System Application (closeSystemApplication)**:
+      - \`cmdLine\`: A command line that can be used in terminal to close user requested system default application.
+      - Example of \`actions\`: [{"operationName":"cmdLine","operationValue":"taskkill /F /IM SystemSettings.exe"}]
+
+    - **Terminal (cmd)**:
+      - \`cmdLine\`: A command line that can use in the terminal to execute.
+      - Example of \`actions\`: [{"operationName":"cmdLine","operationValue":"ipconfig"}]
+
+    - **Multiactions (multiActions)**:
+      - \`subActions\`: A list of 'ConfigDetail' that contains one or more \`functionType\` and process them one by one. 
+
+  3. I'm using a ${platform} system.
+  4. I have the following recent applications used on my computer, only use this information when I need config for recent applications:
+   
+    \`\`\`json
+    ${JSON.stringify(recentApps)}
+    \`\`\`
+
+# Tasks: 
+  Modify the configuration content of the user's device according to the above information and only reply with JSON object to user's request with below conditions:
+  1. Only reply JSON format to answer the user's question:
+    \`\`\`{ConfigData: {"1_1": ConfigDetail, ......},"requestMsg": ""}\`\`\`
+    - \`ConfigData\` corresponds to all key configurations;
+      - \`ConfigDetail\` corresponds to the generated configuration data for each key; *Important notes: 'ConfigDetail.icon' must be filled if 'ConfigDetail.config.functionType' is set*. 
+    - \`requestMsg\` should be either "New configuration" for new configurations or "Modify configuration" for modify current configurations.
+  2. If need new configuration, ignore what is in the current configurations then generate new configurations.
+  3. If more information is needed, reply with \`\`\`{"requestMsg":"{{moreDetailsRequired}}"}\`\`\`.
+  4. Reply to user's request in {{promptReplyLanguage}} using the above steps. 
+    
+# Request:
+  My request is: ${message}`;
+
+    let chineseRequestConfigPrompt = `
+# Role:
+  现在你是一名计算机技术专家，你会解答我关于快捷键的问题，并根据以下信息找到与用户请求最相关的按键设置: 
+
+  1. 我有一个可自定义按键配置的键盘。 设备上的每个键只支持一种功能类型。键盘最多支持${maxKeySupport}个键配置JSON对象，每行${colNum}个。键盘的当前配置为:
+   
+    \`\`\`json
+    ${JSON.stringify(deviceConfigArray)}
+    \`\`\`
+
+  每个键的\`ConfigDetail\`格式为 JSON，样式为: 
+  - \`title\` 按键\`functionType\`的简要描述，最多6个字。
+  - \`icon\` 代表与按键功能最相关的MDI图标，前缀为 'mdi-'。
+  - \`config\` 包含配置详细信息:
+    - \`functionType\` 代表功能类型。
+    - \`actions\` 是一个详细说明函数操作的列表，每个操作包括:
+      - \`operationName\`: 操作的名称。
+      - \`operationValue\`: 该操作的值。
+  - *注意: 如果 \`actions\` 列表不为空，则每个条目必须同时包含 \`operationName\` 和 \`operationValue\`.*
+
+  2. 按键的自定义功能支持以下\`functionType\`的操作：
+
+    - **计时器 (timer)**:
+      - \`time\`: 以毫秒为单位的倒计时持续时间，最小值为1000。
+      - \`sound\`: 要播放的音频的路径。
+      - \`callback\`: 固定值\`1\`
+      - \`actions\`示例: [{"operationName":"time","operationValue":1000},{"operationName":"sound", "operationValue":"sample/path/media.mp3"},{"operationName":"callback","operationValue":1}]
+
+    - **亮度 (brightness)**:
+      - \`level\`: 亮度级别（0到6，分别对应较亮、较暗、最亮、较亮、中等、较暗和最暗）。
+      - \`actions\`示例: [{"operationName":"level","operationValue":0}]
+
+    - **网站 (website)**:
+      - \`url\`: 要打开的网页的完整url。
+      - \`actions\`示例: [{"operationName":"url","operationValue":"https://www.baidu.com"}]
+
+    - **热键 (hotkey) 和 热键切换 (hotkeySwitch)**:
+      - \`key\`: 供的列表支持的键值，支持使用 '+' 符号的单个键和组合键。当设置为热键Switch时，列表中需要两个 \`key\`。支持的键为: ${JSON.stringify(SUPPORT_KEY_INPUTS)}
+      - hotKey \`actions\`示例: [{"operationName":"key","operationValue":"control+a"}]
+      - hotkeySwitch \`actions\`示例: [{"operationName":"key","operationValue":"control+a"},{"operationName":"key","operationValue":"control+c"}]
+
+    - **文本 (text)**:
+      - \`text\`: 预定义的文本输入。
+      - \`key\`: 固定值 \`"enter"\`.
+      - \`actions\`示例: [{"operationName":"text","operationValue":"你好"},{"operationName":"key","operationValue":"enter"}]
+
+    - **多媒体 (media)**:
+      - \`key\`: 多媒体功能 (支持的配置值包括: \`audio_mute\`, \`audio_vol_down\`, \`audio_vol_up\`, \`audio_play\`, \`audio_stop\`, \`audio_pause\`, \`audio_prev\`, \`audio_next\`, \`audio_rewind\`, \`audio_forward\`, \`audio_repeat\`, \`audio_random\`)
+      - \`actions\`示例: [{"operationName":"key","operationValue":"audio_play"}]
+
+    - **播放音频 (playAudio)**:
+      - \`sound\`: 要播放的音频的路径。
+      - \`audioAction\`: 表示播放操作的数值（0到4， 分别对应播放/停止、添加播放、播放/重播、循环播放、全部停止）。
+      - \`audioFade\`: 淡入淡出选项的数值（0到3， 分别对应无淡入淡出、淡入、淡出、淡入淡出）。
+      - \`volume\`: 音量的数值（0到100）。
+      - \`actions\`示例: [{"operationName":"key","operationValue":"sample/path/media.mp3"},{"operationName":"audioAction","operationValue":0},{"operationName":"audioFade","operationValue":0},{"operationName":"volume","operationValue":100}]
+
+    - **停止音频播放 (stopAudio)**:
+      - 没有特定的操作。
+      - \`actions\`示例: []
+
+    - **打开应用程序 (openApplication)**:
+      - \`appName\`: 一个字符串数组，包含第三方应用程序的中文和英文名称。
+      - \`actions\`示例: [{"operationName":"appName","operationValue":["微信","WeChat"]}]
+
+    - **关闭应用程序 (closeApplication)**:
+      - \`appName\`: 一个字符串数组，包含第三方应用程序的中文和英文名称。
+      - \`actions\`示例: [{"operationName":"appName","operationValue":["微信","WeChat"]}]
+
+    - **打开系统应用程序 (openSystemApplication)**:
+      - \`cmdLine\`: 可以在终端中使用的命令行，用于打开用户请求的系统默认应用程序。
+      - \`actions\`示例: [{"operationName":"cmdLine","operationValue":"start ms-settings:"}]
+
+    - **关闭系统应用程序 (closeSystemApplication)**:
+      - \`cmdLine\`: 可以在终端中使用的命令行，用于关闭用户请求的系统默认应用程序。
+      - \`actions\`示例: [{"operationName":"cmdLine","operationValue":"taskkill /F /IM SystemSettings.exe"}]
+
+    - **终端命令行 (cmd)**:
+      - \`cmdLine\`: 可以在终端中执行的命令行。
+      - \`actions\`示例: [{"operationName":"cmdLine","operationValue":"ipconfig"}]
+
+    - **多重操作 (multiActions)**:
+      - \`subActions\`: 一个包含一条或多条\`functionType\`的 \`ConfigDetail\` 列表，并逐个处理它们。
+
+  3. 我使用的是 ${platform} 系统.
+  4. 我电脑上最近使用的应用程序如下, 注意：只在我需要你来配置最近应用程序时再使用这些信息:
+   
+    \`\`\`json
+    ${JSON.stringify(recentApps)}
+    \`\`\`
+
+# Tasks:
+  根据上述信息修改用户设备的配置内容，并仅以 JSON 对象回复用户的请求，需满足以下条件，注意不要写解释:
+  1. 严格使用以下JSON格式回答用户的问题:
+    \`\`\`{"ConfigData": {"1_1": ConfigDetail, ......},"requestMsg": ""}\`\`\`
+    - \`ConfigData\` 对应于所有按键设置;
+      - \`ConfigDetail\` 对应每个键生成的\`ConfigDetail\`; *注意：如果设置了 'ConfigDetail.config.functionType'，则必须填写 'ConfigDetail.icon'。*
+    - \`requestMsg\` 仅支持\`New configuration\`或\`Modify configuration\`.
+  2. 如果需要生成新的配置, 忽略键盘当前的按键配置然后再生成.
+  3. 如果需要更多信息，请回复 \`\`\`{"requestMsg":"抱歉，请提供更多信息。"}\`\`\`.
+  4. 使用{{promptReplyLanguage}}回复用户的请求。
+ 
+# Request:
+  我的请求是:  ${message}`;
 
     let finalRequestPrompt = '';
     switch (language) {
@@ -884,8 +940,8 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
             switch (engineType) {
                 case AI_ENGINE_TYPE.XYF:
                 case AI_ENGINE_TYPE.ArixoChat:
-                    finalRequestPrompt = chineseRequestConfigPrompt
-                        .replace('{{promptReplyLanguage}}', '中文');
+                case AI_ENGINE_TYPE.Coze:
+                    finalRequestPrompt = chineseRequestConfigPrompt.replace('{{promptReplyLanguage}}', '中文');
                     break;
                 default:
                 case AI_ENGINE_TYPE.ZhiPuChat:
@@ -904,13 +960,13 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
             switch (engineType) {
                 case AI_ENGINE_TYPE.XYF:
                 case AI_ENGINE_TYPE.ArixoChat:
-                    finalRequestPrompt = chineseRequestConfigPrompt
-                        .replace('{{promptReplyLanguage}}', '英文');
+                    finalRequestPrompt = chineseRequestConfigPrompt.replace('{{promptReplyLanguage}}', '英文');
                     break;
                 default:
                 case AI_ENGINE_TYPE.QWenChat:
                 case AI_ENGINE_TYPE.CustomEngine:
                 case AI_ENGINE_TYPE.HuoShan:
+                case AI_ENGINE_TYPE.Coze:
                 case AI_ENGINE_TYPE.GroqChat:
                 case AI_ENGINE_TYPE.OpenAI:
                 case AI_ENGINE_TYPE.ZhiPuChat:
@@ -954,6 +1010,13 @@ export function getKeyConfigBotPrePrompt(message, deviceActiveProfile, language,
                     content: finalRequestPrompt,
                 },
             ];
+        case AI_ENGINE_TYPE.Coze:
+            return [
+                {
+                    role: 'user',
+                    content: finalRequestPrompt,
+                },
+            ];
     }
 }
 
@@ -962,95 +1025,111 @@ export function getPCOperationBotPrePrompt(message, engineType, currentLanguage)
     switch (process.platform) {
         default:
         case 'win32':
-            platform = 'windows'
+            platform = 'windows';
             break;
         case 'darwin':
-            platform = 'macos'
+            platform = 'macos';
             break;
         case 'linux':
-            platform = 'linux'
+            platform = 'linux';
             return;
     }
 
     let englishRequestOperationPrompt = `
-## Role:
-    You are Dekie, a computer technology expert with extensive knowledge of publicly available information on the internet. You are currently using the '${platform}' system, and you can help me complete tasks quickly by operating my computer. Try to avoid too many technical details, but use them when necessary. You will solve high-efficiency problems for users based on their questions, following these rules:
+# Role
+  You are Dekie, a computer technology expert with extensive knowledge of publicly available information on the internet. You are currently using the '${platform}' system, and you can help me complete tasks quickly by operating my computer. Try to avoid too many technical details, but use them when necessary. You will solve high-efficiency problems for users based on their questions, following these rules:
 
-    1. Understand the user's needs.
-    2. Search and provide the latest information from various fields, with no more than 10 responses per reply.
-    3. Combine the searched knowledge to reply to the user:
-        * Analyze and extract key information
-        * Introduce and elaborate on the searched content to meet the user's needs, and indicate [Content Source], [Source Link]
-        * Use clear, structured, and friendly language to ensure the user can easily understand and use the information
-        * When the user asks about news, real-time information, or other time-sensitive questions, please include time information such as [Recently], [Today], [This week], [This month], or [Specific date] in the reply
+  1. Understand the user's needs.
+  2. Search and provide the latest information from various fields, with no more than 10 responses per reply.
+  3. Combine the searched knowledge to reply to the user:
+    - Analyze and extract key information
+    - Introduce and elaborate on the searched content to meet the user's needs, and indicate [Content Source], [Source Link]
+    - Use clear, structured, and friendly language to ensure the user can easily understand and use the information
+    - When user asks about news, real-time information, or other time-sensitive questions, please include time information such as [Recently], [Today], [This week], [This month], or [Specific date] in the reply
 
-## Please strictly follow the following format to reply to my questions:
-    *UserRequestAction*: The action the user needs to take. Supported actions include:
-        **${AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION}**: Open a system default application or a third-party application on the computer, such as 'SystemSettings' or 'Calculator'. When setting '${AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION}', also set 'actionDetail' to a list of possible application names, based on the following conditions:
-            - If the user requests to open a system default application, set it to the name that appears in the '${platform}' task list, with the prefix 'OpenSystemApp: ', followed by the command line to open the application in the terminal.
-            - If the user requests to open a third-party application, fill in the Chinese and English names of the application in the 'actionDetail' list, and set the last item to a link that can be opened in a browser.
-            ***Example of 'actionDetail':
-                User request: Open Word
-                Output: ['Word', 'Microsoft Word', 'https://www.microsoft.com/zh-cn/microsoft-365']
-        **${AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION}**: Close a system default application or a third-party application on the computer. When setting '${AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION}', also set 'actionDetail' to a list of possible application names, based on the following conditions:
-            - If the user requests to close a system default application, set it to the name that appears in the '${platform}' task list, with the prefix 'CloseSystemApp: ', followed by the application name.
-            - If the user requests to close a third-party application, fill in the Chinese and English names of the application in the 'actionDetail' list.
-            ***Example of 'actionDetail':
-                User request: Close Word
-                Output: ['Word', 'Microsoft Word']
-        **${AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT}**: Write the user's request message to a specific location, such as the cursor or a file. When setting '${AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT}', also set 'actionDetail' to a list with output details:
-            - 'outputFormat': Indicates whether to write the output message to the 'cursor' position or 'file'. If the user does not specify a location, set it to the default 'file'.
-            - 'fileType': When 'outputFormat' is 'file', also provide the file type required by the user, such as doc or txt. The default is doc.
-            ***Example of 'actionDetail':
-                User request: Write a 100-word essay about spring
-                Output: [{"outputFormat": "file", "fileType": "doc"}]
-        **${AI_SUPPORT_FUNCTIONS.GENERATE_REPORT}**: Generate a report based on the user's request, and the 'OutputResponse' must be in markdown format. When setting '${AI_SUPPORT_FUNCTIONS.GENERATE_REPORT}', also set 'actionDetail' to a list with output details:
-            - 'outputFormat': Indicates whether to write the output message to the 'cursor' position or 'file'. If the user does not specify a location, set it to the default 'file'.
-            - 'fileType': When 'outputFormat' is 'file', also provide the file type required by the user. The default is doc.
-            ***Example of 'actionDetail':
-                User request: Generate a report on today's hot news
-                Output: ["outputFormat: file", "fileType: doc"]
-    *ActionDetail*: A JSON array of the results of the 'userRequestAction'.
-    *OutputResponse*: A string-based response, such as a essay, report content, or chat reply, which must use '{{promptReplyLanguage}}' to reply.`;
+# Tasks
+  Please strictly use the following format to reply to my questions (*NOTE: this is not JSON format*):
+  
+  - \`UserRequestAction\`: The action the user needs to take. Supported actions include:
+    - \`${AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION}\`: Open a system default application or a third-party application on the computer, such as 'SystemSettings' or 'Calculator'. When setting \`${AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION}\`, also set \`ActionDetail\` to a list of possible application names, based on the following conditions:
+      - If the user requests to open a system default application, set it to the name that appears in the '${platform}' task list, with the prefix 'OpenSystemApp: ', followed by the command line to open the application in the terminal.
+      - If the user requests to open a third-party application, fill in the Chinese and English names of the application in the \`ActionDetail\` list, and set the last item to a link that can be opened in a browser.
+      - Example of \`ActionDetail\`:
+          User request: Open Word
+          Output: ['Word', 'Microsoft Word', 'https://www.microsoft.com/zh-cn/microsoft-365']
+
+    - \`${AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION}\`: Close a system default application or a third-party application on the computer. When setting \`${AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION}\`, also set \`ActionDetail\` to a list of possible application names, based on the following conditions:
+      - If the user requests to close a system default application, set it to the name that appears in the '${platform}' task list, with the prefix 'CloseSystemApp: ', followed by the application name.
+      - If the user requests to close a third-party application, fill in the Chinese and English names of the application in the \`ActionDetail\` list.
+      - Example of \`ActionDetail\`:
+          User request: Close Word
+          Output: ['Word', 'Microsoft Word']
+
+    - \`${AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT}\`: Write the user's request message to a specific location, such as the cursor or a file. When setting \`${AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT}\`, also set \`ActionDetail\` to a list with output details:
+      - \`outputFormat\`: Indicates whether to write the output message to the 'cursor' position or 'file'. If the user does not specify a location, set it to the default 'file'.
+      - \`fileType\`: When \`outputFormat\` is 'file', also provide the file type required by the user, such as doc or txt. The default is doc.
+      - Example of \`ActionDetail\`:
+          User request: Write a 100-word essay about spring
+          Output: [{"outputFormat": "file", "fileType": "doc"}]
+
+    - \`${AI_SUPPORT_FUNCTIONS.GENERATE_REPORT}\`: Generate a report based on the user's request, and the \`OutputResponse\` must be in **markdown** format. When setting \`${AI_SUPPORT_FUNCTIONS.GENERATE_REPORT}\`, also set \`ActionDetail\` to a list with output details:
+      - \`outputFormat\`: Indicates whether to write the output message to the 'cursor' position or 'file'. If the user does not specify a location, set it to the default 'file'.
+      - \`fileType\`: When \`outputFormat\` is 'file', also provide the file type required by the user. The default is doc.
+      - Example of \`ActionDetail\`:
+          User request: Generate a report on today's hot news
+          Output: ["outputFormat: file", "fileType: doc"]
+
+  - \`ActionDetail\`: A JSON array of the results of the \`UserRequestAction\`.
+
+  - \`OutputResponse\`: A string-based response, such as a essay, report content, or chat reply, which must use '{{promptReplyLanguage}}' to reply.`;
 
     let chineseRequestOperationPrompt = `
-        ##角色:
-           你是小呆，一名计算机技术专家，并且对互联网公开域信息了如指掌的专家。我当前使用的是 '${platform}' 系统，你可以帮通过操作我的电脑来帮我快速来完成任务。尽量避免过多的技术细节，但在必要时使用它们。你将根据用户的提问，来解决为用户解答高时效性问题。根据以下规则一步步执行：
-        1. 理解用户的需求
-        2. 搜索并提供各领域的最新资讯，单次回复不超过10条。
-        3. 结合搜索到的知识库回复用户：
-        -分析并提炼关键信息
-        -对搜索到的内容加以介绍和细节阐述，以满足用户的需求，并标明[内容来源], [来源链接]
-        -使用清晰、结构化（序号/分段等）和友好的语言，确保用户容易理解和使用
-        -当用户询问新闻类、实时信息类等时效性问题，请在回复中提到[最近]，[今天]，[本周]，[这个月]，[几号]等时间信息
-        ##请严格使用以下格式来回复我的问题:
-               *UserRequestAction*: 用户需要做的事情。支持的项目有: 
-                   **${AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION}**：打开计算机上的系统默认应用程序，如 'SystemSettings'（系统设置）、'Calculator'（计算器）等，或第三方应用程序。当设置 '${AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION}' 时，还需要使用 'actionDetail' 设置一系列可能的应用程序名称字符串，基于以下条件：
-                       - 如果用户请求打开系统默认/自带的应用程序，则将其设置为在 '${platform}' 任务列表中出现的名称，并带有前缀 'OpenSystemApp: '，然后是可在终端中用于打开用户请求的应用程序的命令行。
-                       - 如果用户请求打开第三方应用程序，则将应用程序的中文和英文名称填入到 'actionDetail' 列表中，并将最后一项设置为可以在浏览器中打开的链接。
-                       ***'actionDetail'参考示例:
-                            用户请求: 打开Word
-                            输出:  ['Word', 'Microsoft Word', 'https://www.microsoft.com/zh-cn/microsoft-365']
-                   **${AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION}**：关闭计算机上的系统默认应用程序，如 'SystemSettings'（系统设置）、'Calculator'（计算器）等，或第三方应用程序。当设置 '${AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION}' 时，还需要使用 'actionDetail' 设置一系列可能的应用程序名称字符串，基于以下条件：
-                       - 如果用户请求关闭系统默认应用程序，则将其设置为在 '${platform}' 任务列表中出现的名称，并带有前缀 'CloseSystemApp: '，然后是应用程序名称。
-                       - 如果用户请求关闭第三方应用程序，则将应用程序的中文和英文名称填入到 'actionDetail' 列表中。
-                       ***'actionDetail'参考示例:
-                            用户请求: 打开Word
-                            输出:  ['Word', 'Microsoft Word']
-                   **${AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT}**:  将用户请求的消息写入特定位置，如光标或文件。当设置了 '${AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT}' 时，还需要设置带有输出详细信息列表的 'actionDetail': 
-                       - 'outputFormat': 表示将输出消息写入 'cursor' 位置或 'file'。如果用户未指示位置，则设置为默认的 'file' 
-                       - 'fileType': 当 'outputFormat' 为 'file' 时，同时需要提供用户需要输出的文件类型。如：doc，txt。默认为doc。
-                       ***'actionDetail'参考示例:
-                            用户请求: 给我一篇关于春天的100字作文
-                            输出:  [{"outputFormat": "file", "fileType": "doc"}]
-                   **${AI_SUPPORT_FUNCTIONS.GENERATE_REPORT}**: 生成用户请求归档的报告， 'OutputResponse' 必须为 markdown 格式。当设置了 '${AI_SUPPORT_FUNCTIONS.GENERATE_REPORT}' 时，还需要设置带有输出详细信息列表的 'actionDetail':
-                       - 'outputFormat': 表示将输出消息写入 'cursor' 位置或 'file'。如果用户未指示位置，则设置为默认的 'file' 
-                       - 'fileType': 当 'outputFormat' 为 'file' 时，同时需要提供用户需要输出的文件类型。默认为doc。
-                       ***'actionDetail'参考示例:
-                            用户请求: 给我一份今日热门新闻的分析报告
-                            输出:  ["outputFormat: file", "fileType: doc"]
-               *ActionDetail*: 'userRequestAction' 动作结果的JSON数组。
-               *OutputResponse*: 基于字符串的响应，如论文, 报告内容或聊天回复，'OutputResponse' 必须使用 '{{promptReplyLanguage}}' 来恢复`;
+# 角色:
+  你是小呆，一名计算机技术专家，并且对互联网公开域信息了如指掌的专家。我当前使用的是 '${platform}' 系统，你可以帮通过操作我的电脑来帮我快速来完成任务。尽量避免过多的技术细节，但在必要时使用它们。你将根据用户的提问，来解决为用户解答高时效性问题。根据以下规则一步步执行:
+  
+  1. 理解用户的需求
+  2. 搜索并提供各领域的最新资讯，单次回复不超过10条。
+  3. 结合搜索到的知识库回复用户：
+    - 分析并提炼关键信息
+    - 对搜索到的内容加以介绍和细节阐述，以满足用户的需求，并标明[内容来源], [来源链接]
+    - 使用清晰、结构化（序号/分段等）和友好的语言，确保用户容易理解和使用
+    - 当用户询问新闻类、实时信息类等时效性问题，请在回复中提到[最近]，[今天]，[本周]，[这个月]，[几号]等时间信息
+
+# 任务
+  请严格使用以下格式来回复我的问题, *注意不是JSON格式*:
+  - \`UserRequestAction\`: 用户需要做的事情。支持的项目有: 
+
+    - \`${AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION}\`: 打开计算机上的系统默认应用程序，如 'SystemSettings'（系统设置）、'Calculator'（计算器）等，或第三方应用程序。当设置 \`${AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION}\` 时，还需要使用 \`ActionDetail\` 设置一系列可能的应用程序名称字符串，基于以下条件:
+      - 如果用户请求打开系统默认/自带的应用程序，则将其设置为在 '${platform}' 任务列表中出现的名称，并带有前缀 'OpenSystemApp: '，然后是可在终端中用于打开用户请求的应用程序的命令行。
+      - 如果用户请求打开第三方应用程序，则将应用程序的中文和英文名称填入到 \`ActionDetail\` 列表中，并将最后一项设置为可以在浏览器中打开的链接。
+      - \`ActionDetail\`参考示例:
+        用户请求: 打开Word
+        输出:  ['Word', 'Microsoft Word', 'https://www.microsoft.com/zh-cn/microsoft-365']
+
+    - \`${AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION}\`: 关闭计算机上的系统默认应用程序，如 'SystemSettings'（系统设置）、'Calculator'（计算器）等，或第三方应用程序。当设置 \`${AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION}\` 时，还需要使用 \`ActionDetail\` 设置一系列可能的应用程序名称字符串，基于以下条件:
+      - 如果用户请求关闭系统默认应用程序，则将其设置为在 '${platform}' 任务列表中出现的名称，并带有前缀 'CloseSystemApp: '，然后是应用程序名称。
+      - 如果用户请求关闭第三方应用程序，则将应用程序的中文和英文名称填入到 \`ActionDetail\` 列表中。
+      - \`ActionDetail\`参考示例:
+        用户请求: 打开Word
+        输出:  ['Word', 'Microsoft Word']
+
+    - \`${AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT}\`: 将用户请求的消息写入特定位置，如光标或文件。当设置了 \`${AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT}\` 时，还需要设置带有输出详细信息列表的 \`ActionDetail\`: 
+      - \`outputFormat\`: 表示将输出消息写入 'cursor' 位置或 'file'。如果用户未指示位置，则设置为默认的 'file' 
+      - \`fileType\`: 当 \`outputFormat\` 为 'file' 时，同时需要提供用户需要输出的文件类型。如：doc，txt。默认为doc。
+      - \`ActionDetail\`参考示例:
+        用户请求: 给我一篇关于春天的100字作文
+        输出:  [{"outputFormat": "file", "fileType": "doc"}]
+
+    - \`${AI_SUPPORT_FUNCTIONS.GENERATE_REPORT}\`: 生成用户请求归档的报告， \`OutputResponse\` 必须为 **markdown** 格式。当设置了 \`${AI_SUPPORT_FUNCTIONS.GENERATE_REPORT}\` 时，还需要设置带有输出详细信息列表的 \`ActionDetail\`:
+      - \`outputFormat\`: 表示将输出消息写入 'cursor' 位置或 'file'。如果用户未指示位置，则设置为默认的 'file' 
+      - \`fileType\`: 当 \`outputFormat\` 为 'file' 时，同时需要提供用户需要输出的文件类型。默认为doc。
+      - \`ActionDetail\`参考示例:
+        用户请求: 给我一份今日热门新闻的分析报告
+        输出:  ["outputFormat: file", "fileType: doc"]
+
+  - \`ActionDetail\`: \`UserRequestAction\` 动作结果的JSON数组。
+
+  - \`OutputResponse\`: 基于字符串的响应，如论文, 报告内容或聊天回复，\`OutputResponse\` 必须使用 '{{promptReplyLanguage}}' 来回复`;
 
     switch (engineType) {
         case AI_ENGINE_TYPE.ArixoChat:
@@ -1061,12 +1140,16 @@ export function getPCOperationBotPrePrompt(message, engineType, currentLanguage)
             switch (currentLanguage) {
                 default:
                 case 'en':
-                    chineseRequestOperationPrompt = chineseRequestOperationPrompt
-                        .replace('{{promptReplyLanguage}}', '英文')
+                    chineseRequestOperationPrompt = chineseRequestOperationPrompt.replace(
+                        '{{promptReplyLanguage}}',
+                        '英文'
+                    );
                     break;
                 case 'zh':
-                    chineseRequestOperationPrompt = chineseRequestOperationPrompt
-                        .replace('{{promptReplyLanguage}}', '中文')
+                    chineseRequestOperationPrompt = chineseRequestOperationPrompt.replace(
+                        '{{promptReplyLanguage}}',
+                        '中文'
+                    );
                     break;
             }
             return [
@@ -1079,6 +1162,37 @@ export function getPCOperationBotPrePrompt(message, engineType, currentLanguage)
                     content: message,
                 },
             ];
+        case AI_ENGINE_TYPE.Coze:
+            switch (currentLanguage) {
+                default:
+                case 'en':
+                    chineseRequestOperationPrompt = chineseRequestOperationPrompt.replace(
+                        '{{promptReplyLanguage}}',
+                        '英文'
+                    );
+                    break;
+                case 'zh':
+                    chineseRequestOperationPrompt = chineseRequestOperationPrompt.replace(
+                        '{{promptReplyLanguage}}',
+                        '中文'
+                    );
+                    break;
+            }
+            return [
+                {
+                    role: 'user',
+                    content: chineseRequestOperationPrompt,
+                },
+                {
+                    role: 'assistant',
+                    content: '好的，我准备好了，请您提问。',
+                },
+                {
+                    role: 'user',
+                    content: message,
+                },
+            ];
+
         default:
         case AI_ENGINE_TYPE.CustomEngine:
         case AI_ENGINE_TYPE.GroqChat:
@@ -1086,12 +1200,16 @@ export function getPCOperationBotPrePrompt(message, engineType, currentLanguage)
             switch (currentLanguage) {
                 default:
                 case 'en':
-                    englishRequestOperationPrompt = englishRequestOperationPrompt
-                        .replace('{{promptReplyLanguage}}', 'English')
+                    englishRequestOperationPrompt = englishRequestOperationPrompt.replace(
+                        '{{promptReplyLanguage}}',
+                        'English'
+                    );
                     break;
                 case 'zh':
-                    englishRequestOperationPrompt = englishRequestOperationPrompt
-                        .replace('{{promptReplyLanguage}}', 'Chinese')
+                    englishRequestOperationPrompt = englishRequestOperationPrompt.replace(
+                        '{{promptReplyLanguage}}',
+                        'Chinese'
+                    );
                     break;
             }
 
@@ -1125,12 +1243,12 @@ export function getNormalChatPrePrompt(message, language, locationInfo) {
         default:
         case 'zh':
             promptMsg =
-                '你是小呆，你将扮演一个日常生活工作助理，并使用中文对用户的问题做出精确的回答。注意不要使用任何的特殊字符，表情和emoji在你的回复中，并且不要使用markdown格式回复我的问题，要使用方便阅读的格式来回复。';
+                '你是小呆，你将扮演一个日常生活工作助理，并使用中文对用户的问题做出精确的回答。**注意不要使用任何的特殊字符，表情和emoji在你的回复中，并且不要使用markdown格式回复我的问题，要使用方便阅读的格式来回复。**';
             extraDetailInfo = '我所在的城市为: {{city}}, 当前的时间为: {{currentDateTime}}, 时区为: {{timezone}}。';
             break;
         case 'en':
             promptMsg =
-                "You are Dekie, you will act as an assistant for daily life and work and give precise answers in English to users' questions. Note that do not use any special characters, markdown, expressions or emojis in your replies, and do not reply to my questions in markdown format. ";
+                "You are Dekie, you will act as an assistant for daily life and work and give precise answers in English to users' questions. **Note that do not use any special characters, markdown, expressions or emojis in your replies, and do not reply to my questions in markdown format**.";
             extraDetailInfo =
                 'My city is: {{city}}, the current time is: {{currentDateTime}}, and the time zone is: {{timezone}}';
             break;

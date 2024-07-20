@@ -39,8 +39,9 @@ import logger from '@/plugins/logOutput';
 import Constants from '@/utils/Constants';
 import {app, clipboard, ipcMain, shell} from 'electron';
 import {
+    AI_CONSTANT_CONFIG,
     AI_SUPPORT_FUNCTIONS,
-    CHAT_TYPE,
+    CHAT_TYPE, CHUNK_MSG_TYPE,
     getChatPrePromptMsg,
     getKeyConfigBotPrePrompt,
     getNormalChatPrePrompt,
@@ -54,6 +55,7 @@ import {loadPCInstalledApps} from '@/main/ai/SystemInstalledAppLoader';
 import {isURL, randomString} from '@/utils/Utils';
 import WebSpeechAudioAdapter from '@/main/ai/Connector/WebSpeechAudioAdapter';
 import {deepCopy} from '@/utils/ObjectUtil';
+import CozeAdapter from "@/main/ai/Connector/CozeAdapter";
 
 const { exec } = require('child_process');
 const levenshtein = require('fast-levenshtein');
@@ -131,6 +133,11 @@ const BUILD_IN_AI_MODELS = [
         models: []
     },
     {
+        label: 'Coze',
+        value: 'Coze',
+        models: []
+    },
+    {
         label: 'Custom',
         value: 'Custom',
         models: []
@@ -146,7 +153,8 @@ export const AI_ENGINE_TYPE = {
     QWenChat: 5,
     ZhiPuChat: 6,
     CustomEngine: 7,
-    HuoShan: 8
+    HuoShan: 8,
+    Coze: 9
 }
 
 export const SPEECH_ENGINE_TYPE = {
@@ -499,6 +507,8 @@ class AIManager {
             default:
                 if (engineModel.startsWith('HuoShan-')) {
                     engineType = AI_ENGINE_TYPE.HuoShan;
+                } else if (engineModel.startsWith('Coze-')) {
+                    engineType = AI_ENGINE_TYPE.Coze;
                 } else {
                     engineType = AI_ENGINE_TYPE.CustomEngine;
                 }
@@ -522,6 +532,9 @@ class AIManager {
             case AI_ENGINE_TYPE.QWenChat:
             case AI_ENGINE_TYPE.ZhiPuChat:
                 aiAssistantChatAdapter = new OpenAIAdapter(appManager, engineType, CHAT_TYPE.CHAT_TYPE_KEY_CONFIG, engineModel);
+                break;
+            case AI_ENGINE_TYPE.Coze:
+                aiAssistantChatAdapter = new CozeAdapter(appManager, CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel);
                 break;
             default:
                 aiAssistantChatAdapter = new OpenAIAdapter(appManager, AI_ENGINE_TYPE.GroqChat, CHAT_TYPE.CHAT_TYPE_KEY_CONFIG, engineModel);
@@ -579,7 +592,7 @@ class AIManager {
                 requestId: requestId,
                 keyCode: keyCode
             };
-            logger.debug('startAssistantSession: For device: ' + serialNumber);
+            console.log('startAssistantSession: For device: ' + serialNumber);
             this._setSessionState(AI_SESSION_STATE_ONGOING);
             appManager.windowManager.aiAssistantWindow.win.webContents.send('StartAudioRecord', {requestAssistantId: requestId});
         }, delayMills);
@@ -788,6 +801,8 @@ class AIManager {
             default:
                 if (engineModel.startsWith('HuoShan-')) {
                     chatEngineType = AI_ENGINE_TYPE.HuoShan;
+                } else if (engineModel.startsWith('Coze-')) {
+                    chatEngineType = AI_ENGINE_TYPE.Coze;
                 } else {
                     chatEngineType = AI_ENGINE_TYPE.CustomEngine;
                 }
@@ -811,6 +826,9 @@ class AIManager {
             case AI_ENGINE_TYPE.QWenChat:
             case AI_ENGINE_TYPE.ZhiPuChat:
                 standardAIChatAdapter = new OpenAIAdapter(appManager, chatEngineType, CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel);
+                break;
+            case AI_ENGINE_TYPE.Coze:
+                standardAIChatAdapter = new CozeAdapter(appManager, CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel);
                 break;
             default:
                 standardAIChatAdapter = new OpenAIAdapter(appManager, AI_ENGINE_TYPE.GroqChat, CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel);
@@ -882,7 +900,7 @@ class AIManager {
         this._setSessionState(AI_SESSION_STATE_PROCESSING);
     }
 
-    async _handleChatResponse(requestId, status, message) {
+    async _handleChatResponse(requestId, status, message, messageType = CHUNK_MSG_TYPE.ANSWER) {
 
         if (assistantDeviceSN === '') return;
 
@@ -949,7 +967,7 @@ class AIManager {
                         console.log(`AIManager: wait Chat config response timeout : ${chatResponseMsg}`);
                         ttsEngineAdapter.playTTS(requestId, chatResponseMsg);
                         chatResponseMsg = '';
-                    }, 60000);
+                    }, AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
                 }
                 chatResponseMsg += message;
 
@@ -1069,7 +1087,7 @@ class AIManager {
                 fullChatResponseMsg += message;
                 chatResponseMsg += message;
 
-                this._decodeOperateActionData(requestId, chatResponseMsg, status === 2);
+                this._decodeOperateActionData(requestId, chatResponseMsg, status === 2, messageType);
 
                 if (!operatePCContext.actionProcessDone && operatePCContext.actionType !== '' && operatePCContext.actionDetail) {
 
@@ -1097,22 +1115,31 @@ class AIManager {
 
     }
 
-    _decodeOperateActionData(requestId, message, isLast = false) {
+    _decodeOperateActionData(requestId, message, isLast = false, messageType) {
+        if (message.includes('**UserRequestAction**')) {
+            message = message.replace('**UserRequestAction**', '`UserRequestAction`');
+        }
+        if (message.includes('**ActionDetail**')) {
+            message = message.replace('**ActionDetail**', '`ActionDetail`');
+        }
+        if (message.includes('**OutputResponse**')) {
+            message = message.replace('**OutputResponse**', '`OutputResponse`');
+        }
         switch (operatePCContext.stage) {
             case OPERATION_STAGE.STAGE_DECODE_ACTION:
-                if (!message.includes('*UserRequestAction*:') || (!isLast && !message.includes('\n'))) {
+                if (!message.includes('`UserRequestAction`:') || (!isLast && !message.includes('`ActionDetail`:'))) {
                     return;
                 }
 
                 operatePCContext.actionType = message
-                    .substring(message.indexOf('*UserRequestAction*:') + 20, message.indexOf('\n'))
+                    .substring(message.indexOf('`UserRequestAction`:') + 20, message.indexOf('`ActionDetail`:'))
                     .trim();
 
                 if (operatePCContext.actionType.endsWith('\\')) {
                     operatePCContext.actionType = operatePCContext.actionType.substring(0, operatePCContext.actionType.length - 1);
                 }
 
-                operatePCContext.actionType = operatePCContext.actionType.replace(/\*/g, '');
+                operatePCContext.actionType = operatePCContext.actionType.replace(/`/g, '').replace(/'/g, '').replace(/-/g, '').trim();
 
                 message = message.substring(message.indexOf('\n') + 1);
 
@@ -1128,12 +1155,12 @@ class AIManager {
 
                 if (message !== '') {
                     chatResponseMsg = message;
-                    this._decodeOperateActionData(requestId, message, isLast);
+                    this._decodeOperateActionData(requestId, message, isLast, messageType);
                     return;
                 }
                 break;
             case OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: {
-                if (!message.includes('*ActionDetail*:') || (!isLast && (!message.includes('*OutputResponse*:') || !message.includes('\n')))) {
+                if (!message.includes('`ActionDetail`:') || (!isLast && (!message.includes('`OutputResponse`:') || !message.includes('\n')))) {
                     return;
                 }
 
@@ -1149,7 +1176,7 @@ class AIManager {
                     '：': ':'
                 };
 
-                const tempMsg = message.substring(0, message.indexOf('*OutputResponse*:'));
+                const tempMsg = message.substring(0, message.indexOf('`OutputResponse`:'));
 
                 const regExp = new RegExp(Object.keys(replacements).join("|"), "g");
 
@@ -1191,7 +1218,7 @@ class AIManager {
                     }
                 }
 
-                message = message.substring(message.indexOf('*OutputResponse*:'));
+                message = message.substring(message.indexOf('`OutputResponse`:'));
 
                 console.log(
                     'AIManager: handleChatResponse: OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: operatePCContext.actionType: ActionDetail: ', operatePCContext.actionDetail,
@@ -1203,7 +1230,7 @@ class AIManager {
 
                 if (message !== '') {
                     chatResponseMsg = message;
-                    this._decodeOperateActionData(requestId, message, isLast);
+                    this._decodeOperateActionData(requestId, message, isLast, messageType);
                     return;
                 }
                 break;
@@ -1211,8 +1238,8 @@ class AIManager {
             case OPERATION_STAGE.STAGE_DECODE_OUTPUT: {
 
                 let chunkedMsg = '';
-                if (message.includes('*OutputResponse*:')) {
-                    operatePCContext.actionOutput = message.substring(message.indexOf('*OutputResponse*:') + 17);
+                if (message.includes('`OutputResponse`:')) {
+                    operatePCContext.actionOutput = message.substring(message.indexOf('`OutputResponse`:') + 17);
                     if (operatePCContext.actionOutput === '') {
                         operatePCContext.actionOutput = ' ';
                     }
@@ -1225,7 +1252,9 @@ class AIManager {
                     message = '';
                 }
 
-                operatePCContext.streamChunkMsg += chunkedMsg;
+                if (messageType === CHUNK_MSG_TYPE.ANSWER) {
+                    operatePCContext.streamChunkMsg += chunkedMsg;
+                }
                 break;
             }
         }
@@ -1502,7 +1531,7 @@ class AIManager {
         let haveAIIcon = false;
         if (newConfigItem.icon && newConfigItem.icon !== '' && newConfigItem.icon.startsWith('mdi-')) {
             const mdiIconName = newConfigItem.icon.substring(4);
-            console.log('AIManager: ai return MDI icon: ', mdiIconName);
+            console.log('AIManager: ai return MDI icon: ', mdiIconName, ' newConfigItem.config.functionType: ', newConfigItem.config.functionType);
 
             const mdiIconResId = await appManager.resourcesManager.getMDIIconResIdByName(mdiIconName);
 
@@ -1688,6 +1717,8 @@ class AIManager {
                 console.log('AIManager: _convertActionItemData: After process multi action: final newConfigItem: ' + JSON.stringify(newConfigItem));
                 break;
             }
+            case 'open':
+            case 'close':
             case 'openApplication':
             case 'closeApplication': {
                 if (!newConfigItem.config.actions || newConfigItem.config.actions.length < 1 || newConfigItem.config.actions[0].operationName !== 'appName' || newConfigItem.config.actions[0].operationValue.length < 1) break;
@@ -1708,7 +1739,7 @@ class AIManager {
                     }
                 });
 
-                const isClose = newConfigItem.config.functionType === 'closeApplication';
+                const isClose = newConfigItem.config.functionType === 'closeApplication' || newConfigItem.config.functionType === 'close';
 
                 oldConfigItem.childrenName = isClose ? 'close' : 'open';
                 oldConfigItem.config.type = isClose ? 'close' : 'open';
@@ -2002,7 +2033,7 @@ class AIManager {
                 if (isLastAction) {
                     console.log('AIManager: handleUserRequestActions: WRITE_TO_DOCUMENT: actionDetail: ', actionDetail, ' actionOutput: ', actionOutput);
 
-                    if (actionDetail[0].outputFormat === 'file') {
+                    if (actionDetail[0].outputFormat !== 'cursor') {
                         await this._markdownToDoc(operatePCContext.streamChunkMsg);
                     }
 
@@ -2063,13 +2094,13 @@ class AIManager {
 
         mdContent = mdContent.trim();
 
-        if (mdContent.startsWith('```')) {
-            mdContent = mdContent.substring(3);
-        }
-
-        if (mdContent.endsWith('```')) {
-            mdContent = mdContent.substring(0, mdContent.length - 3);
-        }
+        // if (mdContent.startsWith('```')) {
+        //     mdContent = mdContent.substring(3);
+        // }
+        //
+        // if (mdContent.endsWith('```')) {
+        //     mdContent = mdContent.substring(0, mdContent.length - 3);
+        // }
 
         // const htmlFragment = marked.parse(operatePCContext.streamChunkMsg);
         if (markdownConverter === undefined) {
@@ -2209,13 +2240,13 @@ class AIManager {
 
             ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.closingApplication'));
             const pid = stdout.split(/\s+/)[1]; // 根据 tasklist 的输出格式获取 PID
-            console.debug('AIManager: closeApplication: pid ', pid, ' for ', applicationPath, ' processName: ', exeName);
+            console.log('AIManager: closeApplication: pid ', pid, ' for ', applicationPath, ' processName: ', exeName);
 
             // 强制关闭进程
             // eslint-disable-next-line
             exec(`taskkill /F /PID ${pid}`, (err, stdout, stderr) => {
                 if (err) {
-                    console.error('AIManager: closeApplication: exec error: ', err);
+                    console.log('AIManager: closeApplication: exec error: ', err);
                     return;
                 }
                 console.log('AIManager: closeApplication: Process has been killed forcefully!');
@@ -2320,6 +2351,8 @@ class AIManager {
             default:
                 if (aiAssistantModelType.startsWith('HuoShan-')) {
                     aiEngineType = AI_ENGINE_TYPE.HuoShan;
+                } else if (aiAssistantModelType.startsWith('Coze-')) {
+                    aiEngineType = AI_ENGINE_TYPE.Coze;
                 } else {
                     aiEngineType = AI_ENGINE_TYPE.CustomEngine;
                 }
@@ -2357,6 +2390,7 @@ class AIManager {
 
             try {
                 let preChatFrameResponse = await this._awaitWithTimeout(aiAssistantChatAdapter.chatWithAssistant(requestId, params), 35000);
+                console.log('AIManager: handleAIAssistantProcess: preChatFrameResponse: ', preChatFrameResponse);
 
                 preChatFrameResponse = getResponseDataJsonString(preChatFrameResponse);
 
@@ -2379,8 +2413,8 @@ class AIManager {
 
                 if (responseConfigData.userRequestAction === "operatingComputer") {
                     aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_OPERATE_PC);
-                    aiAssistantChatAdapter.setChatResponseListener((requestId, status, message) => {
-                        this._handleChatResponse(requestId, status, message).catch(err => {
+                    aiAssistantChatAdapter.setChatResponseListener((requestId, status, message, messageType) => {
+                        this._handleChatResponse(requestId, status, message, messageType).catch(err => {
                             console.log('AIManager: handleAIAssistantProcess: CHAT_TYPE.CHAT_TYPE_OPERATE_PC _handleChatResponse detected error: ', err);
                             this.setAssistantProcessFailed();
                             ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
@@ -2403,8 +2437,8 @@ class AIManager {
                     }
                 } else {
                     aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_NORMAL);
-                    aiAssistantChatAdapter.setChatResponseListener((requestId, status, message) => {
-                        this._handleChatResponse(requestId, status, message).catch(err => {
+                    aiAssistantChatAdapter.setChatResponseListener((requestId, status, message, messageType) => {
+                        this._handleChatResponse(requestId, status, message, messageType).catch(err => {
                             console.log('AIManager: handleAIAssistantProcess: CHAT_TYPE.CHAT_TYPE_NORMAL _handleChatResponse detected error: ', err);
 
                             this.setAssistantProcessFailed();
@@ -2430,8 +2464,8 @@ class AIManager {
                 content: message
             });
 
-            aiAssistantChatAdapter.setChatResponseListener((requestId, status, message) => {
-                this._handleChatResponse(requestId, status, message).catch(err => {
+            aiAssistantChatAdapter.setChatResponseListener((requestId, status, message, messageType) => {
+                this._handleChatResponse(requestId, status, message, messageType).catch(err => {
                     console.log('AIManager: handleAIAssistantProcess: CHAT_TYPE.CHAT_TYPE_NORMAL _handleChatResponse detected error: ', err);
 
                     this.setAssistantProcessFailed();
@@ -2507,7 +2541,7 @@ class AIManager {
         try {
             await this._handleChatResponse(requestId, 0, '');
 
-            chatFrameResponse = await this._awaitWithTimeout(aiAssistantChatAdapter.chatWithAssistant(requestId, finalParam), 60000);
+            chatFrameResponse = await this._awaitWithTimeout(aiAssistantChatAdapter.chatWithAssistant(requestId, finalParam), AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
         } catch (err) {
             this._showAssistantError(requestId);
             return;
@@ -2534,7 +2568,7 @@ class AIManager {
                     role: "user",
                     content: '修复以下 JSON: ' + chatFrameResponse + ' \n ConfigData中每一个数据的value的格式应为: ```' + JSON.stringify(KEY_CONFIG_OBJ) + '``` 注意：我不需要你的解释，仅返回给我正确的JSON数据。'
                 }]
-            chatFrameResponse = await this._awaitWithTimeout(aiAssistantChatAdapter.chatWithAssistant(requestId, params), 60000);
+            chatFrameResponse = await this._awaitWithTimeout(aiAssistantChatAdapter.chatWithAssistant(requestId, params), AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
 
             console.log('AIManager: handleAIAssistantProcess: Fixed Json: ' + chatFrameResponse);
 
@@ -2565,7 +2599,7 @@ class AIManager {
         try {
             await this._handleChatResponse(requestId, 2, chatFrameResponse);
         } catch (err) {
-            console.log('AIManager: _handleChatResponse: detected error: ' + JSON.stringify(err));
+            console.log('AIManager: _handleChatResponse: detected error: ', err);
             chatMsgs.pop();
             this._showAssistantError(requestId);
         }
