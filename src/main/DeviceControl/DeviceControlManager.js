@@ -1832,14 +1832,17 @@ function processPageOrFolderChange(serialNumber, pageAction, folderChange, curre
 }
 
 function processProfileSwitch(serialNumber, profileConfig, pageConfig) {
-    const currentProfile = deviceActiveProfileMap.get(serialNumber);
+    let currentProfile = deviceActiveProfileMap.get(serialNumber);
     console.log('DeviceControlManager: processProfileSwitch: currentProfile: ', currentProfile);
     if (!currentProfile) {
         const defaultConfigInfo = appManager.resourcesManager.getDefaultResourceInfo(
             Constants.RESOURCE_TYPE_DEVICE_CONFIG
         );
-        processProfileSwitch(serialNumber, defaultConfigInfo.id);
-        return;
+
+        currentProfile = {
+            configIdx: defaultConfigInfo.name,
+        }
+        profileConfig = defaultConfigInfo.id;
     }
 
     const currentConfigIdxInfo = currentProfile.configIdx.split(',');
