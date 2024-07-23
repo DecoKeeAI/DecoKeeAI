@@ -1625,13 +1625,14 @@ class AIManager {
                 }
                 break;
             case 'media':
+            case 'multimedia':
+
+                oldConfigItem.childrenName = 'media';
+                oldConfigItem.config.type = 'media';
+
                 newConfigItem.config.actions = newConfigItem.config.actions.map(actionItem => {
-                    const tempOperationValue = actionItem.operationName.toLowerCase().trim();
                     if (actionItem.operationName !== 'key') {
-                        actionItem.operationValue = tempOperationValue;
                         actionItem.operationName = 'key';
-                    } else {
-                        actionItem.operationValue = tempOperationValue;
                     }
                     return actionItem;
                 });
