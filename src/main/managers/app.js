@@ -56,7 +56,7 @@ class AppManager {
     创建托盘 */
     createAppTray() {
         try {
-            const iconPath = path.join(__static, 'app.ico');
+            const iconPath = path.join(__static, 'app.png');
             const trayIcon = nativeImage.createFromPath(iconPath);
             this.tray = new Tray(trayIcon);
             this.setAppTrayMenu();

@@ -163,7 +163,7 @@ class MainWindow {
                     webviewTag: true,
                 },
                 // eslint-disable-next-line no-undef
-                icon: `${__static}/app.ico`,
+                icon: `${__static}/app.png`,
                 frame: false,
                 show: false,
                 backgroundColor: '#2d2d2d',

@@ -39,7 +39,7 @@ module.exports = {
                 copyright: "Copyright © 2024 DecoKee",
                 asar: false,
                 win: {
-                    icon: "./public/app.ico",
+                    icon: "./public/app.png",
                     requestedExecutionLevel: 'requireAdministrator',
                     target: [
                         {
