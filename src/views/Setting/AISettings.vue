@@ -876,6 +876,7 @@ export default {
             window.store.storeSet(newAIConfigKeyPrefix + '.modelName', this.customModelName);
 
             this.selectedModelType[1] = newModelType;
+            this.aiModelType = newModelType;
             window.aiManager.updateSupportedModels(this.supportedAIModels);
             this.$message.success(this.$t('settings.copy') + ' ' + this.$t('success'));
         },
