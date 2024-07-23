@@ -41,7 +41,6 @@ class SettingWindow {
 
             shell.openExternal(url);
         });
-
     }
 
     createWindow(parentWindow) {
@@ -126,7 +125,7 @@ class SettingWindow {
         })
     }
 
-    changeVisibility() {
+    changeVisibility(showTab) {
         if (!this.win) {
             this.createWindow();
         }
@@ -134,7 +133,7 @@ class SettingWindow {
         if (this.win.isVisible()) {
             this.hide();
         } else {
-            this.show();
+            this.show(showTab);
         }
     }
 
@@ -154,12 +153,19 @@ class SettingWindow {
         return this.win.isVisible();
     }
 
-    show() {
+    show(showTab) {
         if (!this.win) {
             this.createWindow();
         }
+
+        if (showTab !== undefined) {
+            const that = this;
+            this.win.webContents.once('did-finish-load', () => {
+                that.win.webContents.send('change-tab', { tabId: showTab });
+            });
+        }
+
         this.win.show();
-        this.win.emit('activated');
     }
 
     hide() {

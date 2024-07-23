@@ -285,7 +285,7 @@ export default {
 
     methods: {
         async getInstalledAppInfo() {
-            const currentInstalledApps = window.aiManager.getInstalledApps();
+            const currentInstalledApps = window.appManager.resourcesManager.getInstalledApps();
 
             const seen = {};
 

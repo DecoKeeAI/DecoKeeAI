@@ -2,6 +2,7 @@ import { app } from 'electron';
 import defaultResourcesMap from '@/assets/resources.js';
 import Constants from '@/utils/Constants';
 import { randomString } from '@/utils/Utils';
+import {loadPCInstalledApps} from "@/main/ai/SystemInstalledAppLoader";
 
 const DecompressZip = require('decompress-zip');
 const fs = require('fs');
@@ -68,6 +69,25 @@ class ResourcesManager {
             this.resourcesMap[RESOURCE_DB.BUILD_IN] = defaultResourcesMap;
             saveResourcesConfig(this.resourcesConfigPath, this.resourcesMap);
         }
+        this.pcInstalledApps = [];
+
+        loadPCInstalledApps().then(async installedApps => {
+            console.log('AIManager: Loaded Installed APPS length: ', installedApps.length);
+            console.log('AIManager: Loaded Installed APPS: ', installedApps);
+
+            for (let i = 0; i < installedApps.length; i++) {
+                const appInfo = installedApps[i];
+                const appIconInfo = await this.getAppIconInfo(appInfo.appLaunchPath);
+                if (appIconInfo) {
+                    appInfo.displayIcon = appIconInfo.id;
+                }
+                this.pcInstalledApps.push(appInfo);
+            }
+        });
+    }
+
+    getInstalledApps() {
+        return this.pcInstalledApps;
     }
 
     setDeviceConfigChangeListener(listener) {

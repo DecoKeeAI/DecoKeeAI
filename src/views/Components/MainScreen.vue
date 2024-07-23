@@ -186,7 +186,7 @@
                         <el-button
                             style="position: absolute; bottom: 20px; left: 20px"
                             type="text"
-                            @click="showSettings"
+                            @click="showSettings()"
                         >
                             <svg-icon color="darkgray" name="settings" style="font-size: 48px" />
                         </el-button>
@@ -1632,7 +1632,7 @@ export default {
                 return;
             }
             if (command === 'edit') {
-                this.showSettings();
+                this.showSettings(3);
                 return;
             }
 
@@ -1651,9 +1651,9 @@ export default {
 
             this.saveBtn();
         },
-        showSettings() {
+        showSettings(showTab) {
             if (window.windowManager.settingWindow.isVisible()) return;
-            window.windowManager.settingWindow.changeVisibility();
+            window.windowManager.settingWindow.changeVisibility(showTab);
         },
         // 页码
         calculateTotalPage(needReset = true) {

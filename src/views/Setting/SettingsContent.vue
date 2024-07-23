@@ -1,7 +1,8 @@
 <template>
     <div style="height: 100%">
         <TabMenu
-            :default-active="'settings.generalSetting'"
+            ref="tabMenu"
+            :default-active="defaultActiveMenu"
             :menu-items="menuItems"
             style="height: 100%"
             @menuItemClicked="handleClick"
@@ -26,6 +27,7 @@ import DeviceSettings from '@/views/Setting/DeviceSettings';
 import ProfileConfig from '@/views/Setting/ProfileConfig';
 import AISettings from '@/views/Setting/AISettings';
 import PluginConfig from '@/views/Setting/PluginConfig';
+import { ipcRenderer } from 'electron';
 
 export default {
     name: 'SettingsContent',
@@ -61,8 +63,17 @@ export default {
                     title: 'settings.pluginConfig',
                 },
             ],
+            defaultActiveMenu: 'settings.generalSetting',
             activeMenu: 1,
         };
+    },
+    created() {
+        const that = this;
+        ipcRenderer.on('change-tab', (event, args) => {
+            console.log('SettingContent: received change tab: ', args);
+
+            that.$refs.tabMenu.itemClicked(that.menuItems[args.tabId - 1]);
+        });
     },
     methods: {
         handleClick(item) {
@@ -74,7 +85,6 @@ export default {
 </script>
 
 <style lang="less" scoped>
-
 .settings-container {
     display: flex;
     flex-direction: column;

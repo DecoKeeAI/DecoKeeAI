@@ -50,7 +50,6 @@ import {
 import {i18nRender} from '@/plugins/i18n';
 import {KeyConfiguration} from '@/plugins/KeyConfiguration';
 
-import {loadPCInstalledApps} from '@/main/ai/SystemInstalledAppLoader';
 import {isURL, randomString} from '@/utils/Utils';
 import WebSpeechAudioAdapter from '@/main/ai/Connector/WebSpeechAudioAdapter';
 import {deepCopy} from '@/utils/ObjectUtil';
@@ -163,7 +162,6 @@ export const SPEECH_ENGINE_TYPE = {
     AZURE: 'Azure',
 }
 
-const pcInstalledApps = [];
 
 const AI_SESSION_STATE_EMPTY = 0, AI_SESSION_STATE_ONGOING = 1, AI_SESSION_STATE_PROCESSING = 2,
     AI_SESSION_STATE_IDLE = 3;
@@ -209,53 +207,6 @@ const tempAssistantObj = {
     }
 }
 
-let ttsEngineAdapter = undefined;
-let aiAssistantChatAdapter = undefined;
-let standardAIChatAdapter = undefined;
-let audioDataArray = [];
-let lastProcessedAudioIdx = 0;
-let audioDataFinished = true;
-let currentRequestId = '';
-
-let audioSendTimer = undefined;
-
-let currentRecentApps = undefined;
-
-let alterToneMap = new Map();
-
-let assistantDeviceSN = '';
-let assistantDeviceInfo = undefined;
-
-let waitChatMsgTimeoutTask = undefined;
-let chatResponseMsg = '';
-let fullChatResponseMsg = '';
-let isPendingChatFinish = false;
-let firstChatFrameResponse = true;
-
-let aiSessionState = AI_SESSION_STATE_EMPTY;
-
-let aiSessionResourceMap = new Map();
-const configToResIdMap = new Map();
-
-let ttsResultListener = undefined;
-let chatResponseListener = undefined;
-// eslint-disable-next-line
-let sttResultListener = undefined;
-
-let assistantChatHistory = [];
-
-let aiAssistantRequestId = undefined;
-
-let aiAssistantModelType = '';
-let speechModelType = '';
-let aiChatModelType = '';
-
-let appManager = undefined;
-
-let outputRobot = undefined;
-
-let markdownConverter = undefined;
-
 const OPERATION_STAGE = {
     STAGE_DECODE_END: 0,
     STAGE_DECODE_ACTION: 1,
@@ -263,34 +214,66 @@ const OPERATION_STAGE = {
     STAGE_DECODE_OUTPUT: 3
 }
 
-let operatePCContext = {
-    stage: OPERATION_STAGE.STAGE_DECODE_END,
-    actionType: '',
-    actionDetail: [],
-    actionOutput: '',
-    actionProcessDone: false
-}
-
 class AIManager {
 
     constructor(AppManager) {
-        appManager = AppManager;
+        this.appManager = AppManager;
         console.log('AIManager constructor')
 
-        loadPCInstalledApps().then(async installedApps => {
-            console.log('AIManager: Loaded Installed APPS length: ', installedApps.length);
-            console.log('AIManager: Loaded Installed APPS: ', installedApps);
-            console.log('AIManager: Loaded Installed Has Word: ', installedApps.findIndex(appInfo => appInfo.appLaunchPath.toLowerCase().includes('winword')));
 
-            for (let i = 0; i < installedApps.length; i++) {
-                const appInfo = installedApps[i];
-                const appIconInfo = await appManager.resourcesManager.getAppIconInfo(appInfo.appLaunchPath);
-                if (appIconInfo) {
-                    appInfo.displayIcon = appIconInfo.id;
-                }
-                pcInstalledApps.push(appInfo);
-            }
-        });
+        this.ttsEngineAdapter = undefined;
+        this.aiAssistantChatAdapter = undefined;
+        this.standardAIChatAdapter = undefined;
+
+        this.audioDataArray = [];
+        this.lastProcessedAudioIdx = 0;
+        this.audioDataFinished = true;
+        this.currentRequestId = '';
+
+        this.audioSendTimer = undefined;
+
+        this.currentRecentApps = undefined;
+
+        this.alterToneMap = new Map();
+
+        this.assistantDeviceSN = '';
+        this.assistantDeviceInfo = undefined;
+
+        this.waitChatMsgTimeoutTask = undefined;
+        this.chatResponseMsg = '';
+        this.fullChatResponseMsg = '';
+        this.isPendingChatFinish = false;
+        this.firstChatFrameResponse = true;
+
+        this.aiSessionState = AI_SESSION_STATE_EMPTY;
+
+        this.aiSessionResourceMap = new Map();
+        this.configToResIdMap = new Map();
+
+        this.ttsResultListener = undefined;
+        this.chatResponseListener = undefined;
+
+        this.sttResultListener = undefined;
+
+        this.assistantChatHistory = [];
+
+        this.aiAssistantRequestId = undefined;
+
+        this.aiAssistantModelType = '';
+        this.speechModelType = '';
+        this.aiChatModelType = '';
+
+        this.outputRobot = undefined;
+
+        this.markdownConverter = undefined;
+
+        this.operatePCContext = {
+            stage: OPERATION_STAGE.STAGE_DECODE_END,
+            actionType: '',
+            actionDetail: [],
+            actionOutput: '',
+            actionProcessDone: false
+        }
 
         ipcMain.on('PlayerReady', (event, args) => {
             console.log('AIManager PlayerReady: for ', args)
@@ -302,7 +285,7 @@ class AIManager {
             }
             console.log('AIManager PlayerReady: for ', args, ' RequestInfo: ', requestIdInfo);
 
-            alterToneMap.set(requestIdInfo[1], {
+            this.alterToneMap.set(requestIdInfo[1], {
                 playerId: args.playerId
             });
         });
@@ -313,27 +296,27 @@ class AIManager {
         });
 
         ipcMain.on('EngineTypeChange', () => {
-            const newAIAssistantModelType = appManager.storeManager.storeGet('aiConfig.modelType');
-            const newSpeechModelType = appManager.storeManager.storeGet('aiConfig.speechEngineType');
-            console.log('AIManager EngineTypeChange: aiAssistantModelType: ' + newAIAssistantModelType + ' speechModelType: ' + newSpeechModelType);
+            const newAIAssistantModelType = this.appManager.storeManager.storeGet('aiConfig.modelType');
+            const newSpeechModelType = this.appManager.storeManager.storeGet('aiConfig.speechEngineType');
+            console.log('AIManager EngineTypeChange: this.aiAssistantModelType: ' + newAIAssistantModelType + ' this.speechModelType: ' + newSpeechModelType);
             this.setSpeechEngineModel(newSpeechModelType);
             this.setAssistantEngineModel(newAIAssistantModelType);
         });
 
         ipcMain.on('ChatEngineTypeChange', () => {
-            const newAiChatModelType = appManager.storeManager.storeGet('aiConfig.chat.modelType');
+            const newAiChatModelType = this.appManager.storeManager.storeGet('aiConfig.chat.modelType');
             console.log('AIManager Init with chat model type: ' + newAiChatModelType);
             this.setChatEngineModel(newAiChatModelType)
         });
 
         ipcMain.on('AIAudioHandlerReady', () => {
-            const newAIAssistantModelType = appManager.storeManager.storeGet('aiConfig.modelType');
-            const newSpeechModelType = appManager.storeManager.storeGet('aiConfig.speechEngineType');
-            console.log('AIManager Init with model type aiAssistantModelType: ' + newAIAssistantModelType + ' speechModelType: ' + newSpeechModelType);
+            const newAIAssistantModelType = this.appManager.storeManager.storeGet('aiConfig.modelType');
+            const newSpeechModelType = this.appManager.storeManager.storeGet('aiConfig.speechEngineType');
+            console.log('AIManager Init with model type this.aiAssistantModelType: ' + newAIAssistantModelType + ' this.speechModelType: ' + newSpeechModelType);
             this.setSpeechEngineModel(newSpeechModelType);
             this.setAssistantEngineModel(newAIAssistantModelType);
 
-            let newAiChatModelType = appManager.storeManager.storeGet('aiConfig.chat.modelType');
+            let newAiChatModelType = this.appManager.storeManager.storeGet('aiConfig.chat.modelType');
             if (newAiChatModelType === undefined) {
                 newAiChatModelType = 'llama3-70b-8192';
             }
@@ -341,18 +324,18 @@ class AIManager {
             console.log('AIManager Init with chat model type: ' + newAiChatModelType);
             this.setChatEngineModel(newAiChatModelType)
 
-            const resourceManager = appManager.resourcesManager;
+            const resourceManager = this.appManager.resourcesManager;
 
             const gifAnimations = resourceManager.getAllResourceInfoByType(Constants.RESOURCE_TYPE_GIF);
             if (gifAnimations !== undefined && gifAnimations.length > 0) {
                 gifAnimations.forEach(resourceInfo => {
                     if (resourceInfo.name === Constants.ASSISTANT_ANIMATION_IDLE || resourceInfo.name === Constants.ASSISTANT_ANIMATION_ONGOING || resourceInfo.name === Constants.ASSISTANT_ANIMATION_PROCESSING) {
-                        aiSessionResourceMap.set(resourceInfo.name, resourceInfo);
+                        this.aiSessionResourceMap.set(resourceInfo.name, resourceInfo);
                     }
                 });
             }
-            aiSessionResourceMap.set(Constants.ASSISTANT_TYPE_CHAT, resourceManager.getResourceInfo('0-49'))
-            aiSessionResourceMap.set(Constants.ASSISTANT_TYPE_KEY_CONFIG, resourceManager.getResourceInfo('0-50'))
+            this.aiSessionResourceMap.set(Constants.ASSISTANT_TYPE_CHAT, resourceManager.getResourceInfo('0-49'))
+            this.aiSessionResourceMap.set(Constants.ASSISTANT_TYPE_KEY_CONFIG, resourceManager.getResourceInfo('0-50'))
 
             const alertTones = resourceManager.getAllResourceInfoByType(Constants.RESOURCE_TYPE_TONE);
 
@@ -367,7 +350,7 @@ class AIManager {
                 console.log('AIManager: getAssistantTones: ', assistantTones);
 
                 assistantTones.forEach(toneInfo => {
-                    appManager.windowManager.mainWindow.win.webContents.send('LoadAudio', {
+                    this.appManager.windowManager.mainWindow.win.webContents.send('LoadAudio', {
                         requestId: 'Load+' + toneInfo.name,
                         soundPath: toneInfo.path,
                         volume: 100
@@ -383,18 +366,18 @@ class AIManager {
 
         KeyConfiguration.forEach(menuConfig => {
             menuConfig.children.forEach(configData => {
-                configToResIdMap.set(configData.config.type, configData.config.icon);
+                this.configToResIdMap.set(configData.config.type, configData.config.icon);
                 if (configData.config.alterIcon !== undefined) {
-                    configToResIdMap.set(configData.config.type + 'Alter', configData.config.alterIcon);
+                    this.configToResIdMap.set(configData.config.type + 'Alter', configData.config.alterIcon);
                 }
             });
         });
 
         setTimeout(() => {
-            checkRecentApps();
+            this._checkRecentApps();
         }, 5000);
 
-        this.supportedModels = appManager.storeManager.storeGet('aiConfig.supportedModels');
+        this.supportedModels = this.appManager.storeManager.storeGet('aiConfig.supportedModels');
 
         if (!this.supportedModels) {
             this.supportedModels = [];
@@ -420,7 +403,7 @@ class AIManager {
 
         });
 
-        appManager.storeManager.storeSet('aiConfig.supportedModels', this.supportedModels);
+        this.appManager.storeManager.storeSet('aiConfig.supportedModels', this.supportedModels);
     }
 
     getAllSupportedModels() {
@@ -451,15 +434,15 @@ class AIManager {
             finalSupportedAIModels.push(newObj);
         });
 
-        appManager.storeManager.storeSet('aiConfig.supportedModels', finalSupportedAIModels);
+        this.appManager.storeManager.storeSet('aiConfig.supportedModels', finalSupportedAIModels);
 
         this.supportedModels = finalSupportedAIModels;
     }
 
     setAssistantEngineModel(engineModel) {
-        if (engineModel === aiAssistantModelType) return;
+        if (engineModel === this.aiAssistantModelType) return;
 
-        aiAssistantModelType = engineModel;
+        this.aiAssistantModelType = engineModel;
 
         let engineType;
         switch (engineModel) {
@@ -518,12 +501,12 @@ class AIManager {
 
         console.log('AIManager: setAssistantEngineModel: ' + engineType);
 
-        if (aiAssistantChatAdapter !== undefined) {
-            aiAssistantChatAdapter.destroyChatEngine();
+        if (this.aiAssistantChatAdapter !== undefined) {
+            this.aiAssistantChatAdapter.destroyChatEngine();
         }
         switch (engineType) {
             case AI_ENGINE_TYPE.XYF:
-                aiAssistantChatAdapter = new XFYAdapter(CHAT_TYPE.CHAT_TYPE_KEY_CONFIG, engineModel, appManager.storeManager);
+                this.aiAssistantChatAdapter = new XFYAdapter(CHAT_TYPE.CHAT_TYPE_KEY_CONFIG, engineModel, this.appManager.storeManager);
                 break;
             case AI_ENGINE_TYPE.OpenAI:
             case AI_ENGINE_TYPE.CustomEngine:
@@ -532,70 +515,70 @@ class AIManager {
             case AI_ENGINE_TYPE.GroqChat:
             case AI_ENGINE_TYPE.QWenChat:
             case AI_ENGINE_TYPE.ZhiPuChat:
-                aiAssistantChatAdapter = new OpenAIAdapter(appManager, engineType, CHAT_TYPE.CHAT_TYPE_KEY_CONFIG, engineModel);
+                this.aiAssistantChatAdapter = new OpenAIAdapter(this.appManager, engineType, CHAT_TYPE.CHAT_TYPE_KEY_CONFIG, engineModel);
                 break;
             case AI_ENGINE_TYPE.Coze:
-                aiAssistantChatAdapter = new CozeAdapter(appManager, CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel);
+                this.aiAssistantChatAdapter = new CozeAdapter(this.appManager, CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel);
                 break;
             default:
-                aiAssistantChatAdapter = new OpenAIAdapter(appManager, AI_ENGINE_TYPE.GroqChat, CHAT_TYPE.CHAT_TYPE_KEY_CONFIG, engineModel);
+                this.aiAssistantChatAdapter = new OpenAIAdapter(this.appManager, AI_ENGINE_TYPE.GroqChat, CHAT_TYPE.CHAT_TYPE_KEY_CONFIG, engineModel);
                 break;
         }
     }
 
     setSpeechEngineModel(newSpeechModelType) {
 
-        if (newSpeechModelType === speechModelType) return;
+        if (newSpeechModelType === this.speechModelType) return;
 
-        speechModelType = newSpeechModelType;
+        this.speechModelType = newSpeechModelType;
 
         console.log('AIManager: setSpeechEngineModel: ' + newSpeechModelType);
-        if (ttsEngineAdapter !== undefined) {
-            ttsEngineAdapter.destroy();
+        if (this.ttsEngineAdapter !== undefined) {
+            this.ttsEngineAdapter.destroy();
         }
 
-        switch (speechModelType) {
+        switch (this.speechModelType) {
             case SPEECH_ENGINE_TYPE.XYF:
-                ttsEngineAdapter = new XFYAdapter(CHAT_TYPE.CHAT_TYPE_KEY_CONFIG, '', appManager.storeManager);
+                this.ttsEngineAdapter = new XFYAdapter(CHAT_TYPE.CHAT_TYPE_KEY_CONFIG, '', this.appManager.storeManager);
                 break;
             case SPEECH_ENGINE_TYPE.AZURE:
-                ttsEngineAdapter = new WebSpeechAudioAdapter(appManager, SPEECH_ENGINE_TYPE.AZURE);
+                this.ttsEngineAdapter = new WebSpeechAudioAdapter(this.appManager, SPEECH_ENGINE_TYPE.AZURE);
                 break;
         }
 
-        ttsEngineAdapter.setTTSConvertResultListener(ttsResultListener);
-        ttsEngineAdapter.setRecognizeResultListener((requestId, data) => this._handleRecognizeResult(requestId, data));
+        this.ttsEngineAdapter.setTTSConvertResultListener(this.ttsResultListener);
+        this.ttsEngineAdapter.setRecognizeResultListener((requestId, data) => this._handleRecognizeResult(requestId, data));
     }
 
     startAssistantSession(serialNumber, requestId, keyCode) {
-        if (this._getSessionState() !== AI_SESSION_STATE_EMPTY && assistantDeviceSN !== '' && assistantDeviceSN !== serialNumber) {
+        if (this._getSessionState() !== AI_SESSION_STATE_EMPTY && this.assistantDeviceSN !== '' && this.assistantDeviceSN !== serialNumber) {
             console.log('AIManager: startAssistantSession: Have ongoing assistant session with other device. Ignore request.');
             return false;
         }
 
-        if (!appManager || !appManager.windowManager || !appManager.windowManager.aiAssistantWindow
-            || !appManager.windowManager.aiAssistantWindow.win) {
+        if (!this.appManager || !this.appManager.windowManager || !this.appManager.windowManager.aiAssistantWindow
+            || !this.appManager.windowManager.aiAssistantWindow.win) {
             return false;
         }
 
         let delayMills = 1;
 
         if (this._getSessionState() !== AI_SESSION_STATE_IDLE) {
-            this.cancelCurrentAssistantSession(assistantDeviceSN);
+            this.cancelCurrentAssistantSession(this.assistantDeviceSN);
             delayMills = 300;
         }
 
         setTimeout(() => {
-            aiAssistantChatAdapter.cancelChatExpireTimer();
+            this.aiAssistantChatAdapter.cancelChatExpireTimer();
 
-            assistantDeviceSN = serialNumber;
-            assistantDeviceInfo = {
+            this.assistantDeviceSN = serialNumber;
+            this.assistantDeviceInfo = {
                 requestId: requestId,
                 keyCode: keyCode
             };
             console.log('startAssistantSession: For device: ' + serialNumber);
             this._setSessionState(AI_SESSION_STATE_ONGOING);
-            appManager.windowManager.aiAssistantWindow.win.webContents.send('StartAudioRecord', {requestAssistantId: requestId});
+            this.appManager.windowManager.aiAssistantWindow.win.webContents.send('StartAudioRecord', {requestAssistantId: requestId});
         }, delayMills);
         return true;
     }
@@ -607,37 +590,37 @@ class AIManager {
     recognizeVoice(requestId, audioData, isLastFrame) {
         console.log('AIManager: recognizeVoice: requestId: ' + requestId + ' DataLength: ' + audioData.byteLength + ' IsLastFrame: ' + isLastFrame);
         try {
-            if (currentRequestId !== requestId) {
-                audioDataArray = []
-                audioDataFinished = true
+            if (this.currentRequestId !== requestId) {
+                this.audioDataArray = []
+                this.audioDataFinished = true
 
-                if (audioSendTimer !== undefined) {
-                    clearInterval(audioSendTimer)
+                if (this.audioSendTimer !== undefined) {
+                    clearInterval(this.audioSendTimer)
                 }
-                audioSendTimer = undefined
-                audioDataArray = []
-                lastProcessedAudioIdx = 0
+                this.audioSendTimer = undefined
+                this.audioDataArray = []
+                this.lastProcessedAudioIdx = 0
 
-                ttsEngineAdapter.cancelCurrentRecognize()
+                this.ttsEngineAdapter.cancelCurrentRecognize()
             }
 
-            currentRequestId = requestId
+            this.currentRequestId = requestId
             const chunkedData = this._splitBySize(audioData, 1280)
             if (chunkedData.length > 0) {
                 chunkedData.forEach(chunk => {
-                    audioDataArray.push(chunk)
+                    this.audioDataArray.push(chunk)
                 })
             }
 
             if (!isLastFrame) {
-                audioDataFinished = false
-                if (audioSendTimer === undefined) {
+                this.audioDataFinished = false
+                if (this.audioSendTimer === undefined) {
                     this._sendAudioDataToServer()
                 }
             }
 
             if (isLastFrame) {
-                audioDataFinished = true
+                this.audioDataFinished = true
             }
         } catch (e) {
             console.log('AIManager: recognizeVoice: Error: ' + JSON.stringify(e));
@@ -645,79 +628,79 @@ class AIManager {
     }
 
     playTTS(requestId, text) {
-        if (assistantDeviceSN === '') return;
+        if (this.assistantDeviceSN === '') return;
 
-        ttsEngineAdapter.playTTS(requestId, text).catch(err => {
+        this.ttsEngineAdapter.playTTS(requestId, text).catch(err => {
             console.log('AIManager: playTTS Error: ', err)
         })
     }
 
     setTTSConvertListener(listener) {
-        ttsResultListener = listener;
-        if (ttsEngineAdapter === undefined) return;
+        this.ttsResultListener = listener;
+        if (this.ttsEngineAdapter === undefined) return;
 
-        ttsEngineAdapter.setTTSConvertResultListener(listener);
+        this.ttsEngineAdapter.setTTSConvertResultListener(listener);
     }
 
     setSTTConvertListener(listener) {
-        sttResultListener = listener;
+        this.sttResultListener = listener;
     }
 
     setAssistantProcessDone() {
-        if (isPendingChatFinish) {
+        if (this.isPendingChatFinish) {
             console.log('AIManager: setAssistantProcessDone: currently pending chat finish. Ignore request.');
             return;
         }
         console.log('AIManager: setAssistantProcessDone.');
         this._playAlertTone(Constants.ASSISTANT_SESSION_END);
 
-        if (aiAssistantChatAdapter.getUseChatContext()) {
+        if (this.aiAssistantChatAdapter.getUseChatContext()) {
             this._setSessionState(AI_SESSION_STATE_IDLE);
         } else {
             this._setSessionState(AI_SESSION_STATE_EMPTY);
         }
 
-        aiAssistantChatAdapter.startChatSessionExpireTimer().then(expired => {
+        this.aiAssistantChatAdapter.startChatSessionExpireTimer().then(expired => {
             if (!expired) return;
 
             this._setSessionState(AI_SESSION_STATE_EMPTY);
         });
 
-        ttsEngineAdapter.cancelCurrentTTSConvert();
-        ttsEngineAdapter.cancelCurrentRecognize();
+        this.ttsEngineAdapter.cancelCurrentTTSConvert();
+        this.ttsEngineAdapter.cancelCurrentRecognize();
     }
 
     setAssistantProcessFailed() {
-        if (assistantDeviceInfo) {
-            appManager.deviceControlManager.showDeviceAlert(assistantDeviceSN, Constants.ALERT_TYPE_INVALID, assistantDeviceInfo.keyCode);
+        if (this.assistantDeviceInfo) {
+            this.appManager.deviceControlManager.showDeviceAlert(this.assistantDeviceSN, Constants.ALERT_TYPE_INVALID, this.assistantDeviceInfo.keyCode);
             this._setSessionState(AI_SESSION_STATE_EMPTY);
         }
 
-        aiAssistantRequestId = undefined;
-        assistantDeviceSN = '';
-        assistantDeviceInfo = undefined;
-        isPendingChatFinish = false;
+        this.aiAssistantRequestId = undefined;
+        this.assistantDeviceSN = '';
+        this.assistantDeviceInfo = undefined;
+        this.isPendingChatFinish = false;
         this._playAlertTone(Constants.ASSISTANT_SESSION_ERROR);
     }
 
     sendChatMessage(chatHistory = []) {
         const requestId = randomString(10);
 
-        let temperature = appManager.storeManager.storeGet('aiConfig.chat.temperature');
+        let temperature = this.appManager.storeManager.storeGet('aiConfig.chat.temperature');
         if (!temperature) {
             temperature = 1;
         }
 
-        let topP = appManager.storeManager.storeGet('aiConfig.chat.topP');
+        let topP = this.appManager.storeManager.storeGet('aiConfig.chat.topP');
         if (!topP) {
             topP = 0.7;
         }
 
-        let requestModelName = aiChatModelType;
+        let requestModelName = this.aiChatModelType;
 
-        if (aiChatModelType.startsWith('Custom-') || aiChatModelType.startsWith('HuoShan-')) {
-            const aiConfigKeyPrefix = 'aiConfig.' + aiChatModelType;
-            requestModelName = appManager.storeManager.storeGet(aiConfigKeyPrefix + '.modelName');
+        if (this.aiChatModelType.startsWith('Custom-') || this.aiChatModelType.startsWith('HuoShan-')) {
+            const aiConfigKeyPrefix = 'aiConfig.' + this.aiChatModelType;
+            requestModelName = this.appManager.storeManager.storeGet(aiConfigKeyPrefix + '.modelName');
         }
 
         const params = {
@@ -729,7 +712,7 @@ class AIManager {
             top_p: topP
         }
         try {
-            standardAIChatAdapter.chatWithAI(requestId, params);
+            this.standardAIChatAdapter.chatWithAI(requestId, params);
         } catch (err) {
             console.log('AIManager: sendChatMessage detected error: ' + JSON.stringify(err));
             throw err;
@@ -739,22 +722,22 @@ class AIManager {
     }
 
     setChatResponseListener(listener) {
-        chatResponseListener = listener;
+        this.chatResponseListener = listener;
 
-        if (standardAIChatAdapter === undefined) return;
+        if (this.standardAIChatAdapter === undefined) return;
 
-        standardAIChatAdapter.setChatResponseListener(chatResponseListener);
+        this.standardAIChatAdapter.setChatResponseListener(this.chatResponseListener);
     }
 
     cancelChatProcess(requestId) {
-        standardAIChatAdapter.cancelChatProcess(requestId)
+        this.standardAIChatAdapter.cancelChatProcess(requestId)
     }
 
     setChatEngineModel(engineModel) {
 
-        if (engineModel === aiChatModelType) return;
+        if (engineModel === this.aiChatModelType) return;
 
-        aiChatModelType = engineModel;
+        this.aiChatModelType = engineModel;
 
         let chatEngineType;
         switch (engineModel) {
@@ -812,12 +795,12 @@ class AIManager {
         }
 
         console.log('AIManager: setChatEngineType: ' + chatEngineType);
-        if (standardAIChatAdapter !== undefined) {
-            standardAIChatAdapter.destroyChatEngine();
+        if (this.standardAIChatAdapter !== undefined) {
+            this.standardAIChatAdapter.destroyChatEngine();
         }
         switch (chatEngineType) {
             case AI_ENGINE_TYPE.XYF:
-                standardAIChatAdapter = new XFYAdapter(CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel, appManager.storeManager);
+                this.standardAIChatAdapter = new XFYAdapter(CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel, this.appManager.storeManager);
                 break;
             case AI_ENGINE_TYPE.OpenAI:
             case AI_ENGINE_TYPE.ArixoChat:
@@ -827,132 +810,128 @@ class AIManager {
             case AI_ENGINE_TYPE.StandardChat:
             case AI_ENGINE_TYPE.QWenChat:
             case AI_ENGINE_TYPE.ZhiPuChat:
-                standardAIChatAdapter = new OpenAIAdapter(appManager, chatEngineType, CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel);
+                this.standardAIChatAdapter = new OpenAIAdapter(this.appManager, chatEngineType, CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel);
                 break;
             case AI_ENGINE_TYPE.Coze:
-                standardAIChatAdapter = new CozeAdapter(appManager, CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel);
+                this.standardAIChatAdapter = new CozeAdapter(this.appManager, CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel);
                 break;
             default:
-                standardAIChatAdapter = new OpenAIAdapter(appManager, AI_ENGINE_TYPE.GroqChat, CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel);
+                this.standardAIChatAdapter = new OpenAIAdapter(this.appManager, AI_ENGINE_TYPE.GroqChat, CHAT_TYPE.CHAT_TYPE_NORMAL, engineModel);
                 break;
         }
 
-        standardAIChatAdapter.setChatResponseListener(chatResponseListener);
-    }
-
-    getInstalledApps() {
-        return pcInstalledApps;
+        this.standardAIChatAdapter.setChatResponseListener(this.chatResponseListener);
     }
 
     _resetAssistantSession(serialNumber, fullReset = true) {
-        console.log('AIManager: resetAssistantSession for: ' + serialNumber + ' Current: ' + assistantDeviceSN + ' fullReset: ' + fullReset);
-        if (serialNumber === '' || serialNumber !== assistantDeviceSN) return;
+        console.log('AIManager: resetAssistantSession for: ' + serialNumber + ' Current: ' + this.assistantDeviceSN + ' fullReset: ' + fullReset);
+        if (serialNumber === '' || serialNumber !== this.assistantDeviceSN) return;
 
-        clearTimeout(waitChatMsgTimeoutTask);
-        waitChatMsgTimeoutTask = undefined;
+        clearTimeout(this.waitChatMsgTimeoutTask);
+        this.waitChatMsgTimeoutTask = undefined;
 
-        appManager.windowManager.aiAssistantWindow.win.webContents.send('StopAudioRecord', {requestAssistantId: assistantDeviceInfo.requestId});
-        appManager.windowManager.aiAssistantWindow.win.webContents.send('StopTTSPlay', {requestAssistantId: assistantDeviceInfo.requestId});
+        this.appManager.windowManager.aiAssistantWindow.win.webContents.send('StopAudioRecord', {requestAssistantId: this.assistantDeviceInfo.requestId});
+        this.appManager.windowManager.aiAssistantWindow.win.webContents.send('StopTTSPlay', {requestAssistantId: this.assistantDeviceInfo.requestId});
 
-        assistantChatHistory = [];
-        aiAssistantRequestId = undefined;
+        this.assistantChatHistory = [];
+        this.aiAssistantRequestId = undefined;
 
         if (!fullReset) {
-            chatResponseMsg = '';
-            fullChatResponseMsg = '';
+            this.chatResponseMsg = '';
+            this.fullChatResponseMsg = '';
 
-            aiAssistantChatAdapter.cancelChatProcess();
-            ttsEngineAdapter.cancelCurrentTTSConvert();
-            ttsEngineAdapter.cancelCurrentRecognize();
+            this.aiAssistantChatAdapter.cancelChatProcess();
+            this.ttsEngineAdapter.cancelCurrentTTSConvert();
+            this.ttsEngineAdapter.cancelCurrentRecognize();
             return;
         }
         setTimeout(() => {
-            chatResponseMsg = '';
-            fullChatResponseMsg = '';
+            this.chatResponseMsg = '';
+            this.fullChatResponseMsg = '';
 
-            aiAssistantChatAdapter.cancelChatProcess();
-            ttsEngineAdapter.cancelCurrentTTSConvert();
-            ttsEngineAdapter.cancelCurrentRecognize();
+            this.aiAssistantChatAdapter.cancelChatProcess();
+            this.ttsEngineAdapter.cancelCurrentTTSConvert();
+            this.ttsEngineAdapter.cancelCurrentRecognize();
 
             this._setSessionState(AI_SESSION_STATE_EMPTY);
 
-            assistantDeviceSN = '';
-            assistantDeviceInfo = {};
-            isPendingChatFinish = false;
+            this.assistantDeviceSN = '';
+            this.assistantDeviceInfo = {};
+            this.isPendingChatFinish = false;
         }, 300);
     }
 
     _handleRecognizeResult(requestId, dataStr = '') {
-        if (assistantDeviceSN === '') return;
-        console.log('AIManager: handleRecognizeResult: RequestId: ' + requestId + ' DataStr: ' + dataStr + ' CurrentChatMode: ' + aiAssistantChatAdapter.getChatMode());
+        if (this.assistantDeviceSN === '') return;
+        console.log('AIManager: handleRecognizeResult: RequestId: ' + requestId + ' DataStr: ' + dataStr + ' CurrentChatMode: ' + this.aiAssistantChatAdapter.getChatMode());
         dataStr = dataStr.trim();
         if (dataStr.length < 2 || (dataStr === 2 && (dataStr.endsWith('。') || dataStr.endsWith('.')))) {
             this._setSessionState(AI_SESSION_STATE_EMPTY);
             console.log('AIManager: handleRecognizeResult: Ignored message for too short data.');
-            this._resetAssistantSession(assistantDeviceSN);
+            this._resetAssistantSession(this.assistantDeviceSN);
             return;
         }
 
-        firstChatFrameResponse = true;
-        isPendingChatFinish = true;
+        this.firstChatFrameResponse = true;
+        this.isPendingChatFinish = true;
 
-        const deviceActiveProfile = appManager.deviceControlManager.getDeviceActiveProfile(assistantDeviceSN);
-        const deviceLayoutConfig = appManager.deviceControlManager.getDeviceBasicConfig(assistantDeviceSN);
+        const deviceActiveProfile = this.appManager.deviceControlManager.getDeviceActiveProfile(this.assistantDeviceSN);
+        const deviceLayoutConfig = this.appManager.deviceControlManager.getDeviceBasicConfig(this.assistantDeviceSN);
         this._handleAIAssistantProcess(requestId, dataStr, deviceActiveProfile, deviceLayoutConfig);
         this._setSessionState(AI_SESSION_STATE_PROCESSING);
     }
 
     async _handleChatResponse(requestId, status, message, messageType = CHUNK_MSG_TYPE.ANSWER) {
 
-        if (assistantDeviceSN === '') return;
+        if (this.assistantDeviceSN === '') return;
 
-        switch (aiAssistantChatAdapter.getChatMode()) {
+        switch (this.aiAssistantChatAdapter.getChatMode()) {
             case CHAT_TYPE.CHAT_TYPE_NORMAL:
                 if (status === -1) {
-                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
+                    this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
                     this.setAssistantProcessFailed();
-                    this._resetAssistantSession(assistantDeviceSN);
+                    this._resetAssistantSession(this.assistantDeviceSN);
                     return;
                 }
 
-                fullChatResponseMsg += message;
-                chatResponseMsg += message;
+                this.fullChatResponseMsg += message;
+                this.chatResponseMsg += message;
 
-                if ((firstChatFrameResponse && chatResponseMsg.length >= 20) || (!firstChatFrameResponse && chatResponseMsg.length >= 50) || status === 2) {
-                    console.log('AIManager: handleChatResponse Triggered TTS Play: assistantDeviceSN: ' + assistantDeviceSN + ' RequestId: ' + requestId + ' status: ' + status + ' chatResponseMsg: ' + chatResponseMsg)
-                    firstChatFrameResponse = false;
-                    clearTimeout(waitChatMsgTimeoutTask);
-                    waitChatMsgTimeoutTask = undefined;
+                if ((this.firstChatFrameResponse && this.chatResponseMsg.length >= 20) || (!this.firstChatFrameResponse && this.chatResponseMsg.length >= 50) || status === 2) {
+                    console.log('AIManager: handleChatResponse Triggered TTS Play: this.assistantDeviceSN: ' + this.assistantDeviceSN + ' RequestId: ' + requestId + ' status: ' + status + ' this.chatResponseMsg: ' + this.chatResponseMsg)
+                    this.firstChatFrameResponse = false;
+                    clearTimeout(this.waitChatMsgTimeoutTask);
+                    this.waitChatMsgTimeoutTask = undefined;
                     if (status !== 2) {
-                        waitChatMsgTimeoutTask = setTimeout(() => {
-                            console.log(`AIManager: Timeout Wait AIMsg: ${chatResponseMsg}`);
-                            ttsEngineAdapter.playTTS(requestId, chatResponseMsg);
-                            chatResponseMsg = '';
+                        this.waitChatMsgTimeoutTask = setTimeout(() => {
+                            console.log(`AIManager: Timeout Wait AIMsg: ${this.chatResponseMsg}`);
+                            this.ttsEngineAdapter.playTTS(requestId, this.chatResponseMsg);
+                            this.chatResponseMsg = '';
                         }, 3000);
                     } else {
-                        isPendingChatFinish = false;
+                        this.isPendingChatFinish = false;
 
-                        assistantChatHistory.push({
+                        this.assistantChatHistory.push({
                             role: 'assistant',
-                            content: fullChatResponseMsg
+                            content: this.fullChatResponseMsg
                         });
-                        fullChatResponseMsg = '';
+                        this.fullChatResponseMsg = '';
                     }
 
-                    const splitMsg = splitByLastPunctuation(chatResponseMsg);
+                    const splitMsg = this._splitByLastPunctuation(this.chatResponseMsg);
 
                     console.log('AIManager: handleChatResponse: splitMsg: ', splitMsg);
 
                     if (splitMsg.length === 1 || splitMsg[1] === '') {
-                        ttsEngineAdapter.playTTS(requestId, chatResponseMsg);
-                        chatResponseMsg = '';
+                        this.ttsEngineAdapter.playTTS(requestId, this.chatResponseMsg);
+                        this.chatResponseMsg = '';
                     } else {
                         if (status === 2) {
-                            ttsEngineAdapter.playTTS(requestId, chatResponseMsg);
-                            chatResponseMsg = '';
+                            this.ttsEngineAdapter.playTTS(requestId, this.chatResponseMsg);
+                            this.chatResponseMsg = '';
                         } else {
-                            ttsEngineAdapter.playTTS(requestId, splitMsg[0]);
-                            chatResponseMsg = splitMsg[1];
+                            this.ttsEngineAdapter.playTTS(requestId, splitMsg[0]);
+                            this.chatResponseMsg = splitMsg[1];
                         }
 
                     }
@@ -960,72 +939,72 @@ class AIManager {
                 }
                 break;
             case CHAT_TYPE.CHAT_TYPE_KEY_CONFIG:
-                console.log('AIManager: handleChatResponse: for CHAT_TYPE_KEY_CONFIG assistantDeviceSN: ' + assistantDeviceSN + ' RequestId: ' + requestId + ' status: ' + status + ' Message: ' + message)
+                console.log('AIManager: handleChatResponse: for CHAT_TYPE_KEY_CONFIG this.assistantDeviceSN: ' + this.assistantDeviceSN + ' RequestId: ' + requestId + ' status: ' + status + ' Message: ' + message)
 
                 if (status === 0) {
-                    chatResponseMsg = '';
-                    clearTimeout(waitChatMsgTimeoutTask);
-                    waitChatMsgTimeoutTask = setTimeout(() => {
-                        console.log(`AIManager: wait Chat config response timeout : ${chatResponseMsg}`);
-                        ttsEngineAdapter.playTTS(requestId, chatResponseMsg);
-                        chatResponseMsg = '';
+                    this.chatResponseMsg = '';
+                    clearTimeout(this.waitChatMsgTimeoutTask);
+                    this.waitChatMsgTimeoutTask = setTimeout(() => {
+                        console.log(`AIManager: wait Chat config response timeout : ${this.chatResponseMsg}`);
+                        this.ttsEngineAdapter.playTTS(requestId, this.chatResponseMsg);
+                        this.chatResponseMsg = '';
                     }, AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
                 }
-                chatResponseMsg += message;
+                this.chatResponseMsg += message;
 
-                if (waitChatMsgTimeoutTask !== undefined && chatResponseMsg.includes('{') && chatResponseMsg.includes('title')) {
-                    clearTimeout(waitChatMsgTimeoutTask);
-                    waitChatMsgTimeoutTask = undefined;
+                if (this.waitChatMsgTimeoutTask !== undefined && this.chatResponseMsg.includes('{') && this.chatResponseMsg.includes('title')) {
+                    clearTimeout(this.waitChatMsgTimeoutTask);
+                    this.waitChatMsgTimeoutTask = undefined;
                 }
 
                 if (status === 1) return;
 
                 if (status === 2) {
-                    const decodeDataStartIdx = chatResponseMsg.indexOf("{");
-                    const decodeDataEndIdx = chatResponseMsg.lastIndexOf("}");
+                    const decodeDataStartIdx = this.chatResponseMsg.indexOf("{");
+                    const decodeDataEndIdx = this.chatResponseMsg.lastIndexOf("}");
                     if (decodeDataStartIdx < 0 || decodeDataEndIdx <= decodeDataStartIdx) {
                         let returnedResponse = undefined;
                         let isValidResponse = false;
                         try {
-                            returnedResponse = eval('(' + chatResponseMsg + ')');
+                            returnedResponse = eval('(' + this.chatResponseMsg + ')');
                         } catch (err) {
                             console.log('AIManager: Invalid Json.')
                         }
-                        console.log('AIManager: handleChatResponse: invalid config info: ' + chatResponseMsg + ' waitChatMsgTimeoutTask: ' + waitChatMsgTimeoutTask);
-                        if (waitChatMsgTimeoutTask !== undefined) {
-                            clearTimeout(waitChatMsgTimeoutTask);
-                            if (chatResponseMsg.toLowerCase().startsWith(i18nRender("assistantConfig.modifyConfig").toLowerCase())) {
-                                ttsEngineAdapter.playTTS(requestId, i18nRender("assistantConfig.unKnowConfigRequest"));
+                        console.log('AIManager: handleChatResponse: invalid config info: ' + this.chatResponseMsg + ' this.waitChatMsgTimeoutTask: ' + this.waitChatMsgTimeoutTask);
+                        if (this.waitChatMsgTimeoutTask !== undefined) {
+                            clearTimeout(this.waitChatMsgTimeoutTask);
+                            if (this.chatResponseMsg.toLowerCase().startsWith(i18nRender("assistantConfig.modifyConfig").toLowerCase())) {
+                                this.ttsEngineAdapter.playTTS(requestId, i18nRender("assistantConfig.unKnowConfigRequest"));
                             } else if (returnedResponse && returnedResponse.requestMsg) {
                                 if (returnedResponse.requestMsg.toLowerCase() === 'New configuration' || returnedResponse.requestMsg.toLowerCase() === 'Modify configuration') {
                                     isValidResponse = true;
                                 } else {
-                                    ttsEngineAdapter.playTTS(requestId, returnedResponse.requestMsg);
+                                    this.ttsEngineAdapter.playTTS(requestId, returnedResponse.requestMsg);
                                 }
                             } else {
-                                ttsEngineAdapter.playTTS(requestId, chatResponseMsg);
+                                this.ttsEngineAdapter.playTTS(requestId, this.chatResponseMsg);
                             }
                         } else {
                             this._showAssistantError(requestId);
                         }
                         if (!isValidResponse) {
-                            isPendingChatFinish = false;
-                            chatResponseMsg = '';
+                            this.isPendingChatFinish = false;
+                            this.chatResponseMsg = '';
                             return;
                         }
                     }
 
-                    const responseConfigJson = chatResponseMsg.substring(decodeDataStartIdx, (decodeDataEndIdx + 1));
+                    const responseConfigJson = this.chatResponseMsg.substring(decodeDataStartIdx, (decodeDataEndIdx + 1));
 
                     console.log('AIManager: handleChatResponse: AI response config StartIndex: ' + decodeDataStartIdx + ' EndIdx: ' + decodeDataEndIdx +
-                        ' OriginalResponse: ' + chatResponseMsg + ' responseConfigJson: ' + responseConfigJson);
+                        ' OriginalResponse: ' + this.chatResponseMsg + ' responseConfigJson: ' + responseConfigJson);
                     let responseConfigData = '';
                     try {
                         responseConfigData = eval('(' + responseConfigJson + ')');
                     } catch (err) {
                         console.log('AIManager: handleChatResponse: Invalid Json.')
                         this._showAssistantError(requestId);
-                        chatResponseMsg = '';
+                        this.chatResponseMsg = '';
                         return;
                     }
 
@@ -1035,77 +1014,77 @@ class AIManager {
                     console.log('AIManager: handleChatResponse: newConfigData is null: ' + (newConfigData === undefined));
 
                     if (newConfigData === undefined) {
-                        ttsEngineAdapter.playTTS(requestId, responseConfigData.requestMsg);
-                        isPendingChatFinish = false;
-                        chatResponseMsg = '';
+                        this.ttsEngineAdapter.playTTS(requestId, responseConfigData.requestMsg);
+                        this.isPendingChatFinish = false;
+                        this.chatResponseMsg = '';
                         break;
                     }
 
-                    const deviceActiveProfile = appManager.deviceControlManager.getDeviceActiveProfile(assistantDeviceSN);
+                    const deviceActiveProfile = this.appManager.deviceControlManager.getDeviceActiveProfile(this.assistantDeviceSN);
 
                     const configResourceId = deviceActiveProfile.resourceId;
                     let configData = deviceActiveProfile.configInfo;
 
                     configData = await this._convertConfigDataToProtocolConfig(newConfigData, configData, true);
-                    appManager.resourcesManager.updateConfigInfo(configResourceId, configData);
+                    this.appManager.resourcesManager.updateConfigInfo(configResourceId, configData);
 
-                    appManager.deviceControlManager.sendProfileChangeRequest(assistantDeviceSN, configResourceId);
+                    this.appManager.deviceControlManager.sendProfileChangeRequest(this.assistantDeviceSN, configResourceId);
 
-                    this._notifyDeviceConfigChange(assistantDeviceSN, configResourceId, deviceActiveProfile.configIdx);
+                    this._notifyDeviceConfigChange(this.assistantDeviceSN, configResourceId, deviceActiveProfile.configIdx);
 
                     console.log('AIManager: handleChatResponse: edit old config.');
-                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.configUpdated'));
-                    isPendingChatFinish = false;
-                    chatResponseMsg = '';
+                    this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.configUpdated'));
+                    this.isPendingChatFinish = false;
+                    this.chatResponseMsg = '';
                 }
 
                 break;
             case CHAT_TYPE.CHAT_TYPE_OPERATE_PC:
-                clearTimeout(waitChatMsgTimeoutTask);
-                waitChatMsgTimeoutTask = undefined;
+                clearTimeout(this.waitChatMsgTimeoutTask);
+                this.waitChatMsgTimeoutTask = undefined;
                 if (status !== 2) {
-                    waitChatMsgTimeoutTask = setTimeout(() => {
-                        console.log(`AIManager: Timeout Wait AIMsg for CHAT_TYPE_OPERATE_PC: ${chatResponseMsg}`);
-                        chatResponseMsg = '';
+                    this.waitChatMsgTimeoutTask = setTimeout(() => {
+                        console.log(`AIManager: Timeout Wait AIMsg for CHAT_TYPE_OPERATE_PC: ${this.chatResponseMsg}`);
+                        this.chatResponseMsg = '';
                         this.setAssistantProcessFailed();
-                        this._resetAssistantSession(assistantDeviceSN);
+                        this._resetAssistantSession(this.assistantDeviceSN);
                     }, 5000);
                 }
 
                 if (status === -1) {
-                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
+                    this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
                     this.setAssistantProcessFailed();
-                    this._resetAssistantSession(assistantDeviceSN);
+                    this._resetAssistantSession(this.assistantDeviceSN);
                     return;
                 }
 
-                if (OPERATION_STAGE.STAGE_DECODE_END === operatePCContext.stage) {
-                    resetOperatePCContext();
-                    operatePCContext.stage = OPERATION_STAGE.STAGE_DECODE_ACTION;
-                    chatResponseMsg = '';
-                    fullChatResponseMsg = '';
+                if (OPERATION_STAGE.STAGE_DECODE_END === this.operatePCContext.stage) {
+                    this._resetOperatePCContext();
+                    this.operatePCContext.stage = OPERATION_STAGE.STAGE_DECODE_ACTION;
+                    this.chatResponseMsg = '';
+                    this.fullChatResponseMsg = '';
                 }
 
-                fullChatResponseMsg += message;
-                chatResponseMsg += message;
+                this.fullChatResponseMsg += message;
+                this.chatResponseMsg += message;
 
-                this._decodeOperateActionData(requestId, chatResponseMsg, status === 2, messageType);
+                this._decodeOperateActionData(requestId, this.chatResponseMsg, status === 2, messageType);
 
-                if (!operatePCContext.actionProcessDone && operatePCContext.actionType !== '' && operatePCContext.actionDetail) {
+                if (!this.operatePCContext.actionProcessDone && this.operatePCContext.actionType !== '' && this.operatePCContext.actionDetail) {
 
-                    await this._handleUserRequestActions(requestId, operatePCContext.actionType, operatePCContext.actionDetail, operatePCContext.actionOutput, status === 2);
-                    if (operatePCContext.actionDetail.length > 0 && (operatePCContext.actionType === AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION || operatePCContext.actionType === AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION)) {
-                        operatePCContext.actionProcessDone = true;
-                        isPendingChatFinish = false;
+                    await this._handleUserRequestActions(requestId, this.operatePCContext.actionType, this.operatePCContext.actionDetail, this.operatePCContext.actionOutput, status === 2);
+                    if (this.operatePCContext.actionDetail.length > 0 && (this.operatePCContext.actionType === AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION || this.operatePCContext.actionType === AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION)) {
+                        this.operatePCContext.actionProcessDone = true;
+                        this.isPendingChatFinish = false;
                     }
                 }
 
                 if (status === 2) {
-                    console.log('AIManager: handleChatResponse: Final CHAT_TYPE_OPERATE_PC message: ' + fullChatResponseMsg + ' DeCoded: Data: ', operatePCContext);
-                    operatePCContext.stage = OPERATION_STAGE.STAGE_DECODE_END;
+                    console.log('AIManager: handleChatResponse: Final CHAT_TYPE_OPERATE_PC message: ' + this.fullChatResponseMsg + ' DeCoded: Data: ', this.operatePCContext);
+                    this.operatePCContext.stage = OPERATION_STAGE.STAGE_DECODE_END;
 
-                    if (operatePCContext.actionType === '') {
-                        isPendingChatFinish = false;
+                    if (this.operatePCContext.actionType === '') {
+                        this.isPendingChatFinish = false;
                         this.setAssistantProcessDone();
                         return;
                     }
@@ -1127,36 +1106,36 @@ class AIManager {
         if (message.includes('**OutputResponse**')) {
             message = message.replace('**OutputResponse**', '`OutputResponse`');
         }
-        switch (operatePCContext.stage) {
+        switch (this.operatePCContext.stage) {
             case OPERATION_STAGE.STAGE_DECODE_ACTION:
                 if (!message.includes('`UserRequestAction`:') || (!isLast && !message.includes('`ActionDetail`:'))) {
                     return;
                 }
 
-                operatePCContext.actionType = message
+                this.operatePCContext.actionType = message
                     .substring(message.indexOf('`UserRequestAction`:') + 20, message.indexOf('`ActionDetail`:'))
                     .trim();
 
-                if (operatePCContext.actionType.endsWith('\\')) {
-                    operatePCContext.actionType = operatePCContext.actionType.substring(0, operatePCContext.actionType.length - 1);
+                if (this.operatePCContext.actionType.endsWith('\\')) {
+                    this.operatePCContext.actionType = this.operatePCContext.actionType.substring(0, this.operatePCContext.actionType.length - 1);
                 }
 
-                operatePCContext.actionType = operatePCContext.actionType.replace(/`/g, '').replace(/'/g, '').replace(/-/g, '').trim();
+                this.operatePCContext.actionType = this.operatePCContext.actionType.replace(/`/g, '').replace(/'/g, '').replace(/-/g, '').trim();
 
                 message = message.substring(message.indexOf('\n') + 1);
 
                 console.log(
-                    'AIManager: handleChatResponse: OPERATION_STAGE.STAGE_DECODE_ACTION: operatePCContext.actionType: ' +
-                    operatePCContext.actionType,
+                    'AIManager: handleChatResponse: OPERATION_STAGE.STAGE_DECODE_ACTION: this.operatePCContext.actionType: ' +
+                    this.operatePCContext.actionType,
                     ' MessageRemain: ' + message
                 );
 
-                operatePCContext.stage = OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL;
+                this.operatePCContext.stage = OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL;
 
-                ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.ok'));
+                this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.ok'));
 
                 if (message !== '') {
-                    chatResponseMsg = message;
+                    this.chatResponseMsg = message;
                     this._decodeOperateActionData(requestId, message, isLast, messageType);
                     return;
                 }
@@ -1188,11 +1167,11 @@ class AIManager {
                 }
 
                 try {
-                    operatePCContext.actionDetail = JSON.parse(decodeSubMsg.replace(regExp, (matched) => replacements[matched]));
+                    this.operatePCContext.actionDetail = JSON.parse(decodeSubMsg.replace(regExp, (matched) => replacements[matched]));
                 } catch (err) {
                     if (decodeSubMsg.startsWith("[{") && decodeSubMsg.endsWith("}]")) {
                         decodeSubMsg = '[' + decodeSubMsg.substring(2, decodeSubMsg.length - 2) + ']';
-                        operatePCContext.actionDetail = JSON.parse(decodeSubMsg.replace(regExp, (matched) => replacements[matched]));
+                        this.operatePCContext.actionDetail = JSON.parse(decodeSubMsg.replace(regExp, (matched) => replacements[matched]));
                     } else {
 
 
@@ -1216,22 +1195,22 @@ class AIManager {
 
                         console.log('AIManager: handleChatResponse: OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: After Decoding result: ', result);
 
-                        operatePCContext.actionDetail = result;
+                        this.operatePCContext.actionDetail = result;
                     }
                 }
 
                 message = message.substring(message.indexOf('`OutputResponse`:'));
 
                 console.log(
-                    'AIManager: handleChatResponse: OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: operatePCContext.actionType: ActionDetail: ', operatePCContext.actionDetail,
+                    'AIManager: handleChatResponse: OPERATION_STAGE.STAGE_DECODE_ACTION_DETAIL: this.operatePCContext.actionType: ActionDetail: ', this.operatePCContext.actionDetail,
                     ' MessageRemain: ' + message
                 );
 
-                operatePCContext.stage = OPERATION_STAGE.STAGE_DECODE_OUTPUT;
-                operatePCContext.streamChunkMsg = '';
+                this.operatePCContext.stage = OPERATION_STAGE.STAGE_DECODE_OUTPUT;
+                this.operatePCContext.streamChunkMsg = '';
 
                 if (message !== '') {
-                    chatResponseMsg = message;
+                    this.chatResponseMsg = message;
                     this._decodeOperateActionData(requestId, message, isLast, messageType);
                     return;
                 }
@@ -1241,50 +1220,50 @@ class AIManager {
 
                 let chunkedMsg = '';
                 if (message.includes('`OutputResponse`:')) {
-                    operatePCContext.actionOutput = message.substring(message.indexOf('`OutputResponse`:') + 17);
-                    if (operatePCContext.actionOutput === '') {
-                        operatePCContext.actionOutput = ' ';
+                    this.operatePCContext.actionOutput = message.substring(message.indexOf('`OutputResponse`:') + 17);
+                    if (this.operatePCContext.actionOutput === '') {
+                        this.operatePCContext.actionOutput = ' ';
                     }
-                    operatePCContext.streamChunkMsg = '';
+                    this.operatePCContext.streamChunkMsg = '';
                     message = '';
                     chunkedMsg = '';
-                } else if (operatePCContext.actionOutput !== '') {
-                    operatePCContext.actionOutput += message;
+                } else if (this.operatePCContext.actionOutput !== '') {
+                    this.operatePCContext.actionOutput += message;
                     chunkedMsg = message;
                     message = '';
                 }
 
                 if (messageType === CHUNK_MSG_TYPE.ANSWER) {
-                    operatePCContext.streamChunkMsg += chunkedMsg;
+                    this.operatePCContext.streamChunkMsg += chunkedMsg;
                 }
                 break;
             }
         }
 
-        chatResponseMsg = message;
+        this.chatResponseMsg = message;
     }
 
     async _sendAudioDataToServer() {
-        if (lastProcessedAudioIdx >= audioDataArray.length) return
+        if (this.lastProcessedAudioIdx >= this.audioDataArray.length) return
 
-        const frameData = audioDataArray[lastProcessedAudioIdx]
+        const frameData = this.audioDataArray[this.lastProcessedAudioIdx]
 
         try {
-            await ttsEngineAdapter.sendAudioData(currentRequestId, frameData, false)
+            await this.ttsEngineAdapter.sendAudioData(this.currentRequestId, frameData, false)
         } catch (err) {
             console.log('sendAudioDataToServer: error: ', err)
         }
 
-        lastProcessedAudioIdx += 1
+        this.lastProcessedAudioIdx += 1
 
-        if (lastProcessedAudioIdx >= audioDataArray.length && audioDataFinished) {
-            await ttsEngineAdapter.sendAudioData(currentRequestId, null, true)
-            clearInterval(audioSendTimer);
-            audioSendTimer = undefined
-            audioDataArray = []
-            lastProcessedAudioIdx = 0
-        } else if (audioSendTimer === undefined) {
-            audioSendTimer = setInterval(() => {
+        if (this.lastProcessedAudioIdx >= this.audioDataArray.length && this.audioDataFinished) {
+            await this.ttsEngineAdapter.sendAudioData(this.currentRequestId, null, true)
+            clearInterval(this.audioSendTimer);
+            this.audioSendTimer = undefined
+            this.audioDataArray = []
+            this.lastProcessedAudioIdx = 0
+        } else if (this.audioSendTimer === undefined) {
+            this.audioSendTimer = setInterval(() => {
                 this._sendAudioDataToServer()
             }, 40)
 
@@ -1308,13 +1287,13 @@ class AIManager {
     }
 
     _playAlertTone(toneName) {
-        const toneInfo = alterToneMap.get(toneName);
+        const toneInfo = this.alterToneMap.get(toneName);
         console.log('AIManager: playAlertTone: ' + toneName + ' toneInfo: ', toneInfo);
 
         if (!toneInfo || toneInfo.playerId === undefined) return;
 
 
-        appManager.windowManager.mainWindow.win.webContents.send('DoAudioAction', {
+        this.appManager.windowManager.mainWindow.win.webContents.send('DoAudioAction', {
             playerId: toneInfo.playerId,
             audioAction: Constants.AUDIO_ACTION_PLAY_RESTART,
             audioFade: '0-0'
@@ -1322,7 +1301,7 @@ class AIManager {
     }
 
     _getAnimationResourceId(name) {
-        const animationResourceInfo = aiSessionResourceMap.get(name);
+        const animationResourceInfo = this.aiSessionResourceMap.get(name);
         if (animationResourceInfo !== undefined) {
             return animationResourceInfo.id;
         }
@@ -1330,68 +1309,68 @@ class AIManager {
     }
 
     _getSessionState() {
-        return aiSessionState;
+        return this.aiSessionState;
     }
 
     _setSessionState(state) {
         console.log('AIManager: setSessionState: ' + state);
 
-        aiSessionState = state;
+        this.aiSessionState = state;
 
-        if (assistantDeviceInfo === undefined || assistantDeviceInfo.keyCode === undefined) {
+        if (this.assistantDeviceInfo === undefined || this.assistantDeviceInfo.keyCode === undefined) {
             console.log('AIManager: setSessionState: failed. Unknown keyCode');
             return;
         }
 
-        const processKeyCode = assistantDeviceInfo.keyCode;
+        const processKeyCode = this.assistantDeviceInfo.keyCode;
 
-        const deviceControlManager = appManager.deviceControlManager;
+        const deviceControlManager = this.appManager.deviceControlManager;
         switch (state) {
             case AI_SESSION_STATE_EMPTY:
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_IDLE), processKeyCode, -1);
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_ONGOING), processKeyCode, -1);
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_PROCESSING), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_IDLE), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_ONGOING), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_PROCESSING), processKeyCode, -1);
 
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_TYPE_KEY_CONFIG), processKeyCode, -2);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_TYPE_KEY_CONFIG), processKeyCode, -2);
 
-                assistantDeviceSN = '';
-                assistantDeviceInfo = undefined;
-                aiAssistantRequestId = undefined;
+                this.assistantDeviceSN = '';
+                this.assistantDeviceInfo = undefined;
+                this.aiAssistantRequestId = undefined;
 
-                resetOperatePCContext();
+                this._resetOperatePCContext();
 
-                aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_KEY_CONFIG);
+                this.aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_KEY_CONFIG);
                 break;
             case AI_SESSION_STATE_ONGOING:
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_IDLE), processKeyCode, -1);
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_PROCESSING), processKeyCode, -1);
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_TYPE_KEY_CONFIG), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_IDLE), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_PROCESSING), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_TYPE_KEY_CONFIG), processKeyCode, -1);
 
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_ONGOING), processKeyCode, -2);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_ONGOING), processKeyCode, -2);
                 break;
             case AI_SESSION_STATE_PROCESSING:
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_IDLE), processKeyCode, -1);
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_ONGOING), processKeyCode, -1);
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_TYPE_KEY_CONFIG), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_IDLE), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_ONGOING), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_TYPE_KEY_CONFIG), processKeyCode, -1);
 
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_PROCESSING), processKeyCode, -2);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_PROCESSING), processKeyCode, -2);
                 break;
             case AI_SESSION_STATE_IDLE:
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_ONGOING), processKeyCode, -1);
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_PROCESSING), processKeyCode, -1);
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_TYPE_KEY_CONFIG), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_ONGOING), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_PROCESSING), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_TYPE_KEY_CONFIG), processKeyCode, -1);
 
-                deviceControlManager.showDeviceAnimation(assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_IDLE), processKeyCode, -2);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this._getAnimationResourceId(Constants.ASSISTANT_ANIMATION_IDLE), processKeyCode, -2);
                 break;
         }
     }
 
     _notifyDeviceConfigChange(serialNumber, resourceId, configIdx) {
-        if (!appManager || !appManager.windowManager || !appManager.windowManager.mainWindow
-            || !appManager.windowManager.mainWindow.win) {
+        if (!this.appManager || !this.appManager.windowManager || !this.appManager.windowManager.mainWindow
+            || !this.appManager.windowManager.mainWindow.win) {
             return;
         }
-        appManager.windowManager.mainWindow.win.webContents.send('DeviceProfileChange', {
+        this.appManager.windowManager.mainWindow.win.webContents.send('DeviceProfileChange', {
             serialNumber: serialNumber,
             resourceId: resourceId,
             configIdx: configIdx
@@ -1399,7 +1378,7 @@ class AIManager {
     }
 
     async _convertConfigDataToProtocolConfig(newConfigData, oldConfig, isModify = false) {
-        const deviceLayoutConfig = appManager.deviceControlManager.getDeviceBasicConfig(assistantDeviceSN);
+        const deviceLayoutConfig = this.appManager.deviceControlManager.getDeviceBasicConfig(this.assistantDeviceSN);
 
         let maxKeySupport = 6, maxRow = 2, maxCol = 3;
         try {
@@ -1414,7 +1393,7 @@ class AIManager {
         console.log('AIManager: convertConfigDataToProtocolConfig: maxKeySupport: ' + maxKeySupport + ' maxRow: ' + maxRow + ' maxCol: ' + maxCol);
 
         if (oldConfig === undefined) {
-            oldConfig = getEmptyConfigList(maxRow, maxCol);
+            oldConfig = this._getEmptyConfigList(maxRow, maxCol);
             console.log('AIManager: convertConfigDataToProtocolConfig: generated new config data: ' + JSON.stringify(oldConfig));
         }
 
@@ -1494,7 +1473,7 @@ class AIManager {
         if (!haveNewConfig) {
             const backConfig = oldConfig.find(oldConfigInfo => oldConfigInfo.config.type === 'back');
 
-            oldConfig = getEmptyConfigList(maxRow, maxCol);
+            oldConfig = this._getEmptyConfigList(maxRow, maxCol);
 
             if (backConfig) {
                 oldConfig[0] = backConfig;
@@ -1535,7 +1514,7 @@ class AIManager {
             const mdiIconName = newConfigItem.icon.substring(4);
             console.log('AIManager: ai return MDI icon: ', mdiIconName, ' newConfigItem.config.functionType: ', newConfigItem.config.functionType);
 
-            const mdiIconResId = await appManager.resourcesManager.getMDIIconResIdByName(mdiIconName);
+            const mdiIconResId = await this.appManager.resourcesManager.getMDIIconResIdByName(mdiIconName);
 
             if (mdiIconResId !== '-1') {
                 oldConfigItem.config.icon = mdiIconResId;
@@ -1547,7 +1526,7 @@ class AIManager {
             if (oldConfigItem.config.icon === undefined || oldConfigItem.config.icon === ''
                 || oldConfigItem.config.icon.startsWith('0-')) {
                 if (newConfigItem.config.functionType) {
-                    oldConfigItem.config.icon = configToResIdMap.get(newConfigItem.config.functionType);
+                    oldConfigItem.config.icon = this.configToResIdMap.get(newConfigItem.config.functionType);
                 } else {
                     oldConfigItem.config.icon = '';
                 }
@@ -1617,7 +1596,7 @@ class AIManager {
                 if (newConfigItem.config.functionType === 'hotkeySwitch') {
                     if (oldConfigItem.config.alterIcon === undefined || oldConfigItem.config.alterIcon === ''
                         || oldConfigItem.config.alterIcon.startsWith('0-')) {
-                        oldConfigItem.config.alterIcon = configToResIdMap.get(newConfigItem.config.functionType + 'Alter');
+                        oldConfigItem.config.alterIcon = this.configToResIdMap.get(newConfigItem.config.functionType + 'Alter');
                     }
                     if (oldConfigItem.config.alterTitle === undefined) {
                         oldConfigItem.config.alterTitle = oldConfigItem.config.title;
@@ -1750,7 +1729,7 @@ class AIManager {
                 if (processApplicationInfo === undefined) {
                     let recentAppInfo = undefined;
 
-                    const recentApps = await getRecentApps();
+                    const recentApps = await this._getRecentApps();
                     if (recentApps && recentApps.length > 0) {
                         newConfigItem.config.actions[0].operationValue.forEach(requestAppName => {
                             const appInfo = recentApps.find(recentAppInfo => recentAppInfo.name === requestAppName);
@@ -1762,7 +1741,7 @@ class AIManager {
                     }
 
                     if (recentAppInfo !== undefined) {
-                        const appExeIconInfo = (await appManager.resourcesManager.getAppIconInfo(recentAppInfo.path));
+                        const appExeIconInfo = (await this.appManager.resourcesManager.getAppIconInfo(recentAppInfo.path));
 
                         if (appExeIconInfo !== undefined && appExeIconInfo.id !== undefined) {
                             oldConfigItem.config.icon = appExeIconInfo.id;
@@ -1779,7 +1758,7 @@ class AIManager {
                         operationValue: processApplicationInfo.appInfo.appLaunchPath
                     }];
 
-                    const appExeIconInfo = (await appManager.resourcesManager.getAppIconInfo(processApplicationInfo.appInfo.appLaunchPath));
+                    const appExeIconInfo = (await this.appManager.resourcesManager.getAppIconInfo(processApplicationInfo.appInfo.appLaunchPath));
 
                     if (appExeIconInfo !== undefined && appExeIconInfo.id !== undefined) {
                         oldConfigItem.config.icon = appExeIconInfo.id;
@@ -1886,9 +1865,9 @@ class AIManager {
 
         switch (requestFunction) {
             default:
-                operatePCContext.actionProcessDone = true;
-                operatePCContext.streamChunkMsg = '';
-                isPendingChatFinish = false;
+                this.operatePCContext.actionProcessDone = true;
+                this.operatePCContext.streamChunkMsg = '';
+                this.isPendingChatFinish = false;
                 this.setAssistantProcessDone();
                 break;
             case AI_SUPPORT_FUNCTIONS.OPEN_APPLICATION:
@@ -1933,7 +1912,7 @@ class AIManager {
 
                             if (processApplicationInfo !== undefined) {
                                 this._openApplication(processApplicationInfo.appInfo.appLaunchPath);
-                                ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.openingApplication') + processApplicationInfo.appInfo.DisplayName);
+                                this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.openingApplication') + processApplicationInfo.appInfo.DisplayName);
                                 return;
                             }
 
@@ -1943,13 +1922,13 @@ class AIManager {
 
                             processSystemAppInfo.command = 'start ' + processSystemAppInfo.command;
                         }
-                        ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.openingApplication'));
+                        this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.openingApplication'));
                         this._openApplication(undefined, processSystemAppInfo.command);
                         break;
                     }
 
                     this._openApplication(processApplicationInfo.appInfo.appLaunchPath);
-                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.openingApplication') + processApplicationInfo.appInfo.DisplayName);
+                    this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.openingApplication') + processApplicationInfo.appInfo.DisplayName);
                     break;
                 } else if (applicationUrl !== '') {
 
@@ -1957,11 +1936,11 @@ class AIManager {
                         applicationName = actionDetail[0];
                     }
 
-                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.openingApplication') + applicationName);
+                    this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.openingApplication') + applicationName);
                     shell.openExternal(applicationUrl);
                     break;
                 }
-                ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.applicationNotFound'));
+                this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.applicationNotFound'));
                 break;
             case AI_SUPPORT_FUNCTIONS.CLOSE_APPLICATION:
                 if (actionDetail.length === 0) break;
@@ -2008,7 +1987,7 @@ class AIManager {
                 });
                 console.log('AIManager: handleUserRequestActions: Found AppInfo for APPINFO: ', processApplicationInfo, ' ProcessSystemAppInfo: ', processSystemAppInfo);
                 if (processApplicationInfo === undefined && processSystemAppInfo === undefined) {
-                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.applicationNotFound'));
+                    this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.applicationNotFound'));
                 } else {
                     if (processSystemAppInfo !== undefined) {
                         this._closeApplication(requestId, undefined, processSystemAppInfo.name);
@@ -2020,16 +1999,16 @@ class AIManager {
             case AI_SUPPORT_FUNCTIONS.WRITE_TO_DOCUMENT:
                 if (actionDetail.length === 0) break;
 
-                if (!operatePCContext.writeProcessStart) {
-                    operatePCContext.writeProcessStart = true;
+                if (!this.operatePCContext.writeProcessStart) {
+                    this.operatePCContext.writeProcessStart = true;
                 }
 
-                if ((operatePCContext.streamChunkMsg && operatePCContext.streamChunkMsg.length >= 30) || isLastAction) {
+                if ((this.operatePCContext.streamChunkMsg && this.operatePCContext.streamChunkMsg.length >= 30) || isLastAction) {
                     const outputDetail = actionDetail[0];
                     if (outputDetail.outputFormat) {
                         if (outputDetail.outputFormat === 'cursor') {
-                            writeOutputToKeyInput(operatePCContext.streamChunkMsg);
-                            operatePCContext.streamChunkMsg = '';
+                            this._writeOutputToKeyInput(this.operatePCContext.streamChunkMsg);
+                            this.operatePCContext.streamChunkMsg = '';
                         }
                     }
                 }
@@ -2037,31 +2016,31 @@ class AIManager {
                     console.log('AIManager: handleUserRequestActions: WRITE_TO_DOCUMENT: actionDetail: ', actionDetail, ' actionOutput: ', actionOutput);
 
                     if (actionDetail[0].outputFormat !== 'cursor') {
-                        await this._markdownToDoc(operatePCContext.streamChunkMsg);
+                        await this._markdownToDoc(this.operatePCContext.streamChunkMsg);
                     }
 
-                    operatePCContext.streamChunkMsg = '';
-                    operatePCContext.actionProcessDone = true;
-                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.finishedOutput'));
-                    isPendingChatFinish = false;
+                    this.operatePCContext.streamChunkMsg = '';
+                    this.operatePCContext.actionProcessDone = true;
+                    this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.finishedOutput'));
+                    this.isPendingChatFinish = false;
                 }
                 break;
             case AI_SUPPORT_FUNCTIONS.GENERATE_REPORT:
                 if (actionDetail.length === 0) break;
 
-                if (!operatePCContext.writeProcessStart) {
-                    operatePCContext.writeProcessStart = true;
+                if (!this.operatePCContext.writeProcessStart) {
+                    this.operatePCContext.writeProcessStart = true;
                 }
 
                 if (isLastAction) {
                     console.log('AIManager: handleUserRequestActions: GENERATE_REPORT: actionDetail: ', actionDetail, ' actionOutput: ', actionOutput);
 
-                    await this._markdownToDoc(operatePCContext.streamChunkMsg);
+                    await this._markdownToDoc(this.operatePCContext.streamChunkMsg);
 
-                    operatePCContext.streamChunkMsg = '';
-                    operatePCContext.actionProcessDone = true;
-                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.finishedOutput'));
-                    isPendingChatFinish = false;
+                    this.operatePCContext.streamChunkMsg = '';
+                    this.operatePCContext.actionProcessDone = true;
+                    this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.finishedOutput'));
+                    this.isPendingChatFinish = false;
                 }
                 break;
             case AI_SUPPORT_FUNCTIONS.EXECUTE_CMD: {
@@ -2081,9 +2060,9 @@ class AIManager {
                     if (error) {
                         console.log('AIManager: handleUserRequestActions: EXEC shutdown error');
                     } else {
-                        operatePCContext.actionProcessDone = true;
-                        ttsEngineAdapter.playTTS(requestId, actionData.greetingMessage);
-                        isPendingChatFinish = false;
+                        this.operatePCContext.actionProcessDone = true;
+                        this.ttsEngineAdapter.playTTS(requestId, actionData.greetingMessage);
+                        this.isPendingChatFinish = false;
                     }
                 });
 
@@ -2105,9 +2084,9 @@ class AIManager {
         //     mdContent = mdContent.substring(0, mdContent.length - 3);
         // }
 
-        // const htmlFragment = marked.parse(operatePCContext.streamChunkMsg);
-        if (markdownConverter === undefined) {
-            markdownConverter = new showdown.Converter({
+        // const htmlFragment = marked.parse(this.operatePCContext.streamChunkMsg);
+        if (this.markdownConverter === undefined) {
+            this.markdownConverter = new showdown.Converter({
                 tables: true,
                 simpleLineBreaks: true,
                 tasklists: true,
@@ -2118,9 +2097,9 @@ class AIManager {
                 underline: true,
                 moreStyling: true
             });
-            markdownConverter.setFlavor('github');
+            this.markdownConverter.setFlavor('github');
         }
-        const htmlFragment = markdownConverter.makeHtml(mdContent);
+        const htmlFragment = this.markdownConverter.makeHtml(mdContent);
 
         console.log('AIManager: handleUserRequestActions: GENERATE_REPORT: htmlFragment: ', htmlFragment);
 
@@ -2207,7 +2186,7 @@ class AIManager {
                 execName = execName + '.exe';
             }
 
-            ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.closingApplication'));
+            this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.closingApplication'));
 
             // 强制关闭进程
             // eslint-disable-next-line
@@ -2229,19 +2208,19 @@ class AIManager {
         }
 
         if (!exeName || exeName === '') {
-            ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.applicationNotFound'));
+            this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.applicationNotFound'));
             return;
         }
 
         // eslint-disable-next-line
         exec('tasklist | findstr ' + exeName, (error, stdout, stderr) => {
             if (error) {
-                ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.applicationNotFound'));
+                this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.applicationNotFound'));
                 console.error('AIManager: closeApplication: exec error: ', error);
                 return;
             }
 
-            ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.closingApplication'));
+            this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.closingApplication'));
             const pid = stdout.split(/\s+/)[1]; // 根据 tasklist 的输出格式获取 PID
             console.log('AIManager: closeApplication: pid ', pid, ' for ', applicationPath, ' processName: ', exeName);
 
@@ -2258,6 +2237,9 @@ class AIManager {
     }
 
     _findAppInfo(requestApplicationName) {
+
+        const pcInstalledApps = this.appManager.resourcesManager.getInstalledApps();
+
         if (pcInstalledApps.length === 0) return undefined;
 
         let mostPossibleApp = undefined;
@@ -2293,23 +2275,23 @@ class AIManager {
 
     async _handleAIAssistantProcess(requestId, message, deviceActiveProfile, deviceLayoutConfig) {
 
-        console.log('AIManager: handleAIAssistantProcess: requestId: ' + requestId + ' LastChatRequestId: ' + aiAssistantRequestId);
+        console.log('AIManager: handleAIAssistantProcess: requestId: ' + requestId + ' LastChatRequestId: ' + this.aiAssistantRequestId);
         let isNewSession = false;
-        if (requestId !== aiAssistantRequestId) {
-            this._resetAssistantSession(assistantDeviceSN, false);
+        if (requestId !== this.aiAssistantRequestId) {
+            this._resetAssistantSession(this.assistantDeviceSN, false);
             isNewSession = true;
-            fullChatResponseMsg = '';
+            this.fullChatResponseMsg = '';
         }
 
-        aiAssistantRequestId = requestId;
+        this.aiAssistantRequestId = requestId;
         // console.log('AIManager: handleAIAssistantProcess: deviceCurrentProfileData: ' + JSON.stringify(deviceActiveProfile));
 
         let chatMsgs = []
-        const currentLanguage = appManager.storeManager.storeGet('system.locale');
+        const currentLanguage = this.appManager.storeManager.storeGet('system.locale');
         let params = {};
 
         let aiEngineType;
-        switch (aiAssistantModelType) {
+        switch (this.aiAssistantModelType) {
             case 'qwen-plus':
             case 'qwen-turbo':
             case 'qwen-max':
@@ -2337,6 +2319,7 @@ class AIManager {
                 aiEngineType = AI_ENGINE_TYPE.XYF;
                 break
             case 'gpt-4o':
+            case 'gpt-4o-mini':
             case 'gpt-4-turbo':
             case 'gpt-4':
             case 'gpt-3.5-turbo':
@@ -2352,9 +2335,9 @@ class AIManager {
                 aiEngineType = AI_ENGINE_TYPE.GroqChat;
                 break
             default:
-                if (aiAssistantModelType.startsWith('HuoShan-')) {
+                if (this.aiAssistantModelType.startsWith('HuoShan-')) {
                     aiEngineType = AI_ENGINE_TYPE.HuoShan;
-                } else if (aiAssistantModelType.startsWith('Coze-')) {
+                } else if (this.aiAssistantModelType.startsWith('Coze-')) {
                     aiEngineType = AI_ENGINE_TYPE.Coze;
                 } else {
                     aiEngineType = AI_ENGINE_TYPE.CustomEngine;
@@ -2362,14 +2345,14 @@ class AIManager {
                 break
         }
 
-        let requestModelName = aiAssistantModelType;
+        let requestModelName = this.aiAssistantModelType;
 
         let useDekiePrompt = true;
-        if (aiAssistantModelType.startsWith('Custom-') || aiAssistantModelType.startsWith('HuoShan-')) {
-            const aiConfigKeyPrefix = 'aiConfig.' + aiAssistantModelType;
-            requestModelName = appManager.storeManager.storeGet(aiConfigKeyPrefix + '.modelName');
+        if (this.aiAssistantModelType.startsWith('Custom-') || this.aiAssistantModelType.startsWith('HuoShan-')) {
+            const aiConfigKeyPrefix = 'aiConfig.' + this.aiAssistantModelType;
+            requestModelName = this.appManager.storeManager.storeGet(aiConfigKeyPrefix + '.modelName');
 
-            const configedUseDekiePrompt = appManager.storeManager.storeGet(aiConfigKeyPrefix + '.useDekiePrompt');
+            const configedUseDekiePrompt = this.appManager.storeManager.storeGet(aiConfigKeyPrefix + '.useDekiePrompt');
 
             if (configedUseDekiePrompt !== undefined) {
                 useDekiePrompt = configedUseDekiePrompt;
@@ -2392,16 +2375,16 @@ class AIManager {
             params.messages = preChatMsgs;
 
             try {
-                let preChatFrameResponse = await this._awaitWithTimeout(aiAssistantChatAdapter.chatWithAssistant(requestId, params), 35000);
+                let preChatFrameResponse = await this._awaitWithTimeout(this.aiAssistantChatAdapter.chatWithAssistant(requestId, params), 35000);
                 console.log('AIManager: handleAIAssistantProcess: preChatFrameResponse: ', preChatFrameResponse);
 
-                preChatFrameResponse = getResponseDataJsonString(preChatFrameResponse);
+                preChatFrameResponse = this._getResponseDataJsonString(preChatFrameResponse);
 
                 if (preChatFrameResponse === undefined) {
                     console.log('AIManager: handleAIAssistantProcess: invalid pre-chat response: ' + preChatFrameResponse);
-                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
+                    this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
                     this.setAssistantProcessFailed();
-                    this._resetAssistantSession(assistantDeviceSN);
+                    this._resetAssistantSession(this.assistantDeviceSN);
                     return;
                 }
 
@@ -2415,68 +2398,68 @@ class AIManager {
                 }
 
                 if (responseConfigData.userRequestAction === "operatingComputer") {
-                    aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_OPERATE_PC);
-                    aiAssistantChatAdapter.setChatResponseListener((requestId, status, message, messageType) => {
+                    this.aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_OPERATE_PC);
+                    this.aiAssistantChatAdapter.setChatResponseListener((requestId, status, message, messageType) => {
                         this._handleChatResponse(requestId, status, message, messageType).catch(err => {
                             console.log('AIManager: handleAIAssistantProcess: CHAT_TYPE.CHAT_TYPE_OPERATE_PC _handleChatResponse detected error: ', err);
                             this.setAssistantProcessFailed();
-                            ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
+                            this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
                         });
                     });
                     chatMsgs = getPCOperationBotPrePrompt(message, aiEngineType, currentLanguage);
                 } else if (responseConfigData.userRequestAction === "generateConfiguration") {
-                    aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_KEY_CONFIG);
-                    const recentApps = await getRecentApps();
+                    this.aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_KEY_CONFIG);
+                    const recentApps = await this._getRecentApps();
                     console.log('AIManager: handleAIAssistantProcess: recentApps: ', recentApps);
                     chatMsgs = getKeyConfigBotPrePrompt(message, deviceActiveProfile, currentLanguage, aiEngineType, deviceLayoutConfig, recentApps);
                     try {
                         const processPrompt = i18nRender('assistantConfig.generatingConfig');
                         console.log('AIManager: handleAIAssistantProcess: Request PlayTTS: ' + processPrompt);
-                        ttsEngineAdapter.playTTS(requestId, processPrompt);
+                        this.ttsEngineAdapter.playTTS(requestId, processPrompt);
                     } catch (error) {
                         console.log('AIManager: handleAIAssistantProcess: Failed to handleAIChatResponse: ', error);
                         this._showAssistantError(requestId);
                         return;
                     }
                 } else {
-                    aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_NORMAL);
-                    aiAssistantChatAdapter.setChatResponseListener((requestId, status, message, messageType) => {
+                    this.aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_NORMAL);
+                    this.aiAssistantChatAdapter.setChatResponseListener((requestId, status, message, messageType) => {
                         this._handleChatResponse(requestId, status, message, messageType).catch(err => {
                             console.log('AIManager: handleAIAssistantProcess: CHAT_TYPE.CHAT_TYPE_NORMAL _handleChatResponse detected error: ', err);
 
                             this.setAssistantProcessFailed();
-                            ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
+                            this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
                         });
                     });
-                    const deviceLocationInfo = appManager.storeManager.storeGet('system.deviceLocationInfo');
+                    const deviceLocationInfo = this.appManager.storeManager.storeGet('system.deviceLocationInfo');
                     chatMsgs = getNormalChatPrePrompt(message, '', deviceLocationInfo);
 
                 }
             } catch (err) {
                 console.log('AIManager: handleAIAssistantProcess: failed to connect to OpenAI server. Cancel Chat process. In Pre-Chat. Error: ' + JSON.stringify(err));
-                ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
+                this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
                 this.setAssistantProcessFailed();
-                this._resetAssistantSession(assistantDeviceSN);
+                this._resetAssistantSession(this.assistantDeviceSN);
                 return;
             }
 
         } else if (isNewSession) {
-            aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_NORMAL);
+            this.aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_NORMAL);
             chatMsgs.push({
                 role: "user",
                 content: message
             });
 
-            aiAssistantChatAdapter.setChatResponseListener((requestId, status, message, messageType) => {
+            this.aiAssistantChatAdapter.setChatResponseListener((requestId, status, message, messageType) => {
                 this._handleChatResponse(requestId, status, message, messageType).catch(err => {
                     console.log('AIManager: handleAIAssistantProcess: CHAT_TYPE.CHAT_TYPE_NORMAL _handleChatResponse detected error: ', err);
 
                     this.setAssistantProcessFailed();
-                    ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
+                    this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
                 });
             });
         } else {
-            chatMsgs = assistantChatHistory;
+            chatMsgs = this.assistantChatHistory;
             chatMsgs.push({
                 role: "user",
                 content: message
@@ -2485,7 +2468,7 @@ class AIManager {
         params.messages = chatMsgs;
 
 
-        let enableWebSearch = appManager.storeManager.storeGet('aiConfig.webSearch');
+        let enableWebSearch = this.appManager.storeManager.storeGet('aiConfig.webSearch');
 
         if (enableWebSearch === undefined) {
             enableWebSearch = true;
@@ -2518,23 +2501,25 @@ class AIManager {
 
         const finalParam = Object.assign(enableWebSearch ? webSearchPlugin : {}, params);
 
-        if (aiAssistantChatAdapter.getChatMode() === CHAT_TYPE.CHAT_TYPE_NORMAL) {
+        if (this.aiAssistantChatAdapter.getChatMode() === CHAT_TYPE.CHAT_TYPE_NORMAL) {
             delete finalParam.response_format;
             finalParam.temperature = 0.9;
             finalParam.stream = true;
-            aiAssistantChatAdapter.chatWithAI(requestId, finalParam);
-            assistantChatHistory = chatMsgs;
+            this.aiAssistantChatAdapter.chatWithAI(requestId, finalParam);
+            this.assistantChatHistory = chatMsgs;
             return;
         }
 
-        if (aiAssistantChatAdapter.getChatMode() === CHAT_TYPE.CHAT_TYPE_OPERATE_PC) {
+        if (this.aiAssistantChatAdapter.getChatMode() === CHAT_TYPE.CHAT_TYPE_OPERATE_PC) {
             delete finalParam.response_format;
             finalParam.temperature = 0.5;
             finalParam.stream = true;
-            aiAssistantChatAdapter.chatWithAI(requestId, finalParam);
-            assistantChatHistory = chatMsgs;
+            this.aiAssistantChatAdapter.chatWithAI(requestId, finalParam);
+            this.assistantChatHistory = chatMsgs;
             return;
         }
+
+        finalParam.max_tokens = 8192;
 
         let chatFrameResponse = '';
 
@@ -2544,14 +2529,14 @@ class AIManager {
         try {
             await this._handleChatResponse(requestId, 0, '');
 
-            chatFrameResponse = await this._awaitWithTimeout(aiAssistantChatAdapter.chatWithAssistant(requestId, finalParam), AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
+            chatFrameResponse = await this._awaitWithTimeout(this.aiAssistantChatAdapter.chatWithAssistant(requestId, finalParam), AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
         } catch (err) {
             this._showAssistantError(requestId);
             return;
         }
         console.log('AIManager: handleAIAssistantProcess: ', chatFrameResponse);
 
-        chatFrameResponse = getResponseDataJsonString(chatFrameResponse);
+        chatFrameResponse = this._getResponseDataJsonString(chatFrameResponse);
 
         console.log('AIManager: handleAIAssistantProcess: Final Response2: ', chatFrameResponse);
 
@@ -2571,11 +2556,11 @@ class AIManager {
                     role: "user",
                     content: '修复以下 JSON: ' + chatFrameResponse + ' \n ConfigData中每一个数据的value的格式应为: ```' + JSON.stringify(KEY_CONFIG_OBJ) + '``` 注意：我不需要你的解释，仅返回给我正确的JSON数据。'
                 }]
-            chatFrameResponse = await this._awaitWithTimeout(aiAssistantChatAdapter.chatWithAssistant(requestId, params), AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
+            chatFrameResponse = await this._awaitWithTimeout(this.aiAssistantChatAdapter.chatWithAssistant(requestId, params), AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
 
             console.log('AIManager: handleAIAssistantProcess: Fixed Json: ' + chatFrameResponse);
 
-            chatFrameResponse = getResponseDataJsonString(chatFrameResponse);
+            chatFrameResponse = this._getResponseDataJsonString(chatFrameResponse);
             console.log('AIManager: handleAIAssistantProcess: getResponseDataJsonString: ' + chatFrameResponse);
 
             try {
@@ -2590,11 +2575,11 @@ class AIManager {
         if (!responseConfigData) {
             console.log('AIManager: handleAIAssistantProcess: Invalid Json.')
             this._showAssistantError(requestId);
-            chatResponseMsg = '';
+            this.chatResponseMsg = '';
             return;
         }
 
-        assistantChatHistory.push({
+        this.assistantChatHistory.push({
             role: 'assistant',
             content: chatFrameResponse
         });
@@ -2610,16 +2595,16 @@ class AIManager {
 
     _showAssistantError(requestId) {
         try {
-            ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.generateFailed'));
+            this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.generateFailed'));
             console.log('AIManager: handleChatResponse: Detected failed on chat with assistant');
             this.setAssistantProcessFailed();
         } catch (error) {
-            ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.generateFailed'));
+            this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.generateFailed'));
             console.log('AIManager: handleChatResponse: Failed to handleAIChatResponse: ', error);
             this.setAssistantProcessFailed();
         }
 
-        this._resetAssistantSession(assistantDeviceSN);
+        this._resetAssistantSession(this.assistantDeviceSN);
     }
 
     _timeout(ms) {
@@ -2635,452 +2620,453 @@ class AIManager {
             throw error;
         }
     }
-}
 
-function getResponseDataJsonString(responseMessage) {
-    let finalResponseDataJsonString = responseMessage;
 
-    let codeStartIdx = responseMessage.indexOf("```");
+    _getResponseDataJsonString(responseMessage) {
+        let finalResponseDataJsonString = responseMessage;
 
-    let preChatDecodeDataStartIdx = finalResponseDataJsonString.indexOf("{");
+        let codeStartIdx = responseMessage.indexOf("```");
 
-    // Find first ``` start index if present and get the substring without first ```
-    if (codeStartIdx > preChatDecodeDataStartIdx) {
-        finalResponseDataJsonString = finalResponseDataJsonString.substring(0, codeStartIdx);
-    } else if (codeStartIdx > 0) {
-        finalResponseDataJsonString = finalResponseDataJsonString.substring(codeStartIdx + 3);
-    }
+        let preChatDecodeDataStartIdx = finalResponseDataJsonString.indexOf("{");
 
-    let codeEndIdx = finalResponseDataJsonString.indexOf("```");
-
-    // Get substring within the end ``` index
-    if (codeEndIdx > 0) {
-        finalResponseDataJsonString = finalResponseDataJsonString.substring(0, codeEndIdx);
-    }
-
-    preChatDecodeDataStartIdx = finalResponseDataJsonString.indexOf("{");
-    let preChatDecodeDataEndIdx = finalResponseDataJsonString.lastIndexOf("}");
-
-    console.log('AIManager: getResponseDataJsonString: preChatDecodeDataStartIdx: ' + preChatDecodeDataStartIdx + ' preChatDecodeDataEndIdx: '+ preChatDecodeDataEndIdx);
-
-    if (preChatDecodeDataStartIdx < 0 || preChatDecodeDataEndIdx < 1) {
-        return undefined;
-    }
-
-    return finalResponseDataJsonString.substring(preChatDecodeDataStartIdx, preChatDecodeDataEndIdx + 1);
-}
-
-async function writeOutputToKeyInput(messageData) {
-    if (!messageData || messageData === '') return;
-    if (!outputRobot) {
-        outputRobot = require('robotjs');
-    }
-
-    console.log('AIManager: writeOutputToKeyInput: ' + messageData);
-    clipboard.writeText(messageData);
-    outputRobot.keyTap('v', 50, ['control']);
-}
-
-function getEmptyConfigList(maxRow, maxCol) {
-    const configList = [];
-    for (let row = 1; row <= maxRow; row++) {
-        for (let col = 1; col <= maxCol; col++) {
-            configList.push({
-                childrenName: '',
-                keyCode: row + ',' + col,
-                config: {
-                    type: '',
-                    title: {
-                        text: '',
-                        pos: 'bot',
-                        size: 8,
-                        color: '#FFFFFF',
-                        display: true,
-                        style: 'bold|italic|underline',
-                        resourceId: ''
-                    },
-                    icon: '',
-                    actions: []
-                }
-            });
+        // Find first ``` start index if present and get the substring without first ```
+        if (codeStartIdx > preChatDecodeDataStartIdx) {
+            finalResponseDataJsonString = finalResponseDataJsonString.substring(0, codeStartIdx);
+        } else if (codeStartIdx > 0) {
+            finalResponseDataJsonString = finalResponseDataJsonString.substring(codeStartIdx + 3);
         }
-    }
-    return configList;
-}
 
-function resetOperatePCContext() {
-    operatePCContext = {
-        stage: OPERATION_STAGE.STAGE_DECODE_END,
-        actionType: '',
-        actionDetail: undefined,
-        actionOutput: '',
-        actionProcessDone: false
-    }
-}
+        let codeEndIdx = finalResponseDataJsonString.indexOf("```");
 
-function splitByLastPunctuation(text) {
-    // 定义正则表达式匹配中英文断句标点符号
-    const punctuationRegex = /[，。！？,.!?]/;
-
-    // 查找最后一个匹配的标点符号
-    const match = text.match(punctuationRegex);
-    if (match) {
-        // 查找最后一个标点符号的位置
-        const lastIndex = text.lastIndexOf(match[0]);
-        // 拆分字符串
-        const before = text.substring(0, lastIndex + 1);
-        const after = text.substring(lastIndex + 1);
-        return [before, after];
-    } else {
-        // 如果没有找到标点符号，则返回原字符串和空字符串
-        return [text, ''];
-    }
-}
-
-async function getRecentApps() {
-
-    switch (process.platform) {
-        case 'win32': {
-            // recentApps = await getRecentAppsWindows();
-            const currentOpenApps = await getWindowsCurrentOpenAPPs();
-
-            const uniqueAppList = [];
-
-            for (let i = 0; i < currentOpenApps.length; i++) {
-                const appInfo = currentOpenApps[i];
-
-                if (appInfo.path === '----' || appInfo.path === '' || appInfo.path.endsWith('\\SystemSettings.exe') || appInfo.path.includes('\\WINDOWS\\SystemApps\\')) continue;
-
-                if (uniqueAppList.findIndex(uAppInfo => uAppInfo.name === appInfo.name && uAppInfo.path === appInfo.path) !== -1) continue;
-
-                uniqueAppList.push(appInfo);
-            }
-
-            for (let i = 0; i < currentRecentApps.length; i++) {
-                const appInfo = currentRecentApps[i];
-
-                if (appInfo.path === '----' || appInfo.path === '') continue;
-
-                if (uniqueAppList.findIndex(uAppInfo => uAppInfo.name === appInfo.name && uAppInfo.path === appInfo.path) !== -1) continue;
-
-                uniqueAppList.push(appInfo);
-            }
-
-            return uniqueAppList;
+        // Get substring within the end ``` index
+        if (codeEndIdx > 0) {
+            finalResponseDataJsonString = finalResponseDataJsonString.substring(0, codeEndIdx);
         }
-        case 'darwin':
-        case 'linux':
-            return currentRecentApps;
-    }
-}
 
-async function checkRecentApps() {
-    try {
-        currentRecentApps = await getPCRecentApps();
-        console.log('AIManager: checkRecentApps: currentRecentApps: ', currentRecentApps);
-    } catch (err) {
-        console.log('AIManager: checkRecentApps: detect error: ', err)
-    }
+        preChatDecodeDataStartIdx = finalResponseDataJsonString.indexOf("{");
+        let preChatDecodeDataEndIdx = finalResponseDataJsonString.lastIndexOf("}");
 
-    setTimeout(() => {
-        checkRecentApps();
-    }, 60 * 60 * 1000);
-}
+        console.log('AIManager: getResponseDataJsonString: preChatDecodeDataStartIdx: ' + preChatDecodeDataStartIdx + ' preChatDecodeDataEndIdx: '+ preChatDecodeDataEndIdx);
 
-async function getPCRecentApps() {
-    let recentApps = [];
-    switch (process.platform) {
-        case 'win32':
-            recentApps = await getRecentApplicationsWindows();
+        if (preChatDecodeDataStartIdx < 0 || preChatDecodeDataEndIdx < 1) {
+            return undefined;
+        }
 
-            console.log('WindowsRecentApps: ', recentApps);
-            break;
-        case 'darwin':
-            recentApps = await getRecentApplicationsMacOS();
-            break;
-        case 'linux':
-            recentApps = await getRecentApplicationsLinux();
-            break;
+        return finalResponseDataJsonString.substring(preChatDecodeDataStartIdx, preChatDecodeDataEndIdx + 1);
     }
 
-    const uniqueAppList = [];
+    async _writeOutputToKeyInput(messageData) {
+        if (!messageData || messageData === '') return;
+        if (!this.outputRobot) {
+            this.outputRobot = require('robotjs');
+        }
 
-    for (let i = 0; i < recentApps.length; i++) {
-        const appInfo = recentApps[i];
-
-        if (appInfo.path === '----') continue;
-
-        if (uniqueAppList.findIndex(uAppInfo => uAppInfo.name === appInfo.name && uAppInfo.path === appInfo.path) !== -1) continue;
-
-        uniqueAppList.push(appInfo);
+        console.log('AIManager: writeOutputToKeyInput: ' + messageData);
+        clipboard.writeText(messageData);
+        this.outputRobot.keyTap('v', 50, ['control']);
     }
 
-    return uniqueAppList;
-}
-
-function getWindowsCurrentOpenAPPs() {
-    return new Promise((resolve, reject) => {
-        // eslint-disable-next-line
-        exec('powershell "chcp 65001; Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { $_.Description + \'|\' + $_.Path }"', (error, stdout, stderr) => {
-            if (error) {
-                reject(error);
-            } else {
-
-                const apps = stdout.split('\n').filter(line => line.includes('|')).map(line => {
-                    const parts = line.trim().split('|');
-                    let appName = parts[0].trim();
-                    const appPath = parts[1].trim();
-
-                    if (appName === '') {
-                        appName = path.parse(path.basename(appPath)).name
+    _getEmptyConfigList(maxRow, maxCol) {
+        const configList = [];
+        for (let row = 1; row <= maxRow; row++) {
+            for (let col = 1; col <= maxCol; col++) {
+                configList.push({
+                    childrenName: '',
+                    keyCode: row + ',' + col,
+                    config: {
+                        type: '',
+                        title: {
+                            text: '',
+                            pos: 'bot',
+                            size: 8,
+                            color: '#FFFFFF',
+                            display: true,
+                            style: 'bold|italic|underline',
+                            resourceId: ''
+                        },
+                        icon: '',
+                        actions: []
                     }
-                    return {
-                        name: appName,
-                        path: appPath
-                    };
                 });
-                resolve(apps);
             }
-        });
-    });
-}
-
-function getProgID(extension) {
-    return new Promise((resolve) => {
-        exec(`reg query HKEY_CLASSES_ROOT\\${extension}`, (err, stdout) => {
-            if (err) {
-                console.warn(`Error querying ProgID for extension ${extension}:`, err);
-                return resolve(null);
-            }
-            const match = stdout.match(/REG_SZ\s+(.+)/);
-            if (match) {
-                resolve(match[1].trim());
-            } else {
-                console.warn(`No ProgID found for extension ${extension}`);
-                resolve(null);
-            }
-        });
-    });
-}
-
-function getAppForProgID(progID) {
-    return new Promise((resolve) => {
-        exec(`reg query HKEY_CLASSES_ROOT\\${progID}\\shell\\open\\command`, (err, stdout) => {
-            if (err) {
-                console.warn(`Error querying command for ProgID ${progID}:`, err);
-                return resolve(null);
-            }
-            const match = stdout.match(/"([^"]+)"/);
-            if (match) {
-                resolve(match[1].trim());
-            } else {
-                console.warn(`No command found for ProgID ${progID}`);
-                resolve(null);
-            }
-        });
-    });
-}
-
-function getAppName(appPath) {
-    return new Promise((resolve) => {
-        exec(`powershell -command "(Get-Item '${appPath}').VersionInfo.ProductName"`, (err, stdout) => {
-            if (err) {
-                console.warn(`Error getting app name for ${appPath}:`, err);
-                return resolve(path.basename(appPath)); // 返回文件名作为备用
-            }
-            resolve(stdout.trim() || path.basename(appPath));
-        });
-    });
-}
-
-function batchExec(commands, batchSize = 40) {
-    const batches = [];
-    for (let i = 0; i < commands.length; i += batchSize) {
-        batches.push(commands.slice(i, i + batchSize).join(';'));
+        }
+        return configList;
     }
-    return batches;
-}
 
-async function getRecentApplicationsWindows() {
-    console.log('CheckWindows RecentApp Start');
-    return new Promise((resolve, reject) => {
-        const recentFolder = path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'Recent');
-        fs.readdir(recentFolder, async (err, files) => {
-            if (err) {
-                console.error(`Error reading Recent folder:`, err);
-                return reject(err);
+    _resetOperatePCContext() {
+        this.operatePCContext = {
+            stage: OPERATION_STAGE.STAGE_DECODE_END,
+            actionType: '',
+            actionDetail: undefined,
+            actionOutput: '',
+            actionProcessDone: false
+        }
+    }
+
+    _splitByLastPunctuation(text) {
+        // 定义正则表达式匹配中英文断句标点符号
+        const punctuationRegex = /[，。！？,.!?]/;
+
+        // 查找最后一个匹配的标点符号
+        const match = text.match(punctuationRegex);
+        if (match) {
+            // 查找最后一个标点符号的位置
+            const lastIndex = text.lastIndexOf(match[0]);
+            // 拆分字符串
+            const before = text.substring(0, lastIndex + 1);
+            const after = text.substring(lastIndex + 1);
+            return [before, after];
+        } else {
+            // 如果没有找到标点符号，则返回原字符串和空字符串
+            return [text, ''];
+        }
+    }
+
+    async _getRecentApps() {
+
+        switch (process.platform) {
+            case 'win32': {
+                const currentOpenApps = await this._getWindowsCurrentOpenAPPs();
+
+                const uniqueAppList = [];
+
+                for (let i = 0; i < currentOpenApps.length; i++) {
+                    const appInfo = currentOpenApps[i];
+
+                    if (appInfo.path === '----' || appInfo.path === '' || appInfo.path.endsWith('\\SystemSettings.exe') || appInfo.path.includes('\\WINDOWS\\SystemApps\\')) continue;
+
+                    if (uniqueAppList.findIndex(uAppInfo => uAppInfo.name === appInfo.name && uAppInfo.path === appInfo.path) !== -1) continue;
+
+                    uniqueAppList.push(appInfo);
+                }
+
+                for (let i = 0; i < this.currentRecentApps.length; i++) {
+                    const appInfo = this.currentRecentApps[i];
+
+                    if (appInfo.path === '----' || appInfo.path === '') continue;
+
+                    if (uniqueAppList.findIndex(uAppInfo => uAppInfo.name === appInfo.name && uAppInfo.path === appInfo.path) !== -1) continue;
+
+                    uniqueAppList.push(appInfo);
+                }
+
+                return uniqueAppList;
             }
+            case 'darwin':
+            case 'linux':
+                return this.currentRecentApps;
+        }
+    }
 
-            const lnkFiles = files.filter(file => file.endsWith('.lnk'));
-            if (lnkFiles.length === 0) {
-                return resolve([]);
-            }
+    async _checkRecentApps() {
+        try {
+            this.currentRecentApps = await this._getPCRecentApps();
+            console.log('AIManager: checkRecentApps: this.currentRecentApps: ', this.currentRecentApps);
+        } catch (err) {
+            console.log('AIManager: checkRecentApps: detect error: ', err)
+        }
 
-            console.log('CheckWindows RecentApp Total lnkFiles length: ', lnkFiles.length);
+        setTimeout(() => {
+            this._checkRecentApps();
+        }, 60 * 60 * 1000);
+    }
 
-            const commands = lnkFiles.map(file => {
-                const fullPath = path.join(recentFolder, file);
-                return `(New-Object -ComObject WScript.Shell).CreateShortcut('${fullPath}').TargetPath`;
-            });
+    async _getPCRecentApps() {
+        let recentApps = [];
+        switch (process.platform) {
+            case 'win32':
+                recentApps = await this._getRecentApplicationsWindows();
 
-            console.log('CheckWindows RecentApp Total commands length: ', commands.length);
+                console.log('WindowsRecentApps: ', recentApps);
+                break;
+            case 'darwin':
+                recentApps = await this._getRecentApplicationsMacOS();
+                break;
+            case 'linux':
+                recentApps = await this._getRecentApplicationsLinux();
+                break;
+        }
 
-            const targetPaths = [];
-            const batches = batchExec(commands);
-            console.log('CheckWindows RecentApp Split batches: ', batches.length);
+        const uniqueAppList = [];
 
-            for (const batch of batches) {
-                try {
-                    const batchResult = await new Promise((resolve, reject) => {
-                        exec(`powershell -command "${batch}"`, (err, stdout) => {
-                            if (err) return reject(err);
-                            resolve(stdout.trim().split('\r\n').filter(Boolean));
-                        });
+        for (let i = 0; i < recentApps.length; i++) {
+            const appInfo = recentApps[i];
+
+            if (appInfo.path === '----') continue;
+
+            if (uniqueAppList.findIndex(uAppInfo => uAppInfo.name === appInfo.name && uAppInfo.path === appInfo.path) !== -1) continue;
+
+            uniqueAppList.push(appInfo);
+        }
+
+        return uniqueAppList;
+    }
+
+    _getWindowsCurrentOpenAPPs() {
+        return new Promise((resolve, reject) => {
+            // eslint-disable-next-line
+            exec('powershell "chcp 65001; Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { $_.Description + \'|\' + $_.Path }"', (error, stdout, stderr) => {
+                if (error) {
+                    reject(error);
+                } else {
+
+                    const apps = stdout.split('\n').filter(line => line.includes('|')).map(line => {
+                        const parts = line.trim().split('|');
+                        let appName = parts[0].trim();
+                        const appPath = parts[1].trim();
+
+                        if (appName === '') {
+                            appName = path.parse(path.basename(appPath)).name
+                        }
+                        return {
+                            name: appName,
+                            path: appPath
+                        };
                     });
-                    targetPaths.push(...batchResult);
-                } catch (err) {
-                    console.error(`Error executing batch:`, err);
-                }
-            }
-
-            console.log('CheckWindows RecentApp After batches exec targetPaths.length: ', targetPaths.length);
-
-            const fileTypes = new Set();
-            const recentApps = new Map();
-
-            targetPaths.forEach(targetPath => {
-                const ext = path.extname(targetPath);
-                if (ext) {
-                    fileTypes.add(ext);
+                    resolve(apps);
                 }
             });
+        });
+    }
 
-            // Query ProgIDs and application paths in parallel
-            const appPromises = Array.from(fileTypes).map(async (ext) => {
-                const progID = await getProgID(ext);
-                if (progID) {
-                    const appPath = await getAppForProgID(progID);
+    _getProgID(extension) {
+        return new Promise((resolve) => {
+            exec(`reg query HKEY_CLASSES_ROOT\\${extension}`, (err, stdout) => {
+                if (err) {
+                    console.warn(`Error querying ProgID for extension ${extension}:`, err);
+                    return resolve(null);
+                }
+                const match = stdout.match(/REG_SZ\s+(.+)/);
+                if (match) {
+                    resolve(match[1].trim());
+                } else {
+                    console.warn(`No ProgID found for extension ${extension}`);
+                    resolve(null);
+                }
+            });
+        });
+    }
 
-                    if (appPath && appPath.toLowerCase().endsWith('.exe')) {
-                        const appName = await getAppName(appPath);
-                        recentApps.set(appPath, { name: appName, path: appPath });
+    _getAppForProgID(progID) {
+        return new Promise((resolve) => {
+            exec(`reg query HKEY_CLASSES_ROOT\\${progID}\\shell\\open\\command`, (err, stdout) => {
+                if (err) {
+                    console.warn(`Error querying command for ProgID ${progID}:`, err);
+                    return resolve(null);
+                }
+                const match = stdout.match(/"([^"]+)"/);
+                if (match) {
+                    resolve(match[1].trim());
+                } else {
+                    console.warn(`No command found for ProgID ${progID}`);
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    _getAppName(appPath) {
+        return new Promise((resolve) => {
+            exec(`powershell -command "(Get-Item '${appPath}').VersionInfo.ProductName"`, (err, stdout) => {
+                if (err) {
+                    console.warn(`Error getting app name for ${appPath}:`, err);
+                    return resolve(path.basename(appPath)); // 返回文件名作为备用
+                }
+                resolve(stdout.trim() || path.basename(appPath));
+            });
+        });
+    }
+
+    _batchExec(commands, batchSize = 40) {
+        const batches = [];
+        for (let i = 0; i < commands.length; i += batchSize) {
+            batches.push(commands.slice(i, i + batchSize).join(';'));
+        }
+        return batches;
+    }
+
+    async _getRecentApplicationsWindows() {
+        console.log('CheckWindows RecentApp Start');
+        return new Promise((resolve, reject) => {
+            const recentFolder = path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'Recent');
+            fs.readdir(recentFolder, async (err, files) => {
+                if (err) {
+                    console.error(`Error reading Recent folder:`, err);
+                    return reject(err);
+                }
+
+                const lnkFiles = files.filter(file => file.endsWith('.lnk'));
+                if (lnkFiles.length === 0) {
+                    return resolve([]);
+                }
+
+                console.log('CheckWindows RecentApp Total lnkFiles length: ', lnkFiles.length);
+
+                const commands = lnkFiles.map(file => {
+                    const fullPath = path.join(recentFolder, file);
+                    return `(New-Object -ComObject WScript.Shell).CreateShortcut('${fullPath}').TargetPath`;
+                });
+
+                console.log('CheckWindows RecentApp Total commands length: ', commands.length);
+
+                const targetPaths = [];
+                const batches = this._batchExec(commands);
+                console.log('CheckWindows RecentApp Split batches: ', batches.length);
+
+                for (const batch of batches) {
+                    try {
+                        const batchResult = await new Promise((resolve, reject) => {
+                            exec(`powershell -command "${batch}"`, (err, stdout) => {
+                                if (err) return reject(err);
+                                resolve(stdout.trim().split('\r\n').filter(Boolean));
+                            });
+                        });
+                        targetPaths.push(...batchResult);
+                    } catch (err) {
+                        console.error(`Error executing batch:`, err);
                     }
                 }
+
+                console.log('CheckWindows RecentApp After batches exec targetPaths.length: ', targetPaths.length);
+
+                const fileTypes = new Set();
+                const recentApps = new Map();
+
+                targetPaths.forEach(targetPath => {
+                    const ext = path.extname(targetPath);
+                    if (ext) {
+                        fileTypes.add(ext);
+                    }
+                });
+
+                // Query ProgIDs and application paths in parallel
+                const appPromises = Array.from(fileTypes).map(async (ext) => {
+                    const progID = await this._getProgID(ext);
+                    if (progID) {
+                        const appPath = await this._getAppForProgID(progID);
+
+                        if (appPath && appPath.toLowerCase().endsWith('.exe')) {
+                            const appName = await this._getAppName(appPath);
+                            recentApps.set(appPath, { name: appName, path: appPath });
+                        }
+                    }
+                });
+
+                await Promise.all(appPromises);
+                console.log('CheckWindows RecentApp After get all Info: ', Array.from(recentApps.values()).length);
+                resolve(Array.from(recentApps.values()));
             });
-
-            await Promise.all(appPromises);
-            console.log('CheckWindows RecentApp After get all Info: ', Array.from(recentApps.values()).length);
-            resolve(Array.from(recentApps.values()));
         });
-    });
-}
+    }
 
-function getRecentApplicationsMacOS() {
-    return new Promise((resolve, reject) => {
-        exec('mdfind "kMDItemLastUsedDate > $time.now(-7d)"', (err, stdout) => {
-            if (err) return reject(err);
+    _getRecentApplicationsMacOS() {
+        return new Promise((resolve, reject) => {
+            exec('mdfind "kMDItemLastUsedDate > $time.now(-7d)"', (err, stdout) => {
+                if (err) return reject(err);
 
-            const files = stdout.trim().split('\n');
-            const recentApps = new Map();
+                const files = stdout.trim().split('\n');
+                const recentApps = new Map();
 
-            if (files.length === 0) {
-                return resolve([]);
-            }
+                if (files.length === 0) {
+                    return resolve([]);
+                }
 
-            let remaining = files.length;
+                let remaining = files.length;
 
-            files.forEach(file => {
-                exec(`mdls -name kMDItemCFBundleIdentifier -r "${file}"`, (err, stdout) => {
-                    if (err) return reject(err);
+                files.forEach(file => {
+                    exec(`mdls -name kMDItemCFBundleIdentifier -r "${file}"`, (err, stdout) => {
+                        if (err) return reject(err);
 
-                    const appIdentifier = stdout.trim();
-                    if (appIdentifier) {
-                        exec(`osascript -e 'id of app "${appIdentifier}"'`, (err, stdout) => {
-                            const appPath = stdout.trim();
-                            if (appPath) {
-                                exec(`osascript -e 'name of app id "${appIdentifier}"'`, (err, stdout) => {
-                                    const appName = stdout.trim();
-                                    if (appName) {
-                                        recentApps.set(appIdentifier, { name: appName, path: appPath });
-                                    }
+                        const appIdentifier = stdout.trim();
+                        if (appIdentifier) {
+                            exec(`osascript -e 'id of app "${appIdentifier}"'`, (err, stdout) => {
+                                const appPath = stdout.trim();
+                                if (appPath) {
+                                    exec(`osascript -e 'name of app id "${appIdentifier}"'`, (err, stdout) => {
+                                        const appName = stdout.trim();
+                                        if (appName) {
+                                            recentApps.set(appIdentifier, { name: appName, path: appPath });
+                                        }
 
+                                        remaining--;
+                                        if (remaining === 0) {
+                                            resolve(Array.from(recentApps.values()));
+                                        }
+                                    });
+                                } else {
                                     remaining--;
                                     if (remaining === 0) {
                                         resolve(Array.from(recentApps.values()));
                                     }
-                                });
-                            } else {
-                                remaining--;
-                                if (remaining === 0) {
-                                    resolve(Array.from(recentApps.values()));
                                 }
+                            });
+                        } else {
+                            remaining--;
+                            if (remaining === 0) {
+                                resolve(Array.from(recentApps.values()));
                             }
-                        });
-                    } else {
-                        remaining--;
-                        if (remaining === 0) {
-                            resolve(Array.from(recentApps.values()));
                         }
-                    }
+                    });
                 });
             });
         });
-    });
-}
+    }
 
-function getRecentApplicationsLinux() {
-    return new Promise((resolve, reject) => {
-        exec('find ~ -type f -atime -7', (err, stdout) => {
-            if (err) return reject(err);
+    _getRecentApplicationsLinux() {
+        return new Promise((resolve, reject) => {
+            exec('find ~ -type f -atime -7', (err, stdout) => {
+                if (err) return reject(err);
 
-            const files = stdout.trim().split('\n');
-            const recentApps = new Map();
+                const files = stdout.trim().split('\n');
+                const recentApps = new Map();
 
-            if (files.length === 0) {
-                return resolve([]);
-            }
+                if (files.length === 0) {
+                    return resolve([]);
+                }
 
-            let remaining = files.length;
+                let remaining = files.length;
 
-            files.forEach(file => {
-                exec(`xdg-mime query filetype "${file}"`, (err, stdout) => {
-                    if (err) return reject(err);
+                files.forEach(file => {
+                    exec(`xdg-mime query filetype "${file}"`, (err, stdout) => {
+                        if (err) return reject(err);
 
-                    const mimeType = stdout.trim();
-                    if (mimeType) {
-                        exec(`xdg-mime query default "${mimeType}"`, (err, stdout) => {
-                            if (err) return reject(err);
+                        const mimeType = stdout.trim();
+                        if (mimeType) {
+                            exec(`xdg-mime query default "${mimeType}"`, (err, stdout) => {
+                                if (err) return reject(err);
 
-                            const app = stdout.trim();
-                            if (app) {
-                                exec(`basename "${app}"`, (err, stdout) => {
-                                    const appName = stdout.trim();
-                                    if (appName) {
-                                        recentApps.set(app, { name: appName, path: app });
-                                    }
+                                const app = stdout.trim();
+                                if (app) {
+                                    exec(`basename "${app}"`, (err, stdout) => {
+                                        const appName = stdout.trim();
+                                        if (appName) {
+                                            recentApps.set(app, { name: appName, path: app });
+                                        }
 
+                                        remaining--;
+                                        if (remaining === 0) {
+                                            resolve(Array.from(recentApps.values()));
+                                        }
+                                    });
+                                } else {
                                     remaining--;
                                     if (remaining === 0) {
                                         resolve(Array.from(recentApps.values()));
                                     }
-                                });
-                            } else {
-                                remaining--;
-                                if (remaining === 0) {
-                                    resolve(Array.from(recentApps.values()));
                                 }
+                            });
+                        } else {
+                            remaining--;
+                            if (remaining === 0) {
+                                resolve(Array.from(recentApps.values()));
                             }
-                        });
-                    } else {
-                        remaining--;
-                        if (remaining === 0) {
-                            resolve(Array.from(recentApps.values()));
                         }
-                    }
+                    });
                 });
             });
         });
-    });
+    }
 }
+
 
 export default AIManager;

@@ -463,7 +463,7 @@ export default {
         },
         aiModelconfigBtn() {
             if (window.windowManager.settingWindow.isVisible()) return;
-            window.windowManager.settingWindow.changeVisibility();
+            window.windowManager.settingWindow.changeVisibility(4);
         },
         updateBtn() {
             window.store.storeSet('aiConfig.chat.modelType', this.aiModelType[1]);
