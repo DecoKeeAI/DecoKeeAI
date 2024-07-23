@@ -200,6 +200,8 @@ class CozeAdapter {
                         return;
                     }
 
+                    let cachedChunkMsg = '';
+
                     // Handle the stream response
                     response.on('data', chunk => {
                         if (requestId !== that.chatRequestId) return;
@@ -207,14 +209,39 @@ class CozeAdapter {
                         // Process each chunk of data
                         const chunkMsg = chunk.toString();
 
-                        const lines = chunkMsg.split('\n');
+                        cachedChunkMsg += chunkMsg.trim();
+
+                        if (!cachedChunkMsg.endsWith('}')) {
+                            return;
+                        }
+                        const lines = cachedChunkMsg.split('\n');
+
+                        if (lines.length < 2) {
+
+                            try {
+                                const tempData = JSON.parse(cachedChunkMsg);
+                                if (tempData.code) {
+                                    if (that.chatResponseListener !== undefined) {
+                                        that.chatResponseListener(requestId, -1, tempData.msg);
+                                    }
+                                }
+                                return;
+                            } catch (err) {
+                                if (that.chatResponseListener !== undefined) {
+                                    that.chatResponseListener(requestId, -1, '');
+                                }
+                                console.log('CozeAdapter: sendChatMessage: Received Error chunk: ', cachedChunkMsg);
+                                return;
+                            }
+                        }
+
                         const event = lines[0].split(':')[1].trim();
                         const dataStr = lines[1].substring(lines[1].indexOf(':') + 1).trim();
                         let data = {};
                         try {
                             data = JSON.parse(dataStr);
                         } catch (err) {
-                            console.log('CozeAdapter: sendChatMessage: Received chunk invalid data json', dataStr);
+                            console.log('CozeAdapter: sendChatMessage: Received chunk invalid lines: ', lines);
                         }
 
 
@@ -261,6 +288,8 @@ class CozeAdapter {
                             case 'done':
                                 break;
                         }
+
+                        cachedChunkMsg = '';
                     });
 
                     response.on('end', () => {
