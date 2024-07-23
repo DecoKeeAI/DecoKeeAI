@@ -577,6 +577,7 @@ export default {
                     }
                     break;
                 case 'gpt-4o':
+                case 'gpt-4o-mini':
                 case 'gpt-4-turbo':
                 case 'gpt-4':
                 case 'gpt-3.5-turbo':
@@ -662,6 +663,7 @@ export default {
                     this.openAIAPIKey = window.store.storeGet('aiConfig.zhipu.apiKey');
                     break;
                 case 'gpt-4o':
+                case 'gpt-4o-mini':
                 case 'gpt-4-turbo':
                 case 'gpt-4':
                 case 'gpt-3.5-turbo':

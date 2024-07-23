@@ -84,6 +84,7 @@ const BUILD_IN_AI_MODELS = [
         label: 'OpenAI',
         value: 'OpenAI',
         models: [
+            {label: 'GPT 4o-mini', value: 'gpt-4o-mini', canModify: false, supportedFunctions: 'chat'},
             {label: 'GPT 4o', value: 'gpt-4o', canModify: false, supportedFunctions: 'chat'},
             {label: 'GPT 4 Turbo', value: 'gpt-4-turbo', canModify: false, supportedFunctions: 'chat'},
             {label: 'GPT 4', value: 'gpt-4', canModify:false, supportedFunctions: 'chat'},
@@ -469,6 +470,7 @@ class AIManager {
                 engineType = AI_ENGINE_TYPE.XYF;
                 break
             case 'gpt-4o':
+            case 'gpt-4o-mini':
             case 'gpt-4-turbo':
             case 'gpt-4':
             case 'gpt-3.5-turbo':
@@ -763,6 +765,7 @@ class AIManager {
                 chatEngineType = AI_ENGINE_TYPE.XYF;
                 break
             case 'gpt-4o':
+            case 'gpt-4o-mini':
             case 'gpt-4-turbo':
             case 'gpt-4':
             case 'gpt-3.5-turbo':
