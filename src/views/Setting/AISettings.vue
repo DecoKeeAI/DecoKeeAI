@@ -544,6 +544,9 @@ export default {
                 case 'llama3-8b-8192':
                 case 'llama3-groq-70b-8192-tool-use-preview':
                 case 'llama3-groq-8b-8192-tool-use-preview':
+                case 'llama-3.1-8b-instant':
+                case 'llama-3.1-70b-versatile':
+                case 'llama-3.1-405b-reasoning':
                 case 'gemma-7b-it':
                 case 'gemma2-9b-it':
                 case 'mixtral-8x7b-32768':
@@ -635,6 +638,9 @@ export default {
                 case 'llama3-8b-8192':
                 case 'llama3-groq-70b-8192-tool-use-preview':
                 case 'llama3-groq-8b-8192-tool-use-preview':
+                case 'llama-3.1-8b-instant':
+                case 'llama-3.1-70b-versatile':
+                case 'llama-3.1-405b-reasoning':
                 case 'gemma-7b-it':
                 case 'gemma2-9b-it':
                 case 'mixtral-8x7b-32768':

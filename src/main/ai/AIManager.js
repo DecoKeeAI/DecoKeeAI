@@ -70,10 +70,13 @@ const BUILD_IN_AI_MODELS = [
         label: 'Groq',
         value: 'Groq',
         models: [
-            {label: 'Groq llama 70B', value: 'llama3-70b-8192', canModify: false, supportedFunctions: 'chat'},
-            {label: 'Groq llama 8B', value: 'llama3-8b-8192', canModify: false, supportedFunctions: 'chat'},
-            {label: 'Groq llama 70B tool use preview', value: 'llama3-groq-70b-8192-tool-use-preview', canModify: false, supportedFunctions: 'chat'},
-            {label: 'Groq llama 8B tool use preview', value: 'llama3-groq-8b-8192-tool-use-preview', canModify: false, supportedFunctions: 'chat'},
+            {label: 'Groq llama3 70B', value: 'llama3-70b-8192', canModify: false, supportedFunctions: 'chat'},
+            {label: 'Groq llama3 8B', value: 'llama3-8b-8192', canModify: false, supportedFunctions: 'chat'},
+            {label: 'Groq llama3 70B tool use preview', value: 'llama3-groq-70b-8192-tool-use-preview', canModify: false, supportedFunctions: 'chat'},
+            {label: 'Groq llama3 8B tool use preview', value: 'llama3-groq-8b-8192-tool-use-preview', canModify: false, supportedFunctions: 'chat'},
+            {label: 'Groq llama3 8b', value: 'llama-3.1-8b-instant', canModify: false, supportedFunctions: 'chat'},
+            {label: 'Groq llama3.1 70b', value: 'llama-3.1-70b-versatile', canModify: false, supportedFunctions: 'chat'},
+            {label: 'Groq llama3.1 405b', value: 'llama-3.1-405b-reasoning', canModify: false, supportedFunctions: 'chat'},
             {label: 'Groq gemma 7B', value: 'gemma-7b-it', canModify: false, supportedFunctions: 'chat'},
             {label: 'Groq gemma2 9B', value: 'gemma2-9b-it', canModify: false, supportedFunctions: 'chat'},
             {label: 'Groq mixtral 8x7b', value: 'mixtral-8x7b-32768', canModify: false, supportedFunctions: 'chat'}
@@ -218,8 +221,7 @@ class AIManager {
 
     constructor(AppManager) {
         this.appManager = AppManager;
-        console.log('AIManager constructor')
-
+        console.log('AIManager constructor');
 
         this.ttsEngineAdapter = undefined;
         this.aiAssistantChatAdapter = undefined;
@@ -483,6 +485,9 @@ class AIManager {
             case 'llama3-8b-8192':
             case 'llama3-groq-70b-8192-tool-use-preview':
             case 'llama3-groq-8b-8192-tool-use-preview':
+            case 'llama-3.1-8b-instant':
+            case 'llama-3.1-70b-versatile':
+            case 'llama-3.1-405b-reasoning':
             case 'gemma-7b-it':
             case 'gemma2-9b-it':
             case 'mixtral-8x7b-32768':
@@ -778,6 +783,9 @@ class AIManager {
             case 'llama3-8b-8192':
             case 'llama3-groq-70b-8192-tool-use-preview':
             case 'llama3-groq-8b-8192-tool-use-preview':
+            case 'llama-3.1-8b-instant':
+            case 'llama-3.1-70b-versatile':
+            case 'llama-3.1-405b-reasoning':
             case 'gemma-7b-it':
             case 'gemma2-9b-it':
             case 'mixtral-8x7b-32768':
@@ -2329,6 +2337,9 @@ class AIManager {
             case 'llama3-8b-8192':
             case 'llama3-groq-70b-8192-tool-use-preview':
             case 'llama3-groq-8b-8192-tool-use-preview':
+            case 'llama-3.1-8b-instant':
+            case 'llama-3.1-70b-versatile':
+            case 'llama-3.1-405b-reasoning':
             case 'gemma-7b-it':
             case 'gemma2-9b-it':
             case 'mixtral-8x7b-32768':
@@ -2519,7 +2530,7 @@ class AIManager {
             return;
         }
 
-        finalParam.max_tokens = 8192;
+        finalParam.max_tokens = 8000;
 
         let chatFrameResponse = '';
 
