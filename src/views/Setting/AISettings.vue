@@ -195,7 +195,7 @@
 
                         <el-tooltip placement="top" style="margin-top: 8px">
                             <div slot="content" style="white-space: pre-wrap; line-height: 20px">
-                                <el-link href="https://www.volcengine.com/docs/82379/1267885">{{ $t('settings.cozeModelHint') }}</el-link>
+                                <el-link href="https://www.coze.cn/docs/developer_guides/preparation">{{ $t('settings.cozeModelHint') }}</el-link>
                             </div>
                             <i class="el-icon-question" style="margin-left: 24px"></i>
                         </el-tooltip>
