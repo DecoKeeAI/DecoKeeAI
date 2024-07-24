@@ -238,8 +238,8 @@ export default {
             customModelName: '',
             defaultSelectedMic: '',
             micSelectList: [],
-            aiModelType: 'llama3-70b-8192',
-            selectedModelType: ['Groq', 'llama3-70b-8192'],
+            aiModelType: 'llama-3.1-70b-versatile',
+            selectedModelType: ['Groq', 'llama-3.1-70b-versatile'],
             speechEngineType: SPEECH_ENGINE_TYPE.XYF,
             speechEngineTypeList: [
                 { label: '科大讯飞', value: SPEECH_ENGINE_TYPE.XYF },
@@ -331,7 +331,7 @@ export default {
 
         const modelType = window.store.storeGet('aiConfig.modelType');
         if (modelType === undefined) {
-            window.store.storeSet('aiConfig.modelType', 'llama3-70b-8192');
+            window.store.storeSet('aiConfig.modelType', 'llama-3.1-70b-versatile');
         } else {
             this.aiModelType = modelType;
         }
@@ -927,7 +927,7 @@ export default {
                 if (nextModelType !== undefined) {
                     that.selectedModelType[1] = nextModelType;
                 } else {
-                    that.selectedModelType = ['Groq', 'llama3-70b-8192'];
+                    that.selectedModelType = ['Groq', 'llama-3.1-70b-versatile'];
                 }
                 const deleteAIConfigKeyPrefix = 'aiConfig.' + deleteModelType;
 

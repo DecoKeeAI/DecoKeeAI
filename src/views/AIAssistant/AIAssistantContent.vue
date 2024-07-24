@@ -245,7 +245,7 @@ export default {
             currentMessage: '',
             requestId: null, // 发送消息的 requestId
 
-            aiModelType: ['Groq', 'llama3-70b-8192'],
+            aiModelType: ['Groq', 'llama-3.1-70b-versatile'],
             aiModelTypeList: [],
 
             //  系统角色
@@ -292,7 +292,7 @@ export default {
 
         if (window.store.storeGet('aiConfig.chat')) {
             // this.aiModelType = window.store.storeGet('aiConfig.chat.modelType') ||  ['Groq', 'llama3-70b-8192'];
-            this.aiModelType = window.store.storeGet('aiConfig.chat.selectedModelType') || ['Groq', 'llama3-70b-8192'];
+            this.aiModelType = window.store.storeGet('aiConfig.chat.selectedModelType') || ['Groq', 'llama-3.1-70b-versatile'];
 
             this.top_p = window.store.storeGet('aiConfig.chat.topP') || 0.7;
             this.temperature = window.store.storeGet('aiConfig.chat.temperature') || 1;

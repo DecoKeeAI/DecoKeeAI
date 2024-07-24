@@ -320,7 +320,7 @@ class AIManager {
 
             let newAiChatModelType = this.appManager.storeManager.storeGet('aiConfig.chat.modelType');
             if (newAiChatModelType === undefined) {
-                newAiChatModelType = 'llama3-70b-8192';
+                newAiChatModelType = 'llama-3.1-70b-versatile';
             }
 
             console.log('AIManager Init with chat model type: ' + newAiChatModelType);

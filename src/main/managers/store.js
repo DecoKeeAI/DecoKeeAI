@@ -35,7 +35,7 @@ class StoreManager {
         }
 
         if (!this.store.has('aiConfig.modelType')) {
-            this.store.set('aiConfig.modelType', 'llama3-70b-8192')
+            this.store.set('aiConfig.modelType', 'llama-3.1-70b-versatile')
         }
 
         if (!this.store.has('aiConfig.speechEngineType')) {
