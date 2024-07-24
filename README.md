@@ -37,7 +37,7 @@ DecoKeeAI is built using **vue-cli 5** and **Electron 23.0.0**, providing a modu
   - Dynamic configuration switching based on foreground application
 * MDI icon plugin and third-party icon library import
 * Support for third-party plugin import (such as HomeAssistant plugins, etc.)
-* Support for mainstream AI model interface calls, including: (API keys need to be registered on the corresponding platform and filled in the settings. For the best experience, it is recommended to use Groq's llama3-70b-8192 or OpenAI' gpt-4o)
+* Support for mainstream AI model interface calls, including: (API keys need to be registered on the corresponding platform and filled in the settings. For the best experience, it is recommended to use Groq's llama-3.1-70b-versatile or OpenAI's gpt-4o)
     - OpenAI: gpt-4o-mini, gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5-turbo
     - Groq (Fastest in response. FREE at the moment !!!!!!): llama3-70b-8192
     - iFlytek: spark3.5-max, spark4-ultra

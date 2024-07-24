@@ -37,7 +37,7 @@ DecoKeeAI 提出了一种通过 AI 技术与带显示快捷按键相结合的全
     - 根据前台应用动态切换配置
 * MDI 图标插件和第三方图标库导入
 * 支持三方插件导入 (如 HomeAssistant 插件等)
-* 支持主流AI大模型接口调用包含：(API key需自行在对应平台中注册并在设置中填入，若想取得最好的体验，建议使用 Groq 的 llama3-70b-8192 或 OpenAI 的 gpt-4o)
+* 支持主流AI大模型接口调用包含：(API key需自行在对应平台中注册并在设置中填入，若想取得最好的体验，建议使用 Groq 的 llama-3.1-70b-versatile 或 OpenAI 的 gpt-4o)
     - OpenAI: gpt-4o-mini, gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5-turbo
     - Groq (速度最快！目前免费！！！): llama3-70b-8192
     - 讯飞星火: spark3.5-max, spark4-ultra
