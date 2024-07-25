@@ -199,6 +199,9 @@ class DeviceControlManager {
         try {
             ipcMain.on('ChangeDeviceProfile', (event, args) => {
                 const requestSerialNumber = args.serialNumber;
+
+                if (requestSerialNumber === undefined || requestSerialNumber === '') return;
+
                 const resourceId = args.resourceId;
 
                 console.log('DeviceControlManager: Received ChangeDeviceProfile: to ', resourceId, ' requestSerialNumber: ', requestSerialNumber);

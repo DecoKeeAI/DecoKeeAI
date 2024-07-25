@@ -69,9 +69,11 @@
         "huoshanAgent": "智能体",
         "houshanInference": "推理模型",
         "entryMethod": "接入方式",
-        "useDekiePrompt": "使用小呆Prompt",
+        "useDekiePrompt": "使用小呆助手",
         "useDekiePromptHint": "若需使用小呆Prompt, 建议将智能体创建中的 System Prompt 移除以达到最佳效果。\n 关闭后将只有聊天功能，无法控制设备。",
-        "cozeModelHint": "配置指南"
+        "cozeModelHint": "配置指南",
+        "aiGeneralSetting": "通用设置",
+        "aiModelSetting": "AI 模型配置"
     },
     "success": "成功",
     "failed": "失败",

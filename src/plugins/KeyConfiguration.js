@@ -87,6 +87,29 @@ export const KeyConfiguration = [
           }]
         }
       },
+      {
+        childrenName: 'assistant',
+        config: {
+          type: 'assistant',
+          title: {
+            text: '',
+            pos: 'bot',
+            size: 8,
+            color: '#FFFFFF',
+            display: true,
+            style: 'bold|italic|underline',
+            resourceId: 0
+          },
+          icon: '0-50',
+          animations: ['0-47', '0-48', '0-49', '0-51'],
+          actions: [
+            {
+              type: 'assistant',
+              value: ''
+            }
+          ],
+        }
+      },
     ]
   },
   // 菜单2
@@ -488,7 +511,7 @@ export const KeyConfiguration = [
         }
       }
     ]
-  }
+  },
 ]
 
 // 多项操作侧边栏
@@ -1696,6 +1719,47 @@ export const knobMenu = [
           ]
         }
       },
+      {
+        childrenName: 'assistant',
+        config: {
+          type: 'knob',
+          title: {
+            text: '',
+            pos: 'bot',
+            size: 8,
+            color: '#FFFFFF',
+            display: true,
+            style: 'bold|italic|underline',
+            resourceId: 0
+          },
+
+          icon: '0-50',
+          subActions: [
+            {
+              config: {
+                type: 'assistant',
+                title: {
+                  text: '',
+                  pos: 'bot',
+                  size: 8,
+                  color: '#FFFFFF',
+                  display: true,
+                  style: 'bold|italic|underline',
+                  resourceId: 0
+                },
+                icon: '0-50',
+                animations: ['0-47', '0-48', '0-49', '0-51'],
+                actions: [
+                  {
+                    type: 'assistant',
+                    value: ''
+                  }
+                ],
+              }
+            },
+          ]
+        }
+      },
     ]
   },
   // 菜单2
@@ -1888,53 +1952,6 @@ export const knobMenu = [
                     value: 'audio_vol_up'
                   }
                 ]
-              }
-            },
-          ]
-        }
-      },
-    ]
-  },
-  // 菜单5
-  {
-    subMenu: 'assistant',
-    children: [
-      {
-        childrenName: 'assistant',
-        config: {
-          type: 'knob',
-          title: {
-            text: '',
-            pos: 'bot',
-            size: 8,
-            color: '#FFFFFF',
-            display: true,
-            style: 'bold|italic|underline',
-            resourceId: 0
-          },
-
-          icon: '0-50',
-          subActions: [
-            {
-              config: {
-                type: 'assistant',
-                title: {
-                  text: '',
-                  pos: 'bot',
-                  size: 8,
-                  color: '#FFFFFF',
-                  display: true,
-                  style: 'bold|italic|underline',
-                  resourceId: 0
-                },
-                icon: '0-50',
-                animations: ['0-47', '0-48', '0-49', '0-51'],
-                actions: [
-                  {
-                    type: 'assistant',
-                    value: ''
-                  }
-                ],
               }
             },
           ]

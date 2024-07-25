@@ -107,6 +107,10 @@ class StoreManager {
         return this.store.get(key)
     }
 
+    storeGet(key, defaultValue) {
+        return this.store.get(key, defaultValue)
+    }
+
     storeDelete(key) {
         this.store.delete(key)
     }

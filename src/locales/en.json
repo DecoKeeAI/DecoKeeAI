@@ -69,9 +69,11 @@
     "huoshanAgent": "Agent",
     "houshanInference": "Inference",
     "entryMethod": "Entry Method",
-    "useDekiePrompt": "Use Dekie Prompt",
+    "useDekiePrompt": "Use Dekie Agent",
     "useDekiePromptHint": "If you need to use Dekie's Prompt, it is recommended to remove the \"System Prompt\" in the Agent you created to get the best experience. \n After closing, only the chat function will be available, and device control will be disabled.",
-    "cozeModelHint": "How to get this?"
+    "cozeModelHint": "How to get this?",
+    "aiGeneralSetting": "General Settings",
+    "aiModelSetting": "AI Model Settings"
   },
   "success": "Success",
   "failed": "Failed",
