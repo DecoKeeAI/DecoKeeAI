@@ -2,55 +2,74 @@
     <div>
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px">
             <div style="display: flex; align-items: center">
-                <img :src="historyImg" title="历史记录" style="width: auto; height: 35px; cursor: pointer; margin-right: 10px" @click="historyBtn" />
+                <img :src="historyImg" title="历史记录" style="width: auto; height: 35px; cursor: pointer;" @click="historyBtn" />
             </div>
 
             <img :src="configImg" alt="配置" style="width: auto; height: 35px; cursor: pointer" @click="cinfigBtn" />
         </div>
+
         <!-- 聊天 -->
         <div>
             <el-scrollbar ref="scrollbar" :style="{ height: windowHeight + 'px' }">
                 <div @click="reset">
                     <div id="selectable-text">
                         <!-- eslint-disable vue/no-use-v-if-with-v-for -->
-                        <div class="chat-container" v-for="(message, index) in message" :key="index" v-if="message.role !== 'system'">
+                        <div class="chat-container" v-for="(message, index) in message" :key="index" v-if="message.role !== 'system'" @mouseenter="enterInto(index)" @mouseleave="leaveOut(index)">
 
-                            <div @mouseenter="enterInto(index)" @mouseleave="leaveOut(index)" :style="{maxWidth: (windowWidth - 120) + 'px'}" v-if="message.role === 'user'" :class="['message', message.content !== '' ? 'message-received' : '']">
-                                <div class="message-user">
-                                    <span>
+                            <div :style="{maxWidth: (windowWidth - 120) + 'px'}" v-if="message.role === 'user'" :class="[message.content !== '' ? 'message-received' : '']">
+                                <div class="chat-user message">
+                                    <div v-if="editIndex && index === editIndex" class="user-input">
+                                        <el-input @input="changeUserMessage($event, index)" resize="none" type="textarea" v-model="message.content"></el-input>
+                                        <i class="el-icon-check" @click="confirmEdit(index)"></i>
+                                        <i class="el-icon-close" @click="cancelEdit"></i>
+                                    </div>
+
+                                    <span v-else>
                                         {{ message.content}}
                                     </span>
-                                    <span class="message-delete">
-                                        <i v-if="isHover === index" @click="deleteAssistant(index)" class="el-icon-delete"></i>
-                                    </span>
+                                </div>
+                                <div class="message-operate" v-if="isHover === index && !editIndex">
+
+                                    <el-button class="copy-message" @click="copyMessageBtn(message.content)" type="text" icon="el-icon-document-copy">复制</el-button>
+                                    <i v-if="index === (maxIndex - 1)" @click="editAssistant(index)" class="el-icon-edit"></i>
+                                    <i @click="deleteAssistant(index)" class="el-icon-delete"></i>
                                 </div>
                             </div>
 
-                            <div class="div-assistant" v-if="message.role === 'assistant'" @mouseenter="enterInto(index)" @mouseleave="leaveOut(index)">
-                                <div class="message-assistant">
+                            <div class="div-assistant" v-if="message.role === 'assistant'">
 
+                                <div class="message-assistant">
                                     <span class="chat-role-assistant">
                                         <i class="el-icon-loading" v-if="AIStatus === 1 && message.requestId"></i>
                                         <span :id="`assistant-${index}`" :class="['message', message.content !== '' ? 'message-sent' : '']" v-html="formater(message.content)"></span>
                                     </span>
-
-                                    <div v-if=" message.content !== ''" class="message-regenerate" :style="{ left : (assistantWidth  - 20) + 'px'}">
-                                        <!-- <el-link v-if="AIStatus === 1 && message.requestId" @click="stopAssistant" :underline="false">停止生成</el-link> -->
-                                        <span v-if="index !==1  && isHover === index && AIStatus === 2">
-                                            <i @click="regenerateAssistant" v-if="isHover === maxIndex" class="el-icon-refresh"></i>
-
-                                            <i @click="deleteAssistant(index)" class="el-icon-delete"></i>
-                                        </span>
-
-                                    </div>
                                 </div>
 
+                                <div v-if=" message.content !== ''" class="message-regenerate message-operate">
+                                    <!-- <el-link v-if="AIStatus === 1 && message.requestId" @click="stopAssistant" :underline="false">停止生成</el-link> -->
+                                    <template v-if="index !==1 && AIStatus === 2">
+                                        <span v-if="index === maxIndex || isHover === index">
+                                            <el-button class="copy-message" @click="copyMessageBtn(message.content)" type="text" icon="el-icon-document-copy">复制</el-button>
+                                            <i @click="regenerateAssistant" title="重新生成" v-if="index === maxIndex" class="el-icon-refresh"></i>
+                                            <i @click="deleteAssistant(index)" class="el-icon-delete"></i>
+                                        </span>
+                                    </template>
+                                </div>
+
+                            </div>
+
+                            <div v-for="(follow, index) in followUpArr" :key="index" class="chat-more" @click="chatMoreBtn(follow)" v-if="AIStatus === 2 && message.requestId">
+                                <el-tag>
+                                    <span>{{ follow }}</span>
+                                    <i class="el-icon-right"></i>
+                                </el-tag>
                             </div>
 
                         </div>
                     </div>
                 </div>
             </el-scrollbar>
+
             <!-- 发送 -->
             <div id="chat-bottom">
                 <div class="new-chat" @click="addSessionBtn">
@@ -58,7 +77,7 @@
                     <span>New Chat</span>
                 </div>
                 <div style="padding: 5px">
-                    <div class="chat-input" :style="{ height: fileList ? '170px' : '140px' }">
+                    <div class="chat-input">
                         <div class="chat-file" v-if="fileList">
                             <el-tag closable @close="clearFileList">
                                 {{ fileList }}
@@ -94,18 +113,18 @@
                     <el-button @click="aiModelconfigBtn" style="margin-left: 10px;" type="text">配置</el-button>
                 </el-form-item>
 
-                <el-form-item label="系统角色">
-                    <el-select class="selectRole" filterable v-model="systemRole" @change="aiSystemRoleChanged">
+                <el-form-item label="系统角色" class="selectRole">
+                    <el-select filterable v-model="systemRole" @change="aiSystemRoleChanged">
                         <el-option v-for="item in aiSystemRole" :key="item.value" :label="item.role" :value="item.value" />
                     </el-select>
                     <el-input :disabled="systemRole === 0" v-model="systemRolePrompt" type="textarea" resize="none">
                     </el-input>
                 </el-form-item>
 
-                <el-form-item label="角色性格" class="temperature">
+                <el-form-item label="角色性格">
                     <el-slider v-model="top_p" :min="0" :max="1" :step="0.05" :marks="{ 0: '准确严谨', 1: '灵活创新' }"></el-slider>
                 </el-form-item>
-                <el-form-item label="回答质量" class="temperature">
+                <el-form-item label="回答质量">
                     <el-slider v-model="temperature" :min="0" :max="2" :step="0.05" :marks="{ 0: '重复保守', 2: '胡言乱语' }"></el-slider>
                 </el-form-item>
             </el-form>
@@ -163,11 +182,12 @@
 </template>
 <script>
 import { aiSystemRole } from '@/plugins/KeyConfiguration.js';
-import { dialog, screen } from '@electron/remote';
+import { dialog } from '@electron/remote';
 import { ipcRenderer } from 'electron';
 
 
 import 'highlight.js/styles/an-old-hope.css';
+// eslint-disable-next-line no-unused-vars
 const hljsExtension = function () {
     return [
         {
@@ -221,7 +241,8 @@ export default {
         },
         maxIndex() {
             return this.message.length - 1;
-        }
+        },
+
     },
     data() {
         return {
@@ -231,6 +252,9 @@ export default {
             historyImg: '',
             configImg: '',
             addImg: '',
+
+            markdown: null,
+
             // 先有一个列表存历史记录， 根据历史记录找到对应的聊天内容
             historyList: [
                 {
@@ -240,10 +264,14 @@ export default {
             ],
             // 当前对话框的消息
             message: [],
+            // 消息问题
+            followUpArr: [],
 
             // 当前输入的消息
             currentMessage: '',
             requestId: null, // 发送消息的 requestId
+
+
 
             aiModelType: ['Groq', 'llama-3.1-70b-versatile'],
             aiModelTypeList: [],
@@ -262,21 +290,18 @@ export default {
             windowWidth: window.innerWidth,
             windowHeight: window.innerHeight,
             //  聊天记录
-
             historyDrawer: false,
             selectKey: 'key-1',
             historyDrawerWidth: '',
             editKey: '',
 
-            historycontent: '',
-
             searchHistory: '',
+
             isHover: null,
+            editIndex: null,
             // fileList
             fileList: '',
             AIStatus: 2,
-
-            assistantWidth: ''
         };
     },
     created() {
@@ -291,7 +316,6 @@ export default {
         this.aiModelTypeList = window.aiManager.getAllSupportedModels();
 
         if (window.store.storeGet('aiConfig.chat')) {
-            // this.aiModelType = window.store.storeGet('aiConfig.chat.modelType') ||  ['Groq', 'llama3-70b-8192'];
             this.aiModelType = window.store.storeGet('aiConfig.chat.selectedModelType') || ['Groq', 'llama-3.1-70b-versatile'];
 
             this.top_p = window.store.storeGet('aiConfig.chat.topP') || 0.7;
@@ -321,15 +345,38 @@ export default {
 
         this.historyList = window.store.chatHistoryGet('historyList');
         this.message = window.store.chatHistoryGet(`chatHistory.${this.selectKey}`);
-
+        this.followUpArr = window.store.chatHistoryGet(`followUpArr.${this.selectKey}`) || [];
 
         this.$nextTick(() => {
             if (document.getElementById('chat-bottom')) {
                 this.windowHeight = window.innerHeight - document.getElementById('chat-bottom').offsetHeight - 70;
+
             }
+        });
+
+        this.markdown = new showdown.Converter({
+            tables: true,
+            ghCompatibleHeaderId: true,
+            simpleLineBreaks: true,
+            tasklists: true,
+            simplifiedAutoLink: true,
+            headerLevelStart: 3,
+            completeHTMLDocument: true,
+            emoji: true,
+            underline: true,
+            literalMidWord: true,
+
+            extensions: [showdownHighlight(), hljsExtension]
+
         });
     },
     mounted() {
+
+        window.addEventListener('focus', () => {
+            // console.log('AI对话窗口获得焦点');
+            this.aiModelTypeList = window.aiManager.getAllSupportedModels();
+        });
+
         window.addEventListener('resize', this.handleResize);
         this.$nextTick(() => {
             this.initScrollHeight();
@@ -367,57 +414,35 @@ export default {
 
 
     methods: {
-
-        // eslint-disable-next-line no-unused-vars
         formater(message) {
+            // const md = new MarkdownIt({
+            //     breaks: true,
+            //     html: true,
+            //     linkify: true,
+            //     typographer: true,
+            //     highlight: function (str, lang) {
 
-            //     const md = new MarkdownIt({
-            //         breaks: true,
-            //         html: true,
-            //         linkify: true,
-            //         typographer: true,
-            //         highlight: function (str, lang) {
+            //         const codeIndex = parseInt(Date.now()) + Math.floor(Math.random() * 10000000);
 
-            //             const codeIndex = parseInt(Date.now()) + Math.floor(Math.random() * 10000000);
-
-            //             const copyBtn = `<p style="cursor: pointer;" data-clipboard-action="copy" data-clipboard-target="#copy-target-${codeIndex}" class="copy-btn" >复制</p>`;
-            //             if (lang && hljs.getLanguage(lang)) {
-            //                 const langHtml = `<span class="lang-name">${lang}</span>`;
-            //                 // 处理代码高亮
-            //                 // const preCode = hljs.highlight(lang, str, true).value;
-            //                 const preCode = hljs.highlightAuto(str).value;
-
-            //                 return `<pre class="chat-pre"><code class="language-${lang} hljs"><div class="chat-heard">${langHtml} ${copyBtn}</div><div id="copy-target-${codeIndex}" class="chat-code">${preCode}</div></code></pre>`;
-            //             }
-
+            //         const copyBtn = `<p style="cursor: pointer;" data-clipboard-action="copy" data-clipboard-target="#copy-target-${codeIndex}" class="copy-btn" >复制</p>`;
+            //         if (lang && hljs.getLanguage(lang)) {
+            //             const langHtml = `<span class="lang-name">${lang}</span>`;
+            //             // 处理代码高亮
+            //             // const preCode = hljs.highlight(lang, str, true).value;
             //             const preCode = hljs.highlightAuto(str).value;
-            //             return `<pre class="chat-pre"><code class="hljs"><div class="chat-heard" style="justify-content: end;">${copyBtn}</div><div id="copy-target-${codeIndex}" class="chat-code">${preCode}</div></code></pre>`;
-            //         },
-            //     });
-            //     const randerMessage = md.render(message);
 
-            //     return randerMessage;
+            //             return `<pre class="chat-pre"><code class="language-${lang} hljs"><div class="chat-heard">${langHtml} ${copyBtn}</div><div id="copy-target-${codeIndex}" class="chat-code">${preCode}</div></code></pre>`;
+            //         }
 
+            //         const preCode = hljs.highlightAuto(str).value;
+            //         return `<pre class="chat-pre"><code class="hljs"><div class="chat-heard" style="justify-content: end;">${copyBtn}</div><div id="copy-target-${codeIndex}" class="chat-code">${preCode}</div></code></pre>`;
+            //     },
+            // });
+            // const randerMessage = md.render(message);
 
-            // eslint-disable-next-line no-unused-vars
-            const md = new showdown.Converter({
-                tables: true,
-                ghCompatibleHeaderId: true,
-                simpleLineBreaks: true,
-                tasklists: true,
-                simplifiedAutoLink: true,
-                headerLevelStart: 3,
-                completeHTMLDocument: true,
-                emoji: true,
-                underline: true,
-                literalMidWord: true,
+            // return randerMessage;
 
-                extensions: [showdownHighlight(), hljsExtension]
-
-            });
-
-
-            return md.makeHtml(message)
+            return this.markdown.makeHtml(message)
         },
 
         handleResize() {
@@ -519,15 +544,19 @@ export default {
         },
 
         clickTitle(key) {
-            console.log(key);
+            console.log('AI聊天： 聊天记录 key', key);
             this.selectKey = key;
             this.historyDrawer = false;
             this.message = window.store.chatHistoryGet(`chatHistory.${this.selectKey}`);
+            this.followUpArr = window.store.chatHistoryGet(`followUpArr.${this.selectKey}`);
+
             window.store.storeSet('aiConfig.selectKey', this.selectKey);
             this.initScrollHeight();
         },
         editTitle(key) {
+
             this.editKey = key;
+            this.selectKey = key
             // this.$nextTick(() => {
             //     document.getElementById('edit-input').focus();
             // });
@@ -555,20 +584,15 @@ export default {
             this.$set(this.historyList[index], this.historyList[index].title, e);
         },
 
-        confirmBtn() {
+        confirmBtn(index) {
             this.editKey = '';
 
-            // 更改 title
-            // this.historyList = this.historyList.map(item => {
-            //     if (item.key === this.selectKey) {
-            //         if (this.message[2].content.length <= 10) {
-            //             item.title = this.message[2].content;
-            //         } else {
-            //             item.title = this.message[2].content.slice(0, 10) + '...';
-            //         }
-            //     }
-            //     return item;
-            // });
+            if (this.historyList[index].title.length < 10) {
+                // eslint-disable-next-line no-self-assign
+                this.historyList[index].title = this.historyList[index].title
+            } else {
+                this.historyList[index].title = this.historyList[index].title.slice(0, 10) + '...';
+            }
             window.store.chatHistorySet('historyList', this.historyList);
         },
         cancelBtn() {
@@ -602,11 +626,46 @@ export default {
 
             this.historyList = this.historyList.filter(item => res.includes(item.key));
 
-
         },
         clearHistoryInput() {
             this.historyList = window.store.chatHistoryGet('historyList');
         },
+        sendChatMessage() {
+            this.requestId = window.aiManager.sendChatMessage(this.message);
+            console.log(' AI聊天：发送消息的requestId', this.requestId);
+            let AIMessage = '';
+            this.followUpArr = []
+            window.aiManager.setChatResponseListener((requestId, status, message, msgType) => {
+                this.AIStatus = status;
+
+                if (status === -1) {
+                    this.message[this.message.length - 1].content = '生成失败...'
+                } else {
+
+                    if (msgType === 'answer' || msgType === '') {
+                        AIMessage += message;
+                        this.message[this.message.length - 1].content = AIMessage;
+                        this.message[this.message.length - 1].requestId = requestId;
+                    }
+
+                    if (msgType === 'followUp') {
+                        console.log('followUp message:', message);
+                        this.followUpArr.push(message)
+                        window.store.chatHistorySet(`followUpArr.${this.selectKey}`, this.followUpArr);
+                    }
+                }
+
+
+
+                // console.log('msgType:', msgType);
+
+                // console.log('status:', status);
+
+                this.updateScrollHeight();
+                window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
+            });
+        },
+
         sendBtn() {
             if (this.AIStatus === 1) {
                 return;
@@ -651,22 +710,7 @@ export default {
                 });
 
                 window.store.chatHistorySet('historyList', this.historyList);
-
-                this.requestId = window.aiManager.sendChatMessage(this.message);
-                console.log(' AI聊天：发送消息的requestId', this.requestId);
-                let AIMessage = '';
-
-                window.aiManager.setChatResponseListener((requestId, status, message) => {
-
-
-                    AIMessage += message;
-                    this.AIStatus = status;
-                    this.message[this.message.length - 1].content = AIMessage;
-                    this.message[this.message.length - 1].requestId = requestId;
-
-                    this.updateScrollHeight();
-                    window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
-                });
+                this.sendChatMessage()
 
                 this.currentMessage = '';
             }
@@ -676,17 +720,45 @@ export default {
         },
         enterInto(index) {
             this.isHover = index
-            this.$nextTick(() => {
-                if (document.getElementById(`assistant-${index}`)) {
-                    this.assistantWidth = document.getElementById(`assistant-${index}`).offsetWidth
-                    // console.log(this.assistantWidth);
-                }
-            })
 
         },
-        stopAssistant() {
-            window.aiManager.cancelChatProcess(this.requestId)
-            this.AIStatus = 2
+        changeUserMessage(e, index) {
+            console.log(this.message[index].content);
+            this.$set(this.message[index], this.message[index].content, e);
+        },
+        cancelEdit() {
+            this.editIndex = null
+            this.message = window.store.chatHistoryGet(`chatHistory.${this.selectKey}`);
+
+        },
+        confirmEdit(index) {
+            console.log(index);
+            this.editIndex = null
+            console.log('111111111111111', this.message);
+            window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
+        },
+        // stopAssistant() {
+        //     window.aiManager.cancelChatProcess(this.requestId)
+        //     this.AIStatus = 2
+        // },
+        copyMessageBtn(message) {
+            const that = this
+            const clipboard = new ClipboardJS('.copy-message', {
+                text: () => message
+            });
+            clipboard.on('success', e => {
+                e.clearSelection();
+                that.$message.success('复制成功');
+            });
+
+            clipboard.on('error', function (e) {
+                e.clearSelection();
+                that.$message.error('复制失败');
+            });
+        },
+        editAssistant(i) {
+            console.log(i);
+            this.editIndex = i
         },
         deleteAssistant(i) {
 
@@ -703,24 +775,32 @@ export default {
                 }
                 return item;
             });
-            console.log(this.message);
+            this.sendChatMessage()
 
-            this.requestId = window.aiManager.sendChatMessage(this.message);
-            let AIMessage = '';
-
-            window.aiManager.setChatResponseListener((requestId, status, message) => {
-
-
-                AIMessage += message;
-                this.AIStatus = status;
-                this.message[this.message.length - 1].content = AIMessage;
-                this.message[this.message.length - 1].requestId = requestId;
-
-                this.updateScrollHeight();
-                window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
+        },
+        chatMoreBtn(text) {
+            console.log(text);
+            this.message = this.message.map(item => {
+                if (item.requestId) {
+                    const newItem = { ...item };
+                    delete newItem.requestId;
+                    return newItem;
+                }
+                return item;
             });
 
-            this.currentMessage = '';
+            this.message.push(
+                {
+                    role: 'user',
+                    content: text,
+                },
+                {
+                    role: 'assistant',
+                    content: '',
+                }
+            );
+            console.log(this.message);
+            this.sendChatMessage()
         },
         selectFileBtn() {
             dialog
@@ -731,8 +811,10 @@ export default {
                     const fileList = result.filePaths[0].split('\\');
                     this.fileList = fileList[fileList.length - 1];
                     window.store.storeSet('aiConfig.fileList', this.fileList);
-
-                    this.windowHeight = window.innerHeight - document.getElementById('chat-bottom').offsetHeight - 80;
+                    this.$nextTick(() => {
+                        this.windowHeight = window.innerHeight - document.getElementById('chat-bottom').offsetHeight - 70;
+                        this.updateScrollHeight();
+                    })
 
                     // const name = fileName.split('.exe');
                     // console.log(' AI聊天：fileName,name', fileName, name);
@@ -767,15 +849,43 @@ export default {
         clearFileList() {
             this.fileList = '';
             window.store.storeSet('aiConfig.fileList', this.fileList);
+            this.$nextTick(() => {
+                this.windowHeight = window.innerHeight - document.getElementById('chat-bottom').offsetHeight - 70;
+                this.updateScrollHeight();
+            })
+
         },
         captureScreen() {
-            screen.getDisplayNearestPoint({ x: 0, y: 0 }).then(display => {
-                const { width, height } = display.workAreaSize;
-                // const { x, y } = display.workArea;
-                // const desktopCapturer = require('electron').desktopCapturer;
-                console.log(width, height);
-            });
+            // desktopCapturer.getSources({ types: ['window', 'screen'] }, (error, sources) => {
+            //     if (error) throw error
+            //     for (let i = 0; i < sources.length; ++i) {
+            //         console.log('iiiiiiiiiiiiiiiiiiii',i);
+            //         if (sources[i].name === 'Electron') {
+            //             navigator.webkitGetUserMedia({
+            //                 audio: false,
+            //                 video: {
+            //                     mandatory: {
+            //                         chromeMediaSource: 'desktop',
+            //                         chromeMediaSourceId: sources[i].id,
+            //                         minWidth: 1280,
+            //                         maxWidth: 1280,
+            //                         minHeight: 720,
+            //                         maxHeight: 720
+            //                     }
+            //                 }
+            //             }, this.handleStream, this.handleError)
+            //             return
+            //         }
+            //     }
+            // })
+
         },
+        handleStream() {
+
+        },
+        handleError() {
+
+        }
     },
 };
 </script>
@@ -784,18 +894,6 @@ export default {
 .chat-container {
     display: flex;
     flex-direction: column;
-
-    i {
-        cursor: pointer;
-        font-size: 18px;
-        color: #606266;
-    }
-    .el-icon-refresh {
-        margin-right: 10px;
-    }
-    i:hover {
-        color: #4b9cfb;
-    }
 }
 
 #selectable-text {
@@ -809,7 +907,7 @@ export default {
     font-family: Fira code, Fira Mono, Consolas, Menlo, Courier, monospace;
     font-size: 14px;
     line-height: 2;
-    padding: 15px 10px;
+    padding: 10px;
 }
 
 .message-sent {
@@ -819,29 +917,60 @@ export default {
 }
 
 .message-received {
+    position: relative;
     align-self: flex-end;
     word-wrap: break-word;
     white-space: pre-line;
-    background: #fff;
-    margin-bottom: 10px;
-}
-.message-user {
-    position: relative;
-    .message-delete {
-        position: absolute;
-        right: 0;
-        bottom: -20px;
+    margin-bottom: 28px;
+    .chat-user {
+        background: #fff;
+        /deep/ .el-textarea {
+            border-radius: 5px;
+        }
+        /deep/ .el-textarea__inner {
+            height: 150px;
+        }
+        i {
+            cursor: pointer;
+        }
     }
 }
+.message-operate {
+    min-width: 120px;
+    text-align: right;
+    position: absolute;
+    right: 0;
+    bottom: -22px;
+    font-family: monospace;
+    .el-button {
+        padding: 0;
+        color: #deeefe;
+        margin-right: 5px;
+    }
+
+    i {
+        cursor: pointer;
+        font-size: 14px;
+        color: #deeefe;
+    }
+    i:hover {
+        color: #4b9cfb;
+    }
+    .el-icon-edit,
+    .el-icon-refresh {
+        margin-right: 5px;
+    }
+}
+
 .div-assistant {
-    margin-bottom: 10px;
+    margin-bottom: 28px;
     margin-right: 100px;
+    position: relative;
+
     .message-assistant {
-        position: relative;
-        min-height: 20px;
+        // min-height: 20px;
         .chat-role-assistant {
             border-radius: 5px;
-
             display: flex;
             align-items: start;
             justify-content: start;
@@ -852,16 +981,28 @@ export default {
             color: #4b9cfb;
             margin: 5px;
         }
+    }
+    .message-regenerate {
+        position: absolute;
+        left: 0;
+        text-align: left;
+    }
+}
+.chat-more {
+    cursor: pointer;
+    .el-tag {
+        margin-bottom: 5px;
+        font-size: 12px;
 
-        .message-regenerate {
-            position: absolute;
-            bottom: 0;
+        i {
+            font-size: 14px;
+            color: #4b9cfb;
+            margin-left: 5px;
         }
     }
 }
-
+// 发送
 #chat-bottom {
-    width: 100%;
     position: sticky;
     left: 0;
     bottom: 0;
@@ -881,6 +1022,10 @@ export default {
     background: #fff;
     border-radius: 5px;
     overflow: hidden;
+    /deep/ .el-textarea__inner {
+        height: 100px;
+        border: none;
+    }
 }
 
 .chat-file {
@@ -912,7 +1057,7 @@ export default {
         cursor: pointer;
     }
 }
-
+// 配置
 .configForm {
     width: 420px;
     padding: 10px;
@@ -920,6 +1065,12 @@ export default {
     right: 0;
     background: #273238;
     border-radius: 8px;
+    .selectRole {
+        /deep/ .el-textarea__inner {
+            height: 100px;
+            border: none;
+        }
+    }
 }
 // 历史记录
 .search-historyList {
@@ -991,11 +1142,6 @@ export default {
 }
 </style>
 <style lang='less' scoped>
-/deep/ .el-textarea__inner {
-    height: 100px;
-    border: none;
-}
-
 /deep/ .el-form-item__label {
     color: #fff;
 }

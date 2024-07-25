@@ -4,52 +4,17 @@
             <div class="dropdownMenu">
                 <div class="el-container">
                     <el-scrollbar>
-                        <div
-                            v-for="(item, index) in dropdownMenu"
-                            :key="item.value"
-                            :class="{ highlight: isHighlighted(index) }"
-                            class="menu"
-                            @click="menuBtn(item, index)"
-                        >
-                            <div style="display: flex">
-                                <el-input
-                                    v-if="index === renameIndex"
-                                    id="renameInput"
-                                    v-model="item.label"
-                                    clearable
-                                    maxlength="15"
-                                    style="width: 250px"
-                                    @blur="handleBlur(item.label, index)"
-                                    @input="handleInput($event, index, item.value)"
-                                />
-                                <div
-                                    style="width: 250px"
-                                    @contextmenu.prevent="onContextmenu($event, index, item.value, item.label)"
-                                >
-                                    {{ item.label }}
-                                </div>
+                        <div v-for="(item, index) in dropdownMenu" :key="item.value" :class="{ highlight: isHighlighted(index) }" class="menu" @click="menuBtn(item, index)">
+                            <el-input v-if="index === renameIndex" id="renameInput" v-model="item.label" clearable maxlength="15" @blur="handleBlur(item.label, index)" @input="handleInput($event, index, item.value)" />
+                            <div v-else @contextmenu.prevent="onContextmenu($event, index, item.value, item.label)">
+                                {{ item.label }}
                             </div>
                         </div>
                     </el-scrollbar>
 
                     <div class="handleMenu">
-                        <el-button
-                            class="btn-folder"
-                            icon="el-icon-plus"
-                            plain
-                            size="mini"
-                            type="primary"
-                            @click="addDropdownMenu"
-                        ></el-button>
-                        <el-button
-                            :disabled="!!(selectedIndex && dropdownMenu[selectedIndex].value === '1-0')"
-                            class="btn-folder"
-                            icon="el-icon-minus"
-                            plain
-                            size="mini"
-                            type="primary"
-                            @click="deleteDropdownMenu"
-                        ></el-button>
+                        <el-button class="btn-folder" icon="el-icon-plus" plain size="mini" type="primary" @click="addDropdownMenu"></el-button>
+                        <el-button :disabled="!!(selectedIndex && dropdownMenu[selectedIndex].value === '1-0')" class="btn-folder" icon="el-icon-minus" plain size="mini" type="primary" @click="deleteDropdownMenu"></el-button>
                     </div>
                 </div>
             </div>
@@ -60,105 +25,66 @@
 
                     <el-form size="mini" style="padding: 20px">
                         <el-form-item :label="$t('settings.selectApplication')">
-                            <el-select
-                                ref="selectApplicationDropdown"
-                                v-model="selectedApplication"
-                                :placeholder="$t('pleaseSelect')"
-                                size="mini"
-                                filterable
-                                clearable
-                                @change="handleApplicationSelected"
-                            >
-                                <el-option
-                                    :label="$t('settings.none')"
-                                    value="Not Monitor"
-                                >
-                                    <span style="float: left; width: 260px; overflow: hidden">{{ $t('settings.none') }}</span>
-                                    <span
-                                        v-if="selectedApplication === 'Not Monitor'"
-                                        style="margin-left: 12px; float: right; color: #8492a6; font-size: 13px"
-                                    >
-                                        <i class="el-icon-check" style="color: white"></i>
+                            <el-select ref="selectApplicationDropdown" v-model="selectedApplication" :placeholder="$t('pleaseSelect')" size="mini" filterable clearable @change="handleApplicationSelected">
+                                <el-option :label="$t('settings.none')" value="Not Monitor">
+                                    <span style="float: left; width: 260px; overflow: hidden">
+                                        {{ $t('settings.none') }}
                                     </span>
-                                </el-option>
-                                <el-option
-                                    v-if="showCustomApplication"
-                                    :label="selectedApplication"
-                                    value="Custom App"
-                                >
-                                    <div style="float: left; width: 260px; overflow: hidden; display: flex; height: 30px;">
-                                        <IconHolder
-                                            style="height: 100%; justify-content: center; align-items: center; display: flex;"
-                                            :icon-size="{ width: '20px', height: '20px' }"
-                                            :icon-src="customAppIcon"
-                                        />
-                                        <span style="margin-left: 12px;">{{ selectedApplication }}</span>
-                                    </div>
-                                    <span
-                                        style="margin-left: 12px; float: right; color: #8492a6; font-size: 13px"
-                                    >
-                                        <i class="el-icon-check" style="color: white"></i>
-                                    </span>
-                                </el-option>
-                                <div style="height: 1px; width: 100%; background: lightgray"></div>
-                                <el-option
-                                    v-for="item in applicationList"
-                                    :key="item.appIdentifier"
-                                    :label="item.DisplayName"
-                                    :value="item.appIdentifier"
-                                >
-                                    <div style="float: left; width: 260px; overflow: hidden; display: flex; height: 30px;">
-                                        <IconHolder
-                                            style="height: 100%; justify-content: center; align-items: center; display: flex;"
-                                            :icon-size="{ width: '20px', height: '20px' }"
-                                            :icon-src="item.displayIcon"
-                                        />
-                                        <span style="margin-left: 12px;">{{ item.DisplayName }}</span>
-                                    </div>
-                                    <span
-                                        v-if="selectedApplication === item.appIdentifier"
-                                        style="margin-left: 12px; float: right; color: #8492a6; font-size: 13px"
-                                    >
-                                        <i class="el-icon-check" style="color: white"></i>
-                                    </span>
-                                </el-option>
-                                <div style="height: 1px; width: 100%; background: lightgray"></div>
-                                <el-option
-                                    :label="$t('settings.other')"
-                                    value="Select From File"
-                                >
-                                    <span style="float: left; width: 260px; overflow: hidden">{{ $t('settings.other') }}</span>
-                                </el-option>
-                            </el-select>
-                        </el-form-item>
-                        <el-form-item :label="$t('settings.selectDevice')">
-                            <el-select
-                                ref="selectDeviceDropdown"
-                                v-model="selectedMonitorDevice"
-                                :placeholder="$t('pleaseSelect')"
-                                size="mini"
-                                filterable
-                                @change="handleDeviceSelected"
-                            >
-                                <el-option
-                                    :label="$t('settings.allDevice')"
-                                    value="All Device"
-                                >
-                                    <span style="float: left; width: 260px; overflow: hidden">{{ $t('settings.allDevice') }}</span>
-                                    <span
-                                        v-if="selectedApplication === 'All Device'"
-                                        style="margin-left: 12px; float: right; color: #8492a6; font-size: 13px"
-                                    >
+                                    <span v-if="selectedApplication === 'Not Monitor'" style="margin-left: 12px; float: right; color: #8492a6; font-size: 13px">
                                         <i class="el-icon-check" style="color: white"></i>
                                     </span>
                                 </el-option>
 
-                                <el-option
-                                    v-for="item in connectedDevices"
-                                    :key="item.serialNumber"
-                                    :label="'DecoKee ' + item.serialNumber.substring(item.serialNumber.length - 4)"
-                                    :value="item.serialNumber"
-                                ></el-option>
+                                <el-option v-if="showCustomApplication" :label="selectedApplication" value="Custom App">
+                                    <div style="float: left; width: 260px; overflow: hidden; display: flex; height: 30px">
+                                        <IconHolder style="
+                                                height: 100%;
+                                                justify-content: center;
+                                                align-items: center;
+                                                display: flex;
+                                            " :icon-size="{ width: '20px', height: '20px' }" :icon-src="customAppIcon" />
+                                        <span style="margin-left: 12px">{{ selectedApplication }}</span>
+                                    </div>
+                                    <span style="margin-left: 12px; float: right; color: #8492a6; font-size: 13px">
+                                        <i class="el-icon-check" style="color: white"></i>
+                                    </span>
+                                </el-option>
+
+                                <div style="height: 1px; width: 100%; background: lightgray"></div>
+                                <el-option v-for="item in applicationList" :key="item.appIdentifier" :label="item.DisplayName" :value="item.appIdentifier">
+                                    <div style="float: left; width: 260px; overflow: hidden; display: flex; height: 30px">
+                                        <IconHolder style="
+                                                height: 100%;
+                                                justify-content: center;
+                                                align-items: center;
+                                                display: flex;
+                                            " :icon-size="{ width: '20px', height: '20px' }" :icon-src="item.displayIcon" />
+                                        <span style="margin-left: 12px">{{ item.DisplayName }}</span>
+                                    </div>
+                                    <span v-if="selectedApplication === item.appIdentifier" style="margin-left: 12px; float: right; color: #8492a6; font-size: 13px">
+                                        <i class="el-icon-check" style="color: white"></i>
+                                    </span>
+                                </el-option>
+                                <div style="height: 1px; width: 100%; background: lightgray"></div>
+                                <el-option :label="$t('settings.other')" value="Select From File">
+                                    <span style="float: left; width: 260px; overflow: hidden">
+                                        {{ $t('settings.other') }}
+                                    </span>
+                                </el-option>
+                            </el-select>
+                        </el-form-item>
+                        <el-form-item :label="$t('settings.selectDevice')">
+                            <el-select ref="selectDeviceDropdown" v-model="selectedMonitorDevice" :placeholder="$t('pleaseSelect')" size="mini" filterable @change="handleDeviceSelected">
+                                <el-option :label="$t('settings.allDevice')" value="All Device">
+                                    <span style="float: left; width: 260px; overflow: hidden">{{
+                                        $t('settings.allDevice')
+                                    }}</span>
+                                    <span v-if="selectedApplication === 'All Device'" style="margin-left: 12px; float: right; color: #8492a6; font-size: 13px">
+                                        <i class="el-icon-check" style="color: white"></i>
+                                    </span>
+                                </el-option>
+
+                                <el-option v-for="item in connectedDevices" :key="item.serialNumber" :label="'DecoKee ' + item.serialNumber.substring(item.serialNumber.length - 4)" :value="item.serialNumber"></el-option>
                             </el-select>
                         </el-form-item>
                     </el-form>
@@ -172,12 +98,12 @@
 import { deepCopy } from '@/utils/ObjectUtil';
 import Constants from '@/utils/Constants';
 import { ipcRenderer } from 'electron';
-import { dialog } from "@electron/remote";
-import IconHolder from "@/views/Components/IconHolder";
+import { dialog } from '@electron/remote';
+import IconHolder from '@/views/Components/IconHolder';
 
 export default {
     components: {
-        IconHolder
+        IconHolder,
     },
     computed: {
         // 高亮
@@ -375,8 +301,8 @@ export default {
                     deviceSN: 'All Device',
                     appPath: 'Not Monitor',
                     appIdentifier: 'Not Monitor',
-                    resourceId: this.currentMenu.value
-                }
+                    resourceId: this.currentMenu.value,
+                };
             }
 
             this.selectedApplication = this.appMonitorConfigs[this.currentMenu.value].appIdentifier;
@@ -618,7 +544,7 @@ export default {
 
             window.store.storeSet('settings.appMonitorConfig', JSON.stringify(this.appMonitorConfigs));
 
-            window.appManager.deviceControlManager.reloadAppMonitorConfigInfo()
+            window.appManager.deviceControlManager.reloadAppMonitorConfigInfo();
         },
         handleDeviceSelected() {
             console.log('ProfileConfig: handleDeviceSelected: Select Device: ', this.selectedMonitorDevice);
@@ -668,7 +594,8 @@ export default {
                 const that = this;
                 this.$refs.selectApplicationDropdown.blur();
 
-                dialog.showOpenDialog({
+                dialog
+                    .showOpenDialog({
                         properties: ['openFile'],
                         filters: filters,
                     })
@@ -701,9 +628,16 @@ export default {
                         that.appMonitorConfigs[that.currentMenu.value].appIdentifier = fileNameWithoutExt;
 
                         that.showCustomApplication = true;
-                        console.log('ProfileConfig Selected file: ', filePath, ' fileNameWithExt', fileNameWithExt, ' fileNameWithoutExt: ', fileNameWithoutExt);
-
-                    }).catch(err => {
+                        console.log(
+                            'ProfileConfig Selected file: ',
+                            filePath,
+                            ' fileNameWithExt',
+                            fileNameWithExt,
+                            ' fileNameWithoutExt: ',
+                            fileNameWithoutExt
+                        );
+                    })
+                    .catch(err => {
                         that.showCustomApplication = false;
                         that.selectedApplication = 'Not Monitor';
                         delete that.appMonitorConfigs[that.currentMenu.value];
@@ -711,14 +645,15 @@ export default {
                         that.$refs.selectApplicationDropdown.blur();
                         console.log('ProfileConfig handleApplicationSelected Error: ', err);
                     });
-
             } else if (this.selectedApplication === 'Not Monitor') {
                 delete this.appMonitorConfigs[this.currentMenu.value];
                 this.doSetMonitorInfo();
                 this.showCustomApplication = false;
                 console.log('ProfileConfig: handleApplicationSelected: Not Monitor');
             } else {
-                const selectedAppInfo = this.applicationList.find(item => item.appIdentifier === this.selectedApplication);
+                const selectedAppInfo = this.applicationList.find(
+                    item => item.appIdentifier === this.selectedApplication
+                );
                 if (!this.appMonitorConfigs[this.currentMenu.value]) {
                     this.appMonitorConfigs[this.currentMenu.value] = {};
                 }
@@ -788,19 +723,13 @@ export default {
         width: 280px;
         background: #2e3a41;
         margin-right: 10px;
+        width: 260px;
 
         .menu {
-            display: flex;
-            justify-content: space-between;
             height: 30px;
             padding: 0 5px;
             line-height: 30px;
         }
-    }
-
-    .el-icon-s-operation {
-        padding-right: 15px;
-        font-size: 18px;
     }
 
     .dropdownMenu-right {
@@ -812,5 +741,8 @@ export default {
 
 .menu /deep/ .el-input__inner {
     background: #3b4a52;
+}
+.menu .el-input /deep/ .el-input__suffix {
+    top: -5px;
 }
 </style>
