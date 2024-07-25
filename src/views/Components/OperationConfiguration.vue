@@ -7,56 +7,20 @@
                 }}</span>
                 <span style="float: right">
                     <!-- 延时 -->
-                    <el-dropdown
-                        v-if="optionData.config.gap || optionData.config.pressTime"
-                        :hide-on-click="false"
-                        trigger="click"
-                    >
+                    <el-dropdown v-if="optionData.config.gap || optionData.config.pressTime" :hide-on-click="false" trigger="click">
                         <span class="operationFont">
                             <i class="el-icon-timer"></i>
                         </span>
                         <el-dropdown-menu slot="dropdown" style="padding: 10px">
                             <div class="dropdownMenu">
-                                <IconHolder
-                                    :icon-size="iconSize"
-                                    :title="$t('betweenTime')"
-                                    img-src="@/icon/pressTime.png"
-                                />
-                                <el-slider
-                                    v-model="pressTime"
-                                    :max="100"
-                                    :min="1"
-                                    class="block"
-                                    style="width: 150px; margin: 0 10px"
-                                    @change="pressTimeChange"
-                                ></el-slider>
-                                <el-input-number
-                                    v-model="pressTime"
-                                    :max="100"
-                                    :min="1"
-                                    controls-position="right"
-                                    size="mini"
-                                    @change="pressTimeChange"
-                                ></el-input-number>
+                                <IconHolder :icon-size="iconSize" :title="$t('betweenTime')" img-src="@/icon/pressTime.png" />
+                                <el-slider v-model="pressTime" :max="100" :min="1" class="block" style="width: 150px; margin: 0 10px" @change="pressTimeChange"></el-slider>
+                                <el-input-number v-model="pressTime" :max="100" :min="1" controls-position="right" size="mini" @change="pressTimeChange"></el-input-number>
                             </div>
                             <div class="dropdownMenu">
                                 <IconHolder :icon-size="iconSize" :title="$t('nextTime')" img-src="@/icon/gap.png" />
-                                <el-slider
-                                    v-model="gap"
-                                    :max="100"
-                                    :min="1"
-                                    class="block"
-                                    style="width: 150px; margin: 0 10px"
-                                    @change="gapChange"
-                                ></el-slider>
-                                <el-input-number
-                                    v-model="gap"
-                                    :max="100"
-                                    :min="1"
-                                    controls-position="right"
-                                    size="mini"
-                                    @change="gapChange"
-                                ></el-input-number>
+                                <el-slider v-model="gap" :max="100" :min="1" class="block" style="width: 150px; margin: 0 10px" @change="gapChange"></el-slider>
+                                <el-input-number v-model="gap" :max="100" :min="1" controls-position="right" size="mini" @change="gapChange"></el-input-number>
                             </div>
                         </el-dropdown-menu>
                     </el-dropdown>
@@ -69,22 +33,14 @@
                 <div>
                     <div class="operationIcon">
                         <!-- 自定义上传图片 -->
-                        <el-button
-                            v-if="!isMultiActions"
-                            circle
-                            class="selectIcon"
-                            icon="el-icon-plus"
-                            @click="handleCommand('selectDecoKeeIcon')"
-                        ></el-button>
+                        <el-button v-if="!isMultiActions" circle class="selectIcon" icon="el-icon-plus" @click="handleCommand('selectDecoKeeIcon')"></el-button>
                         <div v-if="!isMultiActions" class="changeIcon">
                             <el-dropdown placement="bottom-start" trigger="click" @command="handleCommand">
                                 <el-button circle class="changeIconBtn" icon="el-icon-arrow-down"></el-button>
                                 <el-dropdown-menu slot="dropdown">
-                                    <el-dropdown-item command="selectPicture"
-                                        >{{ $t('selectPicture') }}
+                                    <el-dropdown-item command="selectPicture">{{ $t('selectPicture') }}
                                     </el-dropdown-item>
-                                    <el-dropdown-item command="selectDecoKeeIcon"
-                                        >{{ $t('selectDecoKeeIcon') }}
+                                    <el-dropdown-item command="selectDecoKeeIcon">{{ $t('selectDecoKeeIcon') }}
                                     </el-dropdown-item>
                                     <el-dropdown-item command="reset">
                                         {{ $t('resetDefault') }}
@@ -95,10 +51,7 @@
                         <UnitControl :icon="icon" :itemData="optionData" style="margin-top: -9px"></UnitControl>
                     </div>
                     <!-- 热键切换 -->
-                    <div
-                        v-if="optionData.childrenName === 'hotkeySwitch' || optionData.config.haveAlterAction"
-                        class="switchIcon"
-                    >
+                    <div v-if="optionData.childrenName === 'hotkeySwitch' || optionData.config.haveAlterAction" class="switchIcon">
                         <el-radio-group v-model="switchIcon" @change="handleAlterActionSwitch">
                             <el-radio :label="null"></el-radio>
                             <el-radio label=""></el-radio>
@@ -122,8 +75,7 @@
                                 <el-dropdown-menu slot="dropdown" style="padding: 5px">
                                     <div class="dropdownMenu">
                                         <el-dropdown-item>
-                                            <el-checkbox v-model="showTitle" @change="headleCheckbox"
-                                                >{{ $t('showHeading') }}
+                                            <el-checkbox v-model="showTitle" @change="headleCheckbox">{{ $t('showHeading') }}
                                             </el-checkbox>
                                         </el-dropdown-item>
                                         <el-dropdown-item>
@@ -134,45 +86,22 @@
                                             </el-radio-group>
                                         </el-dropdown-item>
                                         <el-dropdown-item>
-                                            <el-button
-                                                icon="el-icon-refresh"
-                                                plain
-                                                size="mini"
-                                                type="primary"
-                                                @click="resetBtn"
-                                            ></el-button>
+                                            <el-button icon="el-icon-refresh" plain size="mini" type="primary" @click="resetBtn"></el-button>
                                         </el-dropdown-item>
                                     </div>
                                     <div>
                                         <el-dropdown-item class="dropdownMenu">
-                                            <el-input-number
-                                                v-model="fontSize"
-                                                :max="18"
-                                                :min="6"
-                                                controls-position="right"
-                                                size="mini"
-                                            >
+                                            <el-input-number v-model="fontSize" :max="18" :min="6" controls-position="right" size="mini">
                                             </el-input-number>
-                                            <el-checkbox-group
-                                                v-model="fontPattern"
-                                                class="fontPattern"
-                                                size="mini"
-                                                @change="changeFontPattern"
-                                            >
+                                            <el-checkbox-group v-model="fontPattern" class="fontPattern" size="mini" @change="changeFontPattern">
                                                 <el-checkbox-button label="bold">
                                                     <IconHolder :icon-size="fontStyleSize" img-src="@/icon/bold.png" />
                                                 </el-checkbox-button>
                                                 <el-checkbox-button label="italic">
-                                                    <IconHolder
-                                                        :icon-size="fontStyleSize"
-                                                        img-src="@/icon/italic.png"
-                                                    />
+                                                    <IconHolder :icon-size="fontStyleSize" img-src="@/icon/italic.png" />
                                                 </el-checkbox-button>
                                                 <el-checkbox-button label="underline">
-                                                    <IconHolder
-                                                        :icon-size="fontStyleSize"
-                                                        img-src="@/icon/underline.png"
-                                                    />
+                                                    <IconHolder :icon-size="fontStyleSize" img-src="@/icon/underline.png" />
                                                 </el-checkbox-button>
                                             </el-checkbox-group>
                                             <el-color-picker v-model="fontColor" size="mini"></el-color-picker>
@@ -188,78 +117,55 @@
                     <!-- 亮度 -->
 
                     <el-form-item v-if="optionData.childrenName === 'brightness'" :label="$t('operation')">
-                        <el-select
-                            v-model="briSelect"
-                            :placeholder="$t('pleaseSelect')"
-                            clearable
-                            size="mini"
-                            @change="handleBrightness"
-                        >
-                            <el-option
-                                v-for="item in brightnessOption"
-                                :key="item.value"
-                                :label="$t(item.type)"
-                                :value="item.value"
-                            ></el-option>
+                        <el-select v-model="briSelect" :placeholder="$t('pleaseSelect')" clearable size="mini" @change="handleBrightness">
+                            <el-option v-for="item in brightnessOption" :key="item.value" :label="$t(item.type)" :value="item.value"></el-option>
                         </el-select>
                     </el-form-item>
                     <!-- 打开功能 -->
-                    <el-form-item
-                        v-else-if="optionData.childrenName === 'open'"
-                        :label="$t('applications/file') + ':'"
-                        class="open"
-                    >
-                        <el-input v-model="fullPath" clearable style="width: 240px" />
-                        <el-button
-                            class="btn-folder"
-                            icon="el-icon-folder-opened"
-                            plain
-                            size="mini"
-                            type="primary"
-                            @click="btnOpened"
-                        ></el-button>
-                        <el-button
-                            icon="el-icon-folder"
-                            plain
-                            size="mini"
-                            type="primary"
-                            @click="btnFolder"
-                        ></el-button>
-                    </el-form-item>
+                    <template v-else-if="optionData.childrenName === 'open'">
+                        <el-form-item :label="$t('app/file') + ':'">
+                            <el-input v-model="fullPath" style="width: 240px" :readonly="true" />
+                            <el-button class="btn-folder" icon="el-icon-folder-opened" plain size="mini" type="primary" @click="btnOpened"></el-button>
+                            <el-button icon="el-icon-folder" plain size="mini" type="primary" @click="btnFolder"></el-button>
+                        </el-form-item>
+
+                        <el-form-item :label="$t('selectApp') + ':'" v-if="appOption.length > 0">
+                            <el-select v-model="appLaunchPath" :placeholder="$t('pleaseSelect')" style="width: 300px" filterable size="mini" @change="handleAppPath">
+                                <el-option style="border-bottom: 1px solid #fff"  value="Not Monitor">
+                                    <div style="display: flex; align-items: center; justify-content:space-between;">
+                                        <span>{{ $t('settings.none') }}</span>
+                                        <i v-if="appLaunchPath === ''" class="el-icon-check" style="color: white;"></i>
+                                    </div>
+                                </el-option>
+
+                                <el-option v-for="item in appOption" :key="item.appLaunchPath" :label="item.appName" :value="item.appName">
+                                    <div style="display: flex; align-items: center; justify-content:space-between;">
+                                        <div style="display: flex; align-items: center;">
+                                            <IconHolder :icon-size="{ width: '20px', height: '20px', verticalAlign: 'text-bottom'}" :icon-src="item.displayIcon" />
+                                            <span style="margin-left: 10px;">{{ item.appName }}</span>
+                                        </div>
+                                        <i v-if="appLaunchPath === item.appName" class="el-icon-check" style="color: white;"></i>
+                                    </div>
+                                </el-option>
+                            </el-select>
+                        </el-form-item>
+                    </template>
+
                     <!-- 关闭 -->
                     <template v-else-if="optionData.childrenName === 'close'">
-                        <el-form-item :label="$t('applications/file') + ':'">
+                        <el-form-item :label="$t('app/file') + ':'">
                             <el-input v-model="closePath" size="mini" style="width: 260px" />
-                            <el-button
-                                class="btn-folder"
-                                icon="el-icon-folder"
-                                plain
-                                size="mini"
-                                type="primary"
-                                @click="exitBtn"
-                            ></el-button>
+                            <el-button class="btn-folder" icon="el-icon-folder" plain size="mini" type="primary" @click="exitBtn"></el-button>
                         </el-form-item>
                         <el-form-item>
-                            <el-checkbox v-model="exitChecked" @change="handleExit"
-                                >{{ $t('forcedExit') }}
+                            <el-checkbox v-model="exitChecked" @change="handleExit">{{ $t('forcedExit') }}
                             </el-checkbox>
                         </el-form-item>
                     </template>
                     <!-- 前往页面 -->
                     <el-form-item v-else-if="optionData.childrenName === 'goToPage'" :label="$t('pageNumber') + ':'">
-                        <el-select
-                            v-model="goToPage"
-                            clearable
-                            size="mini"
-                            style="width: 260px"
-                            @change="handlePageNumber"
-                        >
-                            <el-option
-                                v-for="item in setPageArr"
-                                :key="item.item"
-                                :label="item"
-                                :value="item"
-                            ></el-option>
+                        <el-select v-model="goToPage" clearable size="mini" style="width: 260px" @change="handlePageNumber">
+                            <el-option v-for="item in setPageArr" :key="item.item" :label="item" :value="item"></el-option>
                         </el-select>
                     </el-form-item>
 
@@ -267,98 +173,43 @@
                     <template v-else-if="optionData.childrenName === 'playAudio'">
                         <el-form-item :label="$t('file') + ':'">
                             <el-input v-model="soundPath" clearable style="width: 260px" />
-                            <el-button
-                                class="btn-folder"
-                                icon="el-icon-folder-opened"
-                                plain
-                                size="mini"
-                                type="primary"
-                                @click="btnSound"
-                            ></el-button>
+                            <el-button class="btn-folder" icon="el-icon-folder-opened" plain size="mini" type="primary" @click="btnSound"></el-button>
                         </el-form-item>
 
                         <el-form-item :label="$t('operation')">
-                            <el-select
-                                v-model="audioAction"
-                                :placeholder="$t('pleaseSelect')"
-                                clearable
-                                size="mini"
-                                style="width: 115px"
-                                @change="handleAudioAction"
-                            >
-                                <el-option
-                                    v-for="item in audioOperation"
-                                    :key="item.value"
-                                    :label="$t(item.type)"
-                                    :value="item.value"
-                                ></el-option>
+                            <el-select v-model="audioAction" :placeholder="$t('pleaseSelect')" clearable size="mini" style="width: 115px" @change="handleAudioAction">
+                                <el-option v-for="item in audioOperation" :key="item.value" :label="$t(item.type)" :value="item.value"></el-option>
                             </el-select>
-                            <el-select
-                                v-model="audioFade"
-                                :placeholder="$t('pleaseSelect')"
-                                clearable
-                                size="mini"
-                                style="width: 110px; margin: 0 5px"
-                                @change="handleAudioFade"
-                            >
-                                <el-option
-                                    v-for="item in audioFadeOptions"
-                                    :key="item.value"
-                                    :label="$t(item.type)"
-                                    :value="item.value"
-                                ></el-option>
+                            <el-select v-model="audioFade" :placeholder="$t('pleaseSelect')" clearable size="mini" style="width: 110px; margin: 0 5px" @change="handleAudioFade">
+                                <el-option v-for="item in audioFadeOptions" :key="item.value" :label="$t(item.type)" :value="item.value"></el-option>
                             </el-select>
-                            <el-select
-                                v-if="audioFade !== 0"
-                                v-model="fadeTime"
-                                :placeholder="$t('pleaseSelect')"
-                                clearable
-                                size="mini"
-                                style="width: 80px"
-                                @change="handleFadeTime"
-                            >
-                                <el-option
-                                    v-for="item in audioFadeTime"
-                                    :key="item.value"
-                                    :label="item.type"
-                                    :value="item.value * 1000"
-                                ></el-option>
+                            <el-select v-if="audioFade !== 0" v-model="fadeTime" :placeholder="$t('pleaseSelect')" clearable size="mini" style="width: 80px" @change="handleFadeTime">
+                                <el-option v-for="item in audioFadeTime" :key="item.value" :label="item.type" :value="item.value * 1000"></el-option>
                             </el-select>
                         </el-form-item>
                         <el-form-item :label="$t('volume')">
                             <div class="audio-volume">
-                                <el-slider
-                                    v-model="volume"
-                                    :max="100"
-                                    :min="0"
-                                    class="block"
-                                    style="width: 100%"
-                                    @change="volumeChange"
-                                ></el-slider>
+                                <el-slider v-model="volume" :max="100" :min="0" class="block" style="width: 100%" @change="volumeChange"></el-slider>
                             </div>
                         </el-form-item>
                     </template>
 
-                    <PluginOptionView
-                        v-else-if="optionData.isPlugin"
-                        ref="pluginOptionView"
-                        :plugin-details="operationData"
-                        style="margin: 12px 0 0 78px"
-                    />
+                    <PluginOptionView v-else-if="optionData.isPlugin" ref="pluginOptionView" :plugin-details="operationData" style="margin: 12px 0 0 78px" />
 
                     <!-- 多项操作 -->
                     <el-form-item v-else-if="optionData.childrenName === 'multiActions'" :label="$t('contain')">
                         <span class="folder">
                             {{ optionData.config.subActions.length }} {{ $t('project') }}
-                            <el-button
-                                v-if="!isMultiActions"
-                                circle
-                                class="changeIconBtn"
-                                icon="el-icon-right"
-                                @click="enterMultiActions"
-                            ></el-button>
+                            <el-button v-if="!isMultiActions" circle class="changeIconBtn" icon="el-icon-right" @click="enterMultiActions"></el-button>
                         </span>
                     </el-form-item>
+
+                    <AIConfigSettings
+                        :ai-model-config-data="optionData.config.actions[0].value"
+                        v-else-if="optionData.childrenName === 'assistant'"
+                        @aiConfigUpdated="handleAIConfigUpdated"
+                    />
+
                 </el-form>
             </div>
         </div>
@@ -376,6 +227,7 @@ import { dialog } from '@electron/remote';
 import { audioFadeOptions, audioFadeTime, audioOperation, brightnessOption } from '@/plugins/KeyConfiguration.js';
 import defaultResourcesMap from '@/assets/resources.js';
 import { ipcRenderer } from 'electron';
+import AIConfigSettings from "@/views/Setting/AIConfigSettings.vue";
 
 export default {
     components: {
@@ -383,6 +235,7 @@ export default {
         IconHolder,
         OperationConfig,
         PluginOptionView,
+        AIConfigSettings
     },
     props: {
         operationData: {
@@ -423,11 +276,13 @@ export default {
             },
             // 打开功能
             fullPath: '',
+            appLaunchPath: '',
+            appOption: [],
             // 关闭功能
             closePath: '',
             exitChecked: false,
             // 前往页面
-            allResource: [],
+            allResource: window.appManager.resourcesManager.getInstalledApps() || [],
             goToPage: 1,
             setPageArr: [], //页码去重
             pressTime: null,
@@ -462,6 +317,9 @@ export default {
         // 操作延迟
         this.pressTime = this.optionData.config.pressTime;
         this.gap = this.optionData.config.gap;
+        // 全部应用
+        this.appOption = window.appManager.resourcesManager.getInstalledApps()
+        console.log('OperationConfiguration: APP: ', this.appOption);
 
         switch (this.optionData.childrenName) {
             case 'brightness':
@@ -469,6 +327,9 @@ export default {
                 break;
             case 'open':
                 this.fullPath = this.optionData.config.actions[0].value;
+                // eslint-disable-next-line no-case-declarations
+                const filterName = this.appOption.filter(item => item.appLaunchPath === this.fullPath)[0]
+                this.appLaunchPath = filterName ? filterName.appName : ''
                 break;
             case 'close':
                 this.closePath = this.optionData.config.actions[0].value;
@@ -519,6 +380,8 @@ export default {
             this.updateOperationData(true);
         });
 
+        console.log('OperationConfiguration: Current : optionData', this.optionData);
+
         window.addEventListener('keyup', this.processKeyEvent);
     },
     destroyed() {
@@ -529,6 +392,7 @@ export default {
     },
     mounted() {
         this.commonTotal();
+
     },
     watch: {
         headLine(newValue) {
@@ -577,6 +441,9 @@ export default {
                     break;
                 case 'open':
                     this.fullPath = optionData.config.actions[0].value;
+                    // eslint-disable-next-line no-case-declarations
+                    const filterName = this.appOption.filter(item => item.appLaunchPath === this.fullPath)[0]
+                    this.appLaunchPath = filterName ? filterName.appName : ''
                     break;
                 case 'close':
                     this.closePath = optionData.config.actions[0].value;
@@ -861,6 +728,7 @@ export default {
             dialog
                 .showOpenDialog({ properties: ['openDirectory'] })
                 .then(result => {
+                    this.appLaunchPath = ''
                     console.log('打开文件夹', result);
                     if (result.filePaths.length === 0) return;
                     const fileName = result.filePaths[0].split('\\');
@@ -881,8 +749,37 @@ export default {
         },
         // 打开应用
         btnFolder() {
+            let filters;
+            switch (window.platform) {
+                case 'win32':
+                    filters = [
+                        {
+                            name: 'Executable Files',
+                            extensions: ['exe'],
+                        },
+                    ];
+                    break;
+                case 'linux':
+                    filters = [
+                        {
+                            name: 'Executable Files',
+                            extensions: ['sh', 'bin'],
+                        },
+                    ];
+                    break;
+                case 'darwin':
+                    filters = [
+                        {
+                            name: 'Applications',
+                            extensions: ['app'],
+                        },
+                    ];
+                    break;
+                default:
+                    filters = [];
+            }
             dialog
-                .showOpenDialog({ properties: ['openFile'] })
+                .showOpenDialog({ properties: ['openFile'], filters: filters })
                 .then(result => {
                     console.log('打开应用', result);
                     if (result.filePaths.length === 0) return;
@@ -891,7 +788,7 @@ export default {
                     const fileNameWithExt = window.path.basename(filePath);
                     const fileNameWithoutExt = window.path.parse(fileNameWithExt).name;
 
-                    console.log('Selected Application: fileNameWithExt: ', fileNameWithExt, ' fileNameWithoutExt: ' , fileNameWithoutExt);
+                    console.log('Selected Application: fileNameWithExt: ', fileNameWithExt, ' fileNameWithoutExt: ', fileNameWithoutExt);
 
                     window.resourcesManager.getAppIconInfo(result.filePaths[0])
                         .then(resourceInfo => {
@@ -912,6 +809,29 @@ export default {
                 .catch(error => {
                     console.log('取消选择', error);
                 });
+        },
+
+        // 选择全部应用
+        handleAppPath(name) {
+            if (name === 'Not Monitor') {
+                this.fullPath = ''
+                this.headLine = ''
+                this.icon = '0-14'
+                this.optionData.config.icon = '0-14';
+                this.optionData.config.title.text = '';
+                this.optionData.config.actions[0].value = '';
+            } else {
+                const filterApp = this.appOption.filter(item => item.appName === name)[0]
+                console.log('选择全部应用：', filterApp);
+                this.fullPath = filterApp.appLaunchPath
+                this.headLine = filterApp.appName;
+                this.icon = filterApp.displayIcon;
+                this.optionData.config.icon = filterApp.displayIcon;
+                this.optionData.config.title.text = filterApp.appName;
+                this.optionData.config.actions[0].value = filterApp.appLaunchPath;
+            }
+            this.optionData = deepCopy(this.optionData);
+            this.updateOperationData(true);
         },
         // 关闭
         exitBtn() {
@@ -1090,6 +1010,12 @@ export default {
         enterMultiActions() {
             this.$emit('enterMultiActions', true);
         },
+
+        handleAIConfigUpdated(newAIConfigData) {
+            console.log('OperationConfiguration: handleAIConfigUpdated: ', newAIConfigData);
+            this.optionData.config.actions[0].value = JSON.stringify(newAIConfigData);
+            this.updateOperationData(true);
+        }
     },
 };
 </script>
