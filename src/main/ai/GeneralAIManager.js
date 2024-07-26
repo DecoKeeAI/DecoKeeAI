@@ -4,6 +4,7 @@ import Constants from '@/utils/Constants';
 
 const path = require('path');
 const fs = require('fs');
+const Papa = require('papaparse');
 
 // eslint-disable-next-line
 const BUILD_IN_AI_MODELS = [
@@ -339,6 +340,42 @@ export default class GeneralAIManager {
             return animationResourceInfo.id;
         }
         console.log('GeneralAIManager: getAnimationResourceId: could not find resource for ' + name);
+    }
+
+    getSupportedSystemPrompts() {
+        const savedLocale = this.appManager.storeManager.storeGet('system.locale');
+
+        let promptFilePath;
+        let defaultAct = {
+            act: 'Default',
+            prompt: ''
+        };
+        switch (savedLocale) {
+            default:
+            case 'zh':
+                promptFilePath = this.appManager.resourcesManager.getRelatedSrcPath('@/prompts/prompts-zh.json');
+                break;
+            case 'en':
+                promptFilePath = this.appManager.resourcesManager.getRelatedSrcPath('@/prompts/prompts-en.csv');
+                break;
+        }
+        promptFilePath = promptFilePath.replace('file://', '');
+        let promptData = [];
+        try {
+            const fileData = fs.readFileSync(promptFilePath, 'utf-8');
+            if (promptFilePath.endsWith('.json')) {
+                promptData = JSON.parse(fileData);
+            } else {
+                promptData = Papa.parse(fileData, {
+                    header: true,
+                    dynamicTyping: true
+                }).data;
+            }
+        } catch (err) {
+            console.log('GeneralAIManager: getSupportedSystemPrompts: failed to load prompt info for: ' + promptFilePath, err);
+        }
+
+        return [ defaultAct ,...promptData];
     }
 
     async _checkRecentApps() {

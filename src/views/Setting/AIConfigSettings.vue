@@ -1,3 +1,39 @@
+/*
+* Copyright 2024 DecoKee
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Additional Terms for DecoKee:
+*
+* 1. Communication Protocol Usage
+*    DecoKee is provided subject to a commercial license and subscription
+*    as described in the Terms of Use (http://www.decokee.com/about/terms.html).
+*
+*    The components of this project related to the communication protocol
+*    (including but not limited to protocol specifications, implementation code, etc.)
+*    are restricted from commercial use, as such use would violate the project's usage policies.
+*    There are no restrictions for non-commercial uses.
+*
+*    (a) Evaluation Use
+*        An evaluation license is offered that provides a limited,
+*        evaluation license for internal and non-commercial use.
+*
+*        With a paid-up subscription you can incorporate new releases,
+*        updates and patches for the software into your products.
+*        If you do not have an active subscription, you cannot apply patches
+*        from the software to your products.
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 <template>
     <div>
         <el-form label-width="200px" size="mini" style="height: 100%">
@@ -174,6 +210,37 @@
                     </el-form-item>
                 </template>
             </template>
+            <template v-if="finalConfigData !== undefined && customModelConfigData.supportCustomPrompt">
+                <el-form-item :label="$t('settings.useDekiePrompt')">
+                    <el-switch v-model="useDekiePrompt" />
+
+                    <el-tooltip placement="top" style="margin-top: 8px">
+                        <div slot="content" style="white-space: pre-wrap; line-height: 20px">
+                            {{ $t('settings.useDekiePromptHintCustom') }}
+                        </div>
+                        <i class="el-icon-question" style="margin-left: 24px"></i>
+                    </el-tooltip>
+                </el-form-item>
+                <el-form-item :label="$t('settings.customAIPromptRole')" class="selectRole">
+                    <el-switch v-model="useCustomPrompt" @change="handleUseCustomPromptChanged" />
+                </el-form-item>
+                <el-form-item :label="$t('settings.aiPromptRole')" class="selectRole">
+                    <el-input v-if="useCustomPrompt" v-model="selectedSystemPrompt" type="textarea" resize="none" rows="5" maxlength="3000" show-word-limit />
+                    <el-select v-else :disabled="useCustomPrompt" filterable v-model="selectedSystemRoleIdx" @change="aiSystemRoleChanged">
+                        <el-option v-for="(item, index) in supportedSystemRoles" :key="index" :label="item.act" :value="index" />
+                    </el-select>
+                </el-form-item>
+
+                <el-form-item :label="$t('settings.rolePersonality')">
+                    <el-slider  style="width: 191px" v-model="roleTopP" :min="0" :max="1" :step="0.05" :marks="{ 0: $t('settings.personalityPrecise'), 1: $t('settings.personalityFlexible') }"></el-slider>
+                </el-form-item>
+                <el-form-item :label="$t('settings.responseQuality')">
+                    <el-slider  style="width: 191px" v-model="roleTemperature" :min="0" :max="2" :step="0.05" :marks="{ 0: $t('settings.qualityConservative'), 2: $t('settings.qualityGibberish') }"></el-slider>
+                </el-form-item>
+                <el-form-item :label="$t('settings.chatPendingTimeout')">
+                    <el-slider  style="width: 191px" v-model="chatPendingTimeout" :min="5" :max="30" :step="5"></el-slider>
+                </el-form-item>
+            </template>
             <el-form-item
                 v-if="customModelConfigData.supportWebSearch"
                 :label="$t('settings.webSearch')"
@@ -281,7 +348,16 @@ export default {
             ],
             customModelConfigData: {},
             useDekiePrompt: undefined,
-            finalConfigData: undefined
+            finalConfigData: undefined,
+
+            //  系统角色
+            supportedSystemRoles: [],
+            selectedSystemRoleIdx: 0,
+            selectedSystemPrompt: '',
+            useCustomPrompt: false,
+            roleTopP: 0.7,
+            roleTemperature: 1.0,
+            chatPendingTimeout: 5
         };
     },
     created() {
@@ -316,6 +392,11 @@ export default {
         if (this.aiModelType === undefined) {
             this.aiModelType = window.store.storeGet('aiConfig.modelType', 'llama-3.1-70b-versatile');
             window.store.storeSet('aiConfig.modelType', this.aiModelType);
+        }
+
+        if (this.finalConfigData !== undefined) {
+            this.supportedSystemRoles = window.generalAIManager.getSupportedSystemPrompts();
+            console.log('AIConfigSettings: this.supportedSystemRoles: ', this.supportedSystemRoles)
         }
 
         this.loadRelatedAIConfigs(true);
@@ -505,6 +586,8 @@ export default {
                         } else {
                             window.store.storeSet(aiConfigKeyPrefix + '.useDekiePrompt', this.useDekiePrompt);
                         }
+                    } else if (this.aiModelType.startsWith('Custom-')) {
+                        this.updateKeyItemData();
                     }
 
                     if (this.finalConfigData !== undefined) {
@@ -527,7 +610,7 @@ export default {
                 case 'spark3.5-max':
                 case 'spark4-ultra':
                     if (this.finalConfigData !== undefined) {
-                        this.finalConfigData.sparkAIConfig = this.sparkAIConfig;
+                        this.updateKeyItemData();
                     } else {
                         window.store.storeSet('aiConfig.xfy.apiAuth', this.sparkAIConfig);
                     }
@@ -543,7 +626,7 @@ export default {
                 case 'gemma2-9b-it':
                 case 'mixtral-8x7b-32768':
                     if (this.finalConfigData !== undefined) {
-                        this.finalConfigData.apiKey = this.openAIAPIKey;
+                        this.updateKeyItemData();
                     } else {
                         window.store.storeSet('aiConfig.groq.apiKey', this.openAIAPIKey);
                     }
@@ -559,7 +642,7 @@ export default {
                 case 'qwen2-7b-instruct':
                 case 'qwen2-72b-instruct':
                     if (this.finalConfigData !== undefined) {
-                        this.finalConfigData.apiKey = this.openAIAPIKey;
+                        this.updateKeyItemData();
                     } else {
                         window.store.storeSet('aiConfig.qwen.apiKey', this.openAIAPIKey);
                     }
@@ -571,7 +654,7 @@ export default {
                 case 'glm-4-airx':
                 case 'glm-4-flash':
                     if (this.finalConfigData !== undefined) {
-                        this.finalConfigData.apiKey = this.openAIAPIKey;
+                        this.updateKeyItemData();
                     } else {
                         window.store.storeSet('aiConfig.zhipu.apiKey', this.openAIAPIKey);
                     }
@@ -582,7 +665,7 @@ export default {
                 case 'gpt-4':
                 case 'gpt-3.5-turbo':
                     if (this.finalConfigData !== undefined) {
-                        this.finalConfigData.apiKey = this.openAIAPIKey;
+                        this.updateKeyItemData();
                     } else {
                         window.store.storeSet('aiConfig.openAi.apiKey', this.openAIAPIKey);
                     }
@@ -593,11 +676,25 @@ export default {
                 this.$message.success(this.$t('save') + ' ' + this.$t('success'));
             }
         },
+        updateKeyItemData() {
+            if (this.useDekiePrompt === undefined) {
+                this.useDekiePrompt = true;
+            }
+            this.finalConfigData.apiKey = this.openAIAPIKey;
+            this.finalConfigData.useDekiePrompt = this.useDekiePrompt;
+            this.finalConfigData.useCustomPrompt = this.useCustomPrompt;
+            this.finalConfigData.systemPrompt = this.selectedSystemPrompt;
+            this.finalConfigData.systemRoleIdx = this.selectedSystemRoleIdx;
+            this.finalConfigData.roleTopP = this.roleTopP;
+            this.finalConfigData.roleTemperature = this.roleTemperature;
+            this.finalConfigData.chatPendingTimeout = this.chatPendingTimeout;
+        },
         loadRelatedAIConfigs(useCache) {
             this.customModelConfigData = {}
 
             this.customModelConfigData.supportOpenAICustomConfig = true;
             this.customModelConfigData.supportWebSearch = false;
+            this.customModelConfigData.supportCustomPrompt = true;
 
             this.openAIAPIKey = undefined;
             this.customUrlAddr = undefined;
@@ -612,16 +709,49 @@ export default {
 
             if (useCache && this.finalConfigData !== undefined) {
                 this.openAIAPIKey = this.finalConfigData.apiKey;
+                this.useDekiePrompt = this.finalConfigData.useDekiePrompt;
+                this.useCustomPrompt = this.finalConfigData.useCustomPrompt;
+                this.selectedSystemPrompt = this.finalConfigData.systemPrompt;
+                this.selectedSystemRoleIdx = this.finalConfigData.systemRoleIdx;
+                this.roleTemperature = this.finalConfigData.roleTemperature;
+                this.roleTopP = this.finalConfigData.roleTopP;
+                this.chatPendingTimeout = this.finalConfigData.chatPendingTimeout;
+
+                if (this.selectedSystemPrompt === undefined) {
+                    this.selectedSystemPrompt = '';
+                }
+
+                if (this.useCustomPrompt === undefined) {
+                    this.useCustomPrompt = false;
+                }
+
+                if (this.roleTemperature === undefined) {
+                    this.roleTemperature = 1.0;
+                }
+
+                if (this.roleTopP === undefined) {
+                    this.roleTopP = 0.7;
+                }
+
+                if (this.chatPendingTimeout === undefined) {
+                    this.chatPendingTimeout = 5;
+                }
+
+                console.log('loadRelatedAIConfigs: selectedSystemPrompt: ', this.selectedSystemPrompt, ' this.useCustomPrompt: ', this.useCustomPrompt);
+                if (!this.useCustomPrompt) {
+                    this.selectedSystemRoleIdx = this.supportedSystemRoles.findIndex(roleInfo => roleInfo.prompt === this.selectedSystemPrompt);
+                }
             }
 
 
             switch (this.aiModelType) {
                 default: {
+                    this.customModelConfigData.supportCustomPrompt = this.aiModelType.startsWith('Custom-');
+
                     const aiConfigKeyPrefix = 'aiConfig.' + this.aiModelType;
 
                     if (useCache && this.finalConfigData !== undefined) {
                         this.customUrlAddr = this.finalConfigData.customUrlAddr;
-                        this.useDekiePrompt = this.finalConfigData.useDekiePrompt;
                         this.customModelName = this.finalConfigData.customModelName;
                     }
                     if (this.customUrlAddr === undefined) {
@@ -1048,8 +1178,20 @@ export default {
             window.generalAIManager.updateSupportedModels(this.supportedAIModels);
 
             this.editNameModel = undefined;
+        },
+        aiSystemRoleChanged(val) {
+            this.selectedSystemPrompt = this.supportedSystemRoles[val].prompt;
+            console.log('AIConfigSettings: aiSystemRoleChanged: ', this.selectedSystemPrompt);
+        },
+        handleUseCustomPromptChanged(val) {
+            this.useCustomPrompt = val;
+            if (this.useCustomPrompt) {
+                this.selectedSystemPrompt = '';
+            } else {
+                this.selectedSystemPrompt = this.supportedSystemRoles[this.selectedSystemRoleIdx].prompt;
+            }
         }
-    },
+    }
 };
 </script>
 
@@ -1109,5 +1251,16 @@ export default {
     /deep/ .el-input__inner:focus {
         border: var(--borderColor) !important;
     }
+}
+
+/deep/ .el-slider__marks-text {
+    transform: none;
+    margin-top: 5px;
+}
+
+/deep/ .el-slider__marks-text:last-child {
+    left: unset !important;
+    right: 0 !important;
+
 }
 </style>

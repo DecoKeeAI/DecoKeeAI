@@ -477,7 +477,11 @@ class AIManager {
             this._setSessionState(AI_SESSION_STATE_EMPTY);
         }
 
-        this.aiAssistantChatAdapter.startChatSessionExpireTimer().then(expired => {
+        let sessionTimeout = undefined;
+        if (this.aiConfigData !== undefined) {
+            sessionTimeout = this.aiConfigData.chatPendingTimeout;
+        }
+        this.aiAssistantChatAdapter.startChatSessionExpireTimer(sessionTimeout).then(expired => {
             if (!expired) return;
 
             this._setSessionState(AI_SESSION_STATE_EMPTY);
@@ -503,7 +507,6 @@ class AIManager {
     sendChatMessage(chatHistory = []) {
         const requestId = randomString(10);
 
-        // todo: Add config for temperature and topP
         let temperature = this.appManager.storeManager.storeGet('aiConfig.chat.temperature');
         if (!temperature) {
             temperature = 1;
@@ -2189,6 +2192,12 @@ class AIManager {
         let requestModelName = this.aiAssistantModelType;
 
         let useDekiePrompt = true;
+        let configedUseDekiePrompt = undefined;
+
+        if (this.aiConfigData !== undefined) {
+            configedUseDekiePrompt = this.aiConfigData.useDekiePrompt;
+        }
+
         if (this.aiAssistantModelType.startsWith('Custom-') || this.aiAssistantModelType.startsWith('HuoShan-') || this.aiAssistantModelType.startsWith('Coze-')) {
             requestModelName = undefined;
             if (this.aiConfigData !== undefined) {
@@ -2200,19 +2209,14 @@ class AIManager {
                 requestModelName = this.appManager.storeManager.storeGet(aiConfigKeyPrefix + '.modelName');
             }
 
-            let configedUseDekiePrompt = undefined;
-            if (this.aiConfigData !== undefined) {
-                configedUseDekiePrompt = this.aiConfigData.useDekiePrompt;
-            }
-
             if (configedUseDekiePrompt === undefined) {
                 configedUseDekiePrompt = this.appManager.storeManager.storeGet(aiConfigKeyPrefix + '.useDekiePrompt');
             }
 
-            if (configedUseDekiePrompt !== undefined) {
-                useDekiePrompt = configedUseDekiePrompt;
-            }
+        }
 
+        if (configedUseDekiePrompt !== undefined) {
+            useDekiePrompt = configedUseDekiePrompt;
         }
 
         params = {
@@ -2291,7 +2295,18 @@ class AIManager {
                         });
                     });
                     const deviceLocationInfo = this.appManager.storeManager.storeGet('system.deviceLocationInfo');
-                    chatMsgs = getNormalChatPrePrompt(message, '', deviceLocationInfo);
+
+                    if (this.aiConfigData !== undefined && (this.aiConfigData.useCustomPrompt === true || this.aiConfigData.systemRoleIdx)) {
+                        chatMsgs = [{
+                            role: 'system',
+                            content: this.aiConfigData.systemPrompt === undefined ? '' : this.aiConfigData.systemPrompt
+                        },{
+                            role: 'user',
+                            content: message
+                        }]
+                    } else {
+                        chatMsgs = getNormalChatPrePrompt(message, '', deviceLocationInfo);
+                    }
 
                 }
             } catch (err) {
@@ -2304,6 +2319,14 @@ class AIManager {
 
         } else if (isNewSession) {
             this.aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_NORMAL);
+
+            if (this.aiConfigData !== undefined && (this.aiConfigData.useCustomPrompt === true || this.aiConfigData.systemRoleIdx)) {
+                chatMsgs.push({
+                    role: 'system',
+                    content: this.aiConfigData.systemPrompt === undefined ? '' : this.aiConfigData.systemPrompt
+                })
+            }
+
             chatMsgs.push({
                 role: "user",
                 content: message
@@ -2367,7 +2390,14 @@ class AIManager {
 
         if (this.aiAssistantChatAdapter.getChatMode() === CHAT_TYPE.CHAT_TYPE_NORMAL) {
             delete finalParam.response_format;
-            finalParam.temperature = 0.9;
+
+            if (this.aiConfigData !== undefined) {
+                finalParam.temperature = this.aiConfigData.roleTemperature === undefined ? 1.0 : this.aiConfigData.roleTemperature;
+                finalParam.top_p = this.aiConfigData.roleTopP === undefined ? 0.7 : this.aiConfigData.roleTopP;
+            } else {
+                finalParam.temperature = 1.0;
+            }
+
             finalParam.stream = true;
             this.aiAssistantChatAdapter.chatWithAI(requestId, finalParam);
             this.assistantChatHistory = chatMsgs;

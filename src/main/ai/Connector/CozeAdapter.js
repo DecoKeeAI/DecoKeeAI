@@ -98,7 +98,7 @@ class CozeAdapter {
         this._resetChatProcess();
     }
 
-    startChatSessionExpireTimer() {
+    startChatSessionExpireTimer(timeout) {
         return new Promise(resolve => {
             if (!this.useChatContext) {
                 this._resetChatProcess();
@@ -110,7 +110,11 @@ class CozeAdapter {
 
             let sessionExpiredTimeout = 500;
             if (this.currentChatMode === CHAT_TYPE.CHAT_TYPE_NORMAL) {
-                sessionExpiredTimeout = AI_CONSTANT_CONFIG.SESSION_EXPIRE_TIMEOUT;
+                if (timeout === undefined) {
+                    sessionExpiredTimeout = AI_CONSTANT_CONFIG.SESSION_EXPIRE_TIMEOUT;
+                } else {
+                    sessionExpiredTimeout = timeout * 1000;
+                }
             }
 
             this.chatSessionExpiredTimer = setTimeout(() => {
@@ -227,12 +231,14 @@ class CozeAdapter {
                                     }
                                 }
                                 console.log('CozeAdapter: sendChatMessage: Received error msg chunk: ', tempData);
+                                reject();
                                 return;
                             } catch (err) {
                                 if (that.chatResponseListener !== undefined) {
                                     that.chatResponseListener(requestId, -1, '');
                                 }
                                 console.log('CozeAdapter: sendChatMessage: Received Error chunk: ', cachedChunkMsg);
+                                reject();
                                 return;
                             }
                         }

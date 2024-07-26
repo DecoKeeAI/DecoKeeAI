@@ -1962,7 +1962,7 @@ export const knobMenu = [
 ]
 
 // AI 系统角色
-export const aiSystemRole = [
+export const AI_SUPPORT_BUILD_IN_ROLES = [
   {
     role: '默认助手',
     prompt: ``,

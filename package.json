@@ -49,6 +49,7 @@
     "microsoft-cognitiveservices-speech-sdk": "^1.38.0",
     "node-hid": "2.1.2",
     "openai": "^4.51.0",
+    "papaparse": "^5.4.1",
     "robotjs": "file:modules/robotjs",
     "sharp": "^0.33.4",
     "shelljs": "^0.8.5",

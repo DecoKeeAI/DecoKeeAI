@@ -115,7 +115,7 @@
 
                 <el-form-item label="系统角色" class="selectRole">
                     <el-select filterable v-model="systemRole" @change="aiSystemRoleChanged">
-                        <el-option v-for="item in aiSystemRole" :key="item.value" :label="item.role" :value="item.value" />
+                        <el-option v-for="item in supportedSystemRoles" :key="item.value" :label="item.role" :value="item.value" />
                     </el-select>
                     <el-input :disabled="systemRole === 0" v-model="systemRolePrompt" type="textarea" resize="none">
                     </el-input>
@@ -181,7 +181,7 @@
     </div>
 </template>
 <script>
-import { aiSystemRole } from '@/plugins/KeyConfiguration.js';
+import { AI_SUPPORT_BUILD_IN_ROLES } from '@/plugins/KeyConfiguration.js';
 import { dialog } from '@electron/remote';
 import { ipcRenderer } from 'electron';
 
@@ -277,7 +277,7 @@ export default {
             aiModelTypeList: [],
 
             //  系统角色
-            aiSystemRole,
+            supportedSystemRoles: AI_SUPPORT_BUILD_IN_ROLES,
             systemRole: 0,
             systemRolePrompt: '',
 
@@ -479,7 +479,7 @@ export default {
         },
         aiSystemRoleChanged(val) {
             console.log(val);
-            this.systemRolePrompt = this.aiSystemRole[val].prompt;
+            this.systemRolePrompt = this.supportedSystemRoles[val].prompt;
         },
         handleAIEngineChanged() {
             // console.log('AI聊天： handleAIEngineChanged', this.aiModelType);

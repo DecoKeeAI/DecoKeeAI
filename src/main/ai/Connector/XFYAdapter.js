@@ -280,7 +280,7 @@ class XFYAdapter {
         this._resetChatProcess();
     }
 
-    startChatSessionExpireTimer() {
+    startChatSessionExpireTimer(timeout) {
         return new Promise((resolve) => {
             if (!this.useChatContext) {
                 this.chatRequestId = '';
@@ -289,7 +289,11 @@ class XFYAdapter {
             }
             let sessionExpiredTimeout = 500;
             if (this.currentChatMode === CHAT_TYPE.CHAT_TYPE_NORMAL) {
-                sessionExpiredTimeout = AI_CONSTANT_CONFIG.SESSION_EXPIRE_TIMEOUT;
+                if (timeout === undefined) {
+                    sessionExpiredTimeout = AI_CONSTANT_CONFIG.SESSION_EXPIRE_TIMEOUT;
+                } else {
+                    sessionExpiredTimeout = timeout * 1000;
+                }
             }
 
             clearTimeout(this.chatSessionExpiredTimer);
