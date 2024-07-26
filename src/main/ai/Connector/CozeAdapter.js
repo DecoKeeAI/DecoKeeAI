@@ -41,10 +41,11 @@ import { axios } from '@/plugins/request';
 const COZE_SERVER_URL = 'https://api.coze.cn/v3/chat';
 
 class CozeAdapter {
-    constructor(appManager, chatType, modelName) {
+    constructor(appManager, chatType, modelName, aiConfigData) {
         console.log('CozeAdapter: constructor: chatType: ' + chatType + ' modelName: ' + modelName);
 
         this.appManager = appManager;
+        this.aiConfigData = aiConfigData;
 
         this.chatResponseListener = undefined;
 
@@ -225,6 +226,7 @@ class CozeAdapter {
                                         that.chatResponseListener(requestId, -1, tempData.msg);
                                     }
                                 }
+                                console.log('CozeAdapter: sendChatMessage: Received error msg chunk: ', tempData);
                                 return;
                             } catch (err) {
                                 if (that.chatResponseListener !== undefined) {
@@ -243,7 +245,6 @@ class CozeAdapter {
                         } catch (err) {
                             console.log('CozeAdapter: sendChatMessage: Received chunk invalid lines: ', lines);
                         }
-
 
                         switch (event) {
                             case 'conversation.chat.created':
@@ -331,7 +332,14 @@ class CozeAdapter {
     }
 
     _generateChatRequestParams(requestId, params) {
-        let botId = this.appManager.storeManager.storeGet('aiConfig.' + this.modelName + '.modelName');
+        let botId = undefined;
+        if (this.aiConfigData !== undefined && this.aiConfigData.customModelName !== undefined) {
+            botId = this.aiConfigData.customModelName;
+        }
+
+        if (botId === undefined) {
+            botId = this.appManager.storeManager.storeGet('aiConfig.' + this.modelName + '.modelName');
+        }
         console.log('CozeAdapter: _generateChatRequestParams: requestId: ', requestId, ' botId: ', botId);
 
         if (botId === undefined) {
@@ -378,7 +386,15 @@ class CozeAdapter {
     }
 
     _getAuthHeader() {
-        const apiKey = this.appManager.storeManager.storeGet('aiConfig.' + this.modelName + '.apiKey');
+
+        let apiKey = undefined;
+        if (this.aiConfigData !== undefined && this.aiConfigData.apiKey !== undefined) {
+            apiKey = this.aiConfigData.apiKey;
+        }
+
+        if (apiKey === undefined) {
+            apiKey = this.appManager.storeManager.storeGet('aiConfig.' + this.modelName + '.apiKey');
+        }
 
         if (apiKey === undefined) {
             return '';

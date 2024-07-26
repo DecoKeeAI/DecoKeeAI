@@ -188,7 +188,6 @@
 </template>
 
 <script>
-import { ipcRenderer } from 'electron';
 import { SPEECH_ENGINE_TYPE } from '@/main/ai/AIManager';
 import { deepCopy } from '@/utils/ObjectUtil';
 
@@ -319,7 +318,7 @@ export default {
             window.store.storeSet('aiConfig.modelType', this.aiModelType);
         }
 
-        this.loadRelatedAIConfigs();
+        this.loadRelatedAIConfigs(true);
 
         if (this.speechEngineType === undefined) {
             this.speechEngineType = window.store.storeGet('aiConfig.speechEngineType', SPEECH_ENGINE_TYPE.XYF);
@@ -328,8 +327,26 @@ export default {
 
         switch (this.speechEngineType) {
             default:
+            case SPEECH_ENGINE_TYPE.XYF:
+                if (this.finalConfigData !== undefined) {
+                    this.sparkAIConfig = this.finalConfigData.sparkAIConfig;
+                }
+
+                if (this.sparkAIConfig === undefined) {
+                    this.sparkAIConfig = window.store.storeGet('aiConfig.xfy.apiAuth', {
+                        appId: '',
+                        apiSecret: '',
+                        apiKey: '',
+                    });
+                }
                 break;
             case SPEECH_ENGINE_TYPE.AZURE:
+                if (this.finalConfigData !== undefined) {
+                    this.speechServiceAPIKey = this.finalConfigData.speechServiceAPIKey;
+                    this.speechLanguageSelected = this.finalConfigData.speechLanguageSelected;
+                    this.speechVoiceSelected = this.finalConfigData.speechVoiceSelected;
+                    this.azureServiceRegion = this.finalConfigData.azureServiceRegion;
+                }
                 if (this.speechServiceAPIKey === undefined) {
                     this.speechServiceAPIKey = window.store.storeGet('aiConfig.azure.speechServiceKey');
                 }
@@ -359,7 +376,7 @@ export default {
                 break;
         }
 
-        this.supportedAIModels = window.aiManager.getAllSupportedModels();
+        this.supportedAIModels = window.generalAIManager.getAllSupportedModels();
 
         this.supportedAIModels = this.supportedAIModels.map(modelGroup => {
             const newGroupObj = deepCopy(modelGroup);
@@ -438,16 +455,12 @@ export default {
             } else if (this.speechEngineType === SPEECH_ENGINE_TYPE.XYF) {
                 window.store.storeSet('aiConfig.xfy.apiAuth', this.sparkAIConfig);
             }
-
-            setTimeout(() => {
-                ipcRenderer.send('EngineTypeChange');
-            }, 500);
         },
         handleAIEngineChanged() {
             console.log('handleAIEngineChanged: ', this.selectedModelType);
             if (this.selectedModelType.length < 2 || !this.selectedModelType[1]) return;
             this.aiModelType = this.selectedModelType[1];
-            this.loadRelatedAIConfigs();
+            this.loadRelatedAIConfigs(false);
         },
         saveRelatedAIConfigs() {
             if (!this.openAIAPIKey) {
@@ -580,22 +593,33 @@ export default {
                 this.$message.success(this.$t('save') + ' ' + this.$t('success'));
             }
         },
-        loadRelatedAIConfigs() {
+        loadRelatedAIConfigs(useCache) {
             this.customModelConfigData = {}
-            this.customUrlAddr = undefined;
 
             this.customModelConfigData.supportOpenAICustomConfig = true;
             this.customModelConfigData.supportWebSearch = false;
 
-            if (this.finalConfigData !== undefined) {
+            this.openAIAPIKey = undefined;
+            this.customUrlAddr = undefined;
+            this.customModelName = undefined;
+            this.useDekiePrompt = undefined;
+
+            if (this.finalConfigData !== undefined && this.aiModelType === this.finalConfigData.aiModelType) {
+                useCache = true;
+            }
+
+            console.log('loadRelatedAIConfigs: useCache: ', useCache, ' this.aiModelType: ', this.aiModelType, ' this.finalConfigData: ', this.finalConfigData)
+
+            if (useCache && this.finalConfigData !== undefined) {
                 this.openAIAPIKey = this.finalConfigData.apiKey;
             }
+
 
             switch (this.aiModelType) {
                 default: {
                     const aiConfigKeyPrefix = 'aiConfig.' + this.aiModelType;
 
-                    if (this.finalConfigData !== undefined) {
+                    if (useCache && this.finalConfigData !== undefined) {
                         this.customUrlAddr = this.finalConfigData.customUrlAddr;
                         this.useDekiePrompt = this.finalConfigData.useDekiePrompt;
                         this.customModelName = this.finalConfigData.customModelName;
@@ -627,8 +651,10 @@ export default {
                 }
                 case 'spark3.5-max':
                 case 'spark4-ultra':
+
+                    this.sparkAIConfig = undefined;
                     this.customModelConfigData.supportOpenAICustomConfig = false;
-                    if (this.finalConfigData !== undefined) {
+                    if (useCache && this.finalConfigData !== undefined) {
                         this.sparkAIConfig = this.finalConfigData.sparkAIConfig;
                     }
 
@@ -700,6 +726,19 @@ export default {
             this.speechVoiceSelected = undefined;
             switch (this.speechEngineType) {
                 default:
+                    break;
+                case SPEECH_ENGINE_TYPE.XYF:
+                    if (this.finalConfigData !== undefined) {
+                        this.sparkAIConfig = this.finalConfigData.sparkAIConfig;
+                    }
+
+                    if (this.sparkAIConfig === undefined) {
+                        this.sparkAIConfig = window.store.storeGet('aiConfig.xfy.apiAuth', {
+                            appId: '',
+                            apiSecret: '',
+                            apiKey: '',
+                        });
+                    }
                     break;
                 case SPEECH_ENGINE_TYPE.AZURE:
                     if (this.finalConfigData !== undefined) {
@@ -781,6 +820,10 @@ export default {
 
                     this.selectedModelType[1] = newModelType;
 
+                    this.aiModelType = newModelType;
+
+                    this.handleAIEngineChanged();
+
                     newGroupObj.models.push(addBtnObj);
                 }
 
@@ -789,7 +832,7 @@ export default {
 
             console.log('AIConfigSettings: handleAddCustomModel: After Update: ' + JSON.stringify(this.supportedAIModels));
 
-            window.aiManager.updateSupportedModels(this.supportedAIModels);
+            window.generalAIManager.updateSupportedModels(this.supportedAIModels);
             this.$message.success(this.$t('settings.add') + ' ' + this.$t('success'));
         },
         renameClicked() {
@@ -879,7 +922,7 @@ export default {
 
             this.selectedModelType[1] = newModelType;
             this.aiModelType = newModelType;
-            window.aiManager.updateSupportedModels(this.supportedAIModels);
+            window.generalAIManager.updateSupportedModels(this.supportedAIModels);
             this.$message.success(this.$t('settings.copy') + ' ' + this.$t('success'));
         },
         deleteClicked() {
@@ -925,11 +968,16 @@ export default {
                 } else {
                     that.selectedModelType = ['Groq', 'llama-3.1-70b-versatile'];
                 }
+
                 const deleteAIConfigKeyPrefix = 'aiConfig.' + deleteModelType;
 
                 window.store.storeDelete(deleteAIConfigKeyPrefix);
 
-                window.aiManager.updateSupportedModels(that.supportedAIModels);
+                window.generalAIManager.updateSupportedModels(that.supportedAIModels);
+
+                that.aiModelType = that.selectedModelType[1];
+
+                that.handleAIEngineChanged();
 
                 that.$message.success(that.$t('settings.delete') + ' ' + that.$t('success'));
             }).catch(err => {
@@ -997,7 +1045,7 @@ export default {
             });
             console.log('AIConfigSettings: onEditBlur: After Rename: ' + JSON.stringify(this.supportedAIModels));
 
-            window.aiManager.updateSupportedModels(this.supportedAIModels);
+            window.generalAIManager.updateSupportedModels(this.supportedAIModels);
 
             this.editNameModel = undefined;
         }

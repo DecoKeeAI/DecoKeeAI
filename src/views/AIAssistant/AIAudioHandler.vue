@@ -36,7 +36,9 @@
 <template>
     <div>
         <OpenAIEngine />
-        <AzureSpeechEngine v-if="speechEngineType === allSpeechEngineType.AZURE" />
+        <div v-for="(azureEngine, index) in azureSpeechEngines" :key="index">
+            <AzureSpeechEngine :class-id="azureEngine.classId" :ai-config-data="azureEngine.aiConfigData"  />
+        </div>
     </div>
 </template>
 
@@ -46,6 +48,7 @@ import { ipcRenderer } from 'electron';
 import OpenAIEngine from '@/views/AIAssistant/OpenAIEngine';
 import AzureSpeechEngine from '@/views/AIAssistant/AzureSpeechEngine';
 import { SPEECH_ENGINE_TYPE } from '@/main/ai/AIManager';
+import {deepCopy} from "@/utils/ObjectUtil";
 
 export default {
     name: 'AIAudioHandler',
@@ -55,7 +58,6 @@ export default {
     },
     data() {
         return {
-            allSpeechEngineType: SPEECH_ENGINE_TYPE,
             recorder: null,
             recorderConfig: {
                 sampleBits: 16, // 采样位数，支持 8 或 16，默认是16
@@ -68,14 +70,13 @@ export default {
             recordingAudio: false,
             isSilentRecord: true,
             silentAudioCount: 0,
-            aiRecognizeManager: undefined,
             audioData: [],
             audioDataOffset: 0,
             audioContext: undefined,
             bufferSource: undefined,
             deviceAIAssistantId: '',
-            speechEngineType: undefined,
-            resetTTSPlayTimer: undefined,
+            azureSpeechEngines: [],
+            resetTTSPlayTimer: undefined
         };
     },
     mounted() {},
@@ -87,40 +88,47 @@ export default {
         ipcRenderer.on('InitEngine', (event, args) => {
             console.log('AIAudioHandler: InitEngine: ', args);
 
-            this.speechEngineType = args.engineType;
+            if (args.engineType === SPEECH_ENGINE_TYPE.AZURE) {
+                this.azureSpeechEngines.push({
+                   classId: args.classId,
+                   aiConfigData: args.aiConfigData
+                });
+            }
+
         });
 
         ipcRenderer.on('DestroyEngine', (event, args) => {
             console.log('AIAudioHandler: DestroyEngine: ', args);
+            const tempAzureEngines = this.azureSpeechEngines.filter(azureSpeechEngine => azureSpeechEngine.classId !== args.classId);
 
-            this.speechEngineType = undefined;
+            this.azureSpeechEngines = deepCopy(tempAzureEngines);
         });
 
         ipcRenderer.on('StartAudioRecord', (event, args) => {
             console.log('AIAudioHandler Received StartAudioRecord: ', args);
-            this.deviceAIAssistantId = args.requestAssistantId;
             if (this.recordingAudio) {
                 this.stopRecordAudio();
             }
+            this.deviceAIAssistantId = args.requestAssistantId;
             this.recordAudio();
         });
 
         ipcRenderer.on('StopAudioRecord', (event, args) => {
             console.log('AIAudioHandler Received StopAudioRecord: ', args);
-            this.deviceAIAssistantId = args.requestAssistantId;
             if (this.recordingAudio) {
                 this.stopRecordAudio();
             }
+            this.deviceAIAssistantId = args.requestAssistantId;
         });
 
         ipcRenderer.on('StopTTSPlay', (event, args) => {
             console.log('AIAudioHandler Received StopTTSPlay: ', args);
             this.resetAudio();
         });
-        this.aiRecognizeManager = window.aiManager;
-        this.aiRecognizeManager.setTTSConvertListener((requestId, data) =>
-            this.handleTTSConvertResult(requestId, data)
-        );
+
+        ipcRenderer.on('PlayTTSAudio', (event, args) => {
+            this.handleTTSConvertResult(args.requestId, args.data)
+        })
 
         ipcRenderer.send('AIAudioHandlerReady', {});
     },
@@ -149,7 +157,10 @@ export default {
                 },
                 error => {
                     // 出错了
-                    window.aiManager.setAssistantProcessFailed();
+                    ipcRenderer.send('RecorderStartFailed', {
+                        requestId: this.deviceAIAssistantId
+                    });
+
                     this.recordingAudio = false;
                     switch (error.name || error.message) {
                         case 'NotFoundError':
@@ -176,9 +187,13 @@ export default {
                     this.recorder.destroy();
                     this.recordingAudio = false;
                 }
-                if (this.aiRecognizeManager) {
-                    this.aiRecognizeManager.recognizeVoice(this.deviceAIAssistantId, [], true);
-                }
+
+                ipcRenderer.send('STTRequest', {
+                    requestId: this.deviceAIAssistantId,
+                    audioData: [],
+                    isLastFrame: true
+                });
+
                 this.isSilentRecord = true;
                 this.silentAudioCount = 0;
             } catch (err) {
@@ -218,7 +233,10 @@ export default {
                         params.vol.toFixed(2)
                     );
                     this.stopRecordAudio();
-                    window.aiManager.setAssistantProcessDone();
+
+                    ipcRenderer.send('RecorderEnded', {
+                        requestId: this.deviceAIAssistantId
+                    });
                 }
             };
             // 定时获取录音的数据
@@ -242,10 +260,11 @@ export default {
                     }
                 }
 
-                // if (!this.isSilentRecord && this.aiRecognizeManager) {
-                if (this.aiRecognizeManager) {
-                    this.aiRecognizeManager.recognizeVoice(this.deviceAIAssistantId, mergedAudioData, false);
-                }
+                ipcRenderer.send('STTRequest', {
+                    requestId: this.deviceAIAssistantId,
+                    audioData: mergedAudioData,
+                    isLastFrame: false
+                });
 
                 console.log(
                     'AIAudioHandler: Timer Get Audio Data Length: ' +
@@ -279,6 +298,7 @@ export default {
             }
         },
         handleTTSConvertResult(requestId, data) {
+
             try {
                 this.audioData.push(data);
                 if (this.audioDataOffset === 0) {

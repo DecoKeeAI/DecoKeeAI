@@ -34,13 +34,21 @@
  * limitations under the License.
  */
 import {ipcMain} from "electron";
+import {randomString} from "@/utils/Utils";
 
 export default class {
-    constructor(AppManager, engineType) {
+    constructor(AppManager, engineType, aiConfigData) {
         this.appManager = AppManager;
+        this.aiConfigData = aiConfigData;
+
+        this.classId = randomString(30);
+
+        console.log('WebSpeechAudioAdapter: this.classId: ', this.classId, ' aiConfigData: ', aiConfigData);
 
         this.appManager.windowManager.aiAssistantWindow.win.webContents.send('InitEngine', {
-            engineType: engineType
+            engineType: engineType,
+            classId: this.classId,
+            aiConfigData: aiConfigData
         });
 
         ipcMain.on('TTSConvertResult', (event, args) => {
@@ -60,12 +68,14 @@ export default class {
         this.appManager.windowManager.aiAssistantWindow.win.webContents.send('sendAudioData', {
             requestId: requestId,
             data: data,
-            isLast: isLast
+            isLast: isLast,
+            classId: this.classId
         });
     }
 
     playTTS(requestId, text) {
         this.appManager.windowManager.aiAssistantWindow.win.webContents.send('playTTS', {
+            classId: this.classId,
             requestId: requestId,
             text: text
         });
@@ -80,14 +90,20 @@ export default class {
     }
 
     cancelCurrentRecognize() {
-        this.appManager.windowManager.aiAssistantWindow.win.webContents.send('cancelCurrentRecognize', {});
+        this.appManager.windowManager.aiAssistantWindow.win.webContents.send('cancelCurrentRecognize', {
+            classId: this.classId
+        });
     }
 
     cancelCurrentTTSConvert() {
-        this.appManager.windowManager.aiAssistantWindow.win.webContents.send('cancelCurrentTTSConvert', {});
+        this.appManager.windowManager.aiAssistantWindow.win.webContents.send('cancelCurrentTTSConvert', {
+            classId: this.classId
+        });
     }
 
     destroy() {
-        this.appManager.windowManager.aiAssistantWindow.win.webContents.send('DestroyEngine', {});
+        this.appManager.windowManager.aiAssistantWindow.win.webContents.send('DestroyEngine', {
+            classId: this.classId
+        });
     }
 }

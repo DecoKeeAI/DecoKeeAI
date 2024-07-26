@@ -313,7 +313,7 @@ export default {
         this.configImg = window.resourcesManager.getRelatedSrcPath('@/config.png');
         this.addImg = window.resourcesManager.getRelatedSrcPath('@/addSession.png');
 
-        this.aiModelTypeList = window.aiManager.getAllSupportedModels();
+        this.aiModelTypeList = window.generalAIManager.getAllSupportedModels();
 
         if (window.store.storeGet('aiConfig.chat')) {
             this.aiModelType = window.store.storeGet('aiConfig.chat.selectedModelType') || ['Groq', 'llama-3.1-70b-versatile'];
@@ -374,7 +374,7 @@ export default {
 
         window.addEventListener('focus', () => {
             // console.log('AI对话窗口获得焦点');
-            this.aiModelTypeList = window.aiManager.getAllSupportedModels();
+            this.aiModelTypeList = window.generalAIManager.getAllSupportedModels();
         });
 
         window.addEventListener('resize', this.handleResize);
@@ -631,18 +631,18 @@ export default {
             this.historyList = window.store.chatHistoryGet('historyList');
         },
         sendChatMessage() {
-            this.requestId = window.aiManager.sendChatMessage(this.message);
+            this.requestId = window.aiChatManager.sendChatMessage(this.message);
             console.log(' AI聊天：发送消息的requestId', this.requestId);
             let AIMessage = '';
             this.followUpArr = []
-            window.aiManager.setChatResponseListener((requestId, status, message, msgType) => {
+            window.aiChatManager.setChatResponseListener((requestId, status, message, msgType) => {
                 this.AIStatus = status;
 
                 if (status === -1) {
                     this.message[this.message.length - 1].content = '生成失败...'
                 } else {
 
-                    if (msgType === 'answer' || msgType === '') {
+                    if (msgType === 'answer' || msgType === undefined) {
                         AIMessage += message;
                         this.message[this.message.length - 1].content = AIMessage;
                         this.message[this.message.length - 1].requestId = requestId;
@@ -688,14 +688,19 @@ export default {
                     {
                         role: 'user',
                         content: this.currentMessage,
-                    },
+                    }
+                );
+
+                this.updateScrollHeight();
+
+                this.sendChatMessage();
+
+                this.message.push(
                     {
                         role: 'assistant',
                         content: '',
                     }
                 );
-
-                this.updateScrollHeight();
 
                 // 更改 title
                 this.historyList = this.historyList.map(item => {
@@ -710,7 +715,6 @@ export default {
                 });
 
                 window.store.chatHistorySet('historyList', this.historyList);
-                this.sendChatMessage()
 
                 this.currentMessage = '';
             }
@@ -738,7 +742,7 @@ export default {
             window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
         },
         // stopAssistant() {
-        //     window.aiManager.cancelChatProcess(this.requestId)
+        //     window.aiChatManager.cancelChatProcess(this.requestId)
         //     this.AIStatus = 2
         // },
         copyMessageBtn(message) {

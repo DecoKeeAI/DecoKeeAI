@@ -39,9 +39,11 @@ import {AI_ENGINE_TYPE} from "@/main/ai/AIManager";
 import {randomString} from "@/utils/Utils";
 
 class OpenAIAdapter {
-    constructor(appManager, type, chatMode, engineModel) {
+    constructor(appManager, type, chatMode, engineModel, aiConfigData) {
 
         this.appManager = appManager;
+
+        this.aiConfigData = aiConfigData;
 
         this.chatResponseListener = undefined;
 
@@ -290,21 +292,40 @@ class OpenAIAdapter {
     _getAPIKey() {
         switch (this.aiEngineType) {
             case AI_ENGINE_TYPE.OpenAI:
+                if (this.aiConfigData !== undefined && this.aiConfigData.apiKey !== undefined) {
+                    return this.aiConfigData.apiKey;
+                }
+
                 return this.appManager.storeManager.storeGet('aiConfig.openAi.apiKey');
             default:
             case AI_ENGINE_TYPE.CustomEngine:
             case AI_ENGINE_TYPE.Coze:
             case AI_ENGINE_TYPE.HuoShan: {
+                if (this.aiConfigData !== undefined && this.aiConfigData.apiKey !== undefined) {
+                    return this.aiConfigData.apiKey;
+                }
                 const aiConfigKeyPrefix = 'aiConfig.' + this.aiEngineModel;
                 return this.appManager.storeManager.storeGet(aiConfigKeyPrefix + '.apiKey');
             }
             case AI_ENGINE_TYPE.GroqChat:
+                if (this.aiConfigData !== undefined && this.aiConfigData.apiKey !== undefined) {
+                    return this.aiConfigData.apiKey;
+                }
                 return this.appManager.storeManager.storeGet('aiConfig.groq.apiKey');
             case AI_ENGINE_TYPE.QWenChat:
+                if (this.aiConfigData !== undefined && this.aiConfigData.apiKey !== undefined) {
+                    return this.aiConfigData.apiKey;
+                }
                 return this.appManager.storeManager.storeGet('aiConfig.qwen.apiKey');
             case AI_ENGINE_TYPE.ZhiPuChat:
+                if (this.aiConfigData !== undefined && this.aiConfigData.apiKey !== undefined) {
+                    return this.aiConfigData.apiKey;
+                }
                 return this.appManager.storeManager.storeGet('aiConfig.zhipu.apiKey');
             case AI_ENGINE_TYPE.StandardChat:
+                if (this.aiConfigData !== undefined && this.aiConfigData.apiKey !== undefined) {
+                    return this.aiConfigData.apiKey;
+                }
                 return this.appManager.storeManager.storeGet('aiConfig.chat.apiKey');
             case AI_ENGINE_TYPE.ArixoChat:
                 return 'sk-111111111111111111111111111111111111111111111111';
@@ -354,6 +375,9 @@ class OpenAIAdapter {
                 baseUrl = 'https://api.groq.com/openai/v1/';
                 break;
             default: {
+                if (this.aiConfigData !== undefined && this.aiConfigData.customUrlAddr !== undefined) {
+                    return this.aiConfigData.customUrlAddr;
+                }
                 const aiConfigKeyPrefix = 'aiConfig.' + this.aiEngineModel;
                 baseUrl = this.appManager.storeManager.storeGet(aiConfigKeyPrefix + '.baseUrl');
                 break;

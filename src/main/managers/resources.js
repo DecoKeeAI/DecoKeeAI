@@ -72,8 +72,8 @@ class ResourcesManager {
         this.pcInstalledApps = [];
 
         loadPCInstalledApps().then(async installedApps => {
-            console.log('AIManager: Loaded Installed APPS length: ', installedApps.length);
-            console.log('AIManager: Loaded Installed APPS: ', installedApps);
+            console.log('ResourceManager: Loaded Installed APPS length: ', installedApps.length);
+            console.log('ResourceManager: Loaded Installed APPS: ', installedApps);
 
             for (let i = 0; i < installedApps.length; i++) {
                 const appInfo = installedApps[i];

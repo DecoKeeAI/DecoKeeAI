@@ -37,21 +37,31 @@
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
 
 export default class {
-    constructor(speechServiceKey, storeManager) {
+    constructor(storeManager, classId, aiConfigData) {
 
         this.storeManager = storeManager;
 
-        this.subscriptionKey = speechServiceKey;
+        this.aiConfigData = aiConfigData;
 
+        this.classId = classId;
         this.recognizeRequestId = -1;
+
         this.ttsConvertRequestId = -1;
         this.recognizeEngine = undefined;
         this.ttsEngine = undefined;
-
         this.ttsOrderQueue = [];
+
+        if (aiConfigData !== undefined) {
+            this.subscriptionKey = aiConfigData.speechServiceAPIKey;
+        }
+
+        if (this.subscriptionKey === undefined) {
+            this.subscriptionKey = storeManager.storeGet('aiConfig.azure.speechServiceKey');
+        }
     }
 
-    sendAudioData(requestId, data, isLast) {
+    sendAudioData(requestId, data, isLast, classId) {
+        if (classId !== this.classId) return;
         // console.log(
         //     'AzureAudioEngine: sendAudioData: requestId: ',
         //     requestId,
@@ -65,20 +75,29 @@ export default class {
         //     isLast
         // );
         if (requestId !== this.recognizeRequestId) {
-            this.cancelCurrentRecognize();
+            this.cancelCurrentRecognize(classId);
 
             // 创建音频输入流
             const pushStream = sdk.AudioInputStream.createPushStream();
             const audioConfig = sdk.AudioConfig.fromStreamInput(pushStream);
-            let azureServiceRegion = this.storeManager.storeGet('aiConfig.azure.serviceRegion');
 
-            if (!azureServiceRegion) {
-                azureServiceRegion = 'eastasia';
+            let azureServiceRegion = undefined;
+            if (this.aiConfigData !== undefined) {
+                azureServiceRegion = this.aiConfigData.azureServiceRegion;
+            }
+            if (azureServiceRegion === undefined) {
+                azureServiceRegion = this.storeManager.storeGet('aiConfig.azure.serviceRegion', 'eastasia');
             }
 
             const speechConfig = sdk.SpeechConfig.fromSubscription(this.subscriptionKey, azureServiceRegion);
 
-            const language = this.storeManager.storeGet('aiConfig.azure.speechLanguage');
+            let language = undefined;
+            if (this.aiConfigData !== undefined) {
+                language = this.aiConfigData.speechLanguageSelected;
+            }
+            if (language === undefined) {
+                language = this.storeManager.storeGet('aiConfig.azure.speechLanguage', '');
+            }
 
             console.log('AzureAudioEngine: sendAudioData: configed language: ' + language);
 
@@ -118,10 +137,11 @@ export default class {
         }
     }
 
-    playTTS(requestId, text) {
+    playTTS(requestId, text, classId) {
+        if (classId !== this.classId) return;
         console.log('AzureAudioEngine: playTTS: requestId: ', requestId, ' LastRequestID: ', this.ttsConvertRequestId, ' text: ', text);
         if (requestId !== this.ttsConvertRequestId) {
-            this.cancelCurrentTTSConvert();
+            this.cancelCurrentTTSConvert(classId);
 
             this._initTTSConvertEngine();
         }
@@ -146,7 +166,8 @@ export default class {
         this.ttsConvertResultListener = listener;
     }
 
-    cancelCurrentRecognize() {
+    cancelCurrentRecognize(classId) {
+        if (classId !== this.classId) return;
         console.log('AzureAudioEngine: cancelCurrentRecognize');
         this.recognizeRequestId = -1;
 
@@ -164,7 +185,9 @@ export default class {
         this.recognizeEngine = undefined;
     }
 
-    cancelCurrentTTSConvert() {
+    cancelCurrentTTSConvert(classId) {
+        if (classId !== this.classId) return;
+
         console.log('AzureAudioEngine: cancelCurrentTTSConvert');
 
         if (this.ttsEngine && this.ttsEngine.pushStream) {
@@ -234,15 +257,23 @@ export default class {
         });
         const audioConfig = sdk.AudioConfig.fromStreamOutput(pushStream);
 
-        let azureServiceRegion = this.storeManager.storeGet('aiConfig.azure.serviceRegion');
-
-        if (!azureServiceRegion) {
-            azureServiceRegion = 'eastasia';
+        let azureServiceRegion = undefined;
+        if (this.aiConfigData !== undefined) {
+            azureServiceRegion = this.aiConfigData.azureServiceRegion;
+        }
+        if (azureServiceRegion === undefined) {
+            azureServiceRegion = this.storeManager.storeGet('aiConfig.azure.serviceRegion', 'eastasia');
         }
 
         const speechConfig = sdk.SpeechConfig.fromSubscription(this.subscriptionKey, azureServiceRegion);
 
-        const voiceName = this.storeManager.storeGet('aiConfig.azure.speechLanguageVoice');
+        let voiceName = undefined;
+        if (this.aiConfigData !== undefined) {
+            voiceName = this.aiConfigData.speechVoiceSelected;
+        }
+        if (voiceName === undefined) {
+            voiceName = this.storeManager.storeGet('aiConfig.azure.speechLanguageVoice', '');
+        }
 
         console.log('AzureAudioEngine: sendAudioData: configed VoiceName: ' + voiceName);
 
@@ -259,7 +290,7 @@ export default class {
     }
 
     destroy() {
-        this.cancelCurrentTTSConvert();
-        this.cancelCurrentRecognize();
+        this.cancelCurrentTTSConvert(this.classId);
+        this.cancelCurrentRecognize(this.classId);
     }
 }

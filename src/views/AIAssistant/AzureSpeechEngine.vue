@@ -43,6 +43,15 @@ import {ipcRenderer} from 'electron';
 
 export default {
     name: 'AzureSpeechEngine',
+    props: {
+        aiConfigData: {
+            type: Object,
+            default: undefined
+        },
+        classId: {
+            type: String
+        }
+    },
     data() {
         return {
             azureSpeechEngine: undefined,
@@ -50,13 +59,12 @@ export default {
     },
     created() {
         console.log('AzureSpeechEngine: created');
-        const speechServiceKey = window.store.storeGet('aiConfig.azure.speechServiceKey');
-        this.azureSpeechEngine = new AzureAudioEngine(speechServiceKey, window.store);
+        this.azureSpeechEngine = new AzureAudioEngine(window.store, this.classId, this.aiConfigData);
 
-        ipcRenderer.on('sendAudioData', (event, args) => this.azureSpeechEngine.sendAudioData(args.requestId, args.data, args.isLast));
-        ipcRenderer.on('playTTS', (event, args) => this.azureSpeechEngine.playTTS(args.requestId, args.text));
-        ipcRenderer.on('cancelCurrentRecognize', this.azureSpeechEngine.cancelCurrentRecognize);
-        ipcRenderer.on('cancelCurrentTTSConvert', this.azureSpeechEngine.cancelCurrentTTSConvert);
+        ipcRenderer.on('sendAudioData', this.handleSendAudioData);
+        ipcRenderer.on('playTTS', this.handlePlayTTS);
+        ipcRenderer.on('cancelCurrentRecognize', this.handleCancelCurrentRecognize);
+        ipcRenderer.on('cancelCurrentTTSConvert', this.handleCancelCurrentTTSConvert);
 
         this.azureSpeechEngine.setRecognizeResultListener(this.handleRecognizeResult);
         this.azureSpeechEngine.setTTSConvertResultListener(this.handleTTSConvertResult);
@@ -66,18 +74,28 @@ export default {
 
         if (!this.azureSpeechEngine) return;
 
-        ipcRenderer.removeAllListeners('sendAudioData');
-        ipcRenderer.removeAllListeners('playTTS');
-        ipcRenderer.removeAllListeners('setRecognizeResultListener');
-        ipcRenderer.removeAllListeners('setTTSConvertResultListener');
-        ipcRenderer.removeAllListeners('cancelCurrentRecognize');
-        ipcRenderer.removeAllListeners('cancelCurrentTTSConvert');
+        ipcRenderer.off('sendAudioData', this.handleSendAudioData);
+        ipcRenderer.off('playTTS', this.handlePlayTTS);
+        ipcRenderer.off('cancelCurrentRecognize', this.handleCancelCurrentRecognize);
+        ipcRenderer.off('cancelCurrentTTSConvert', this.handleCancelCurrentTTSConvert);
 
         this.azureSpeechEngine.destroy();
 
         this.azureSpeechEngine = undefined;
     },
     methods: {
+        handleSendAudioData(event, args) {
+            this.azureSpeechEngine.sendAudioData(args.requestId, args.data, args.isLast, args.classId)
+        },
+        handlePlayTTS(event, args) {
+            this.azureSpeechEngine.playTTS(args.requestId, args.text, args.classId)
+        },
+        handleCancelCurrentRecognize(event, args) {
+            this.azureSpeechEngine.cancelCurrentRecognize(args.classId);
+        },
+        handleCancelCurrentTTSConvert(event, args) {
+            this.azureSpeechEngine.cancelCurrentTTSConvert(args.classId);
+        },
         handleRecognizeResult(requestId, text) {
             ipcRenderer.send('STTRecognizeResult', {
                 requestId: requestId,

@@ -79,12 +79,12 @@ const FRAME = {
     STATUS_LAST_FRAME: 2
 }
 
-let storeManager = undefined;
-
 class XFYAdapter {
-    constructor(chatMode, chatEngineModel, StoreManager) {
+    constructor(chatMode, chatEngineModel, StoreManager, aiConfigData) {
 
-        storeManager = StoreManager;
+        this.storeManager = StoreManager;
+
+        this.aiConfigData = aiConfigData;
 
         // 获取当前时间 RFC1123格式
         const date = new Date().toGMTString()
@@ -93,20 +93,20 @@ class XFYAdapter {
         // 记录本次识别用sid
         this.currentRecognizeSid = ""
 
-        this.voiceRecognizeUrl = config.voiceRecognizeHostUrl + "?authorization=" + getAuthStr(date, config.voiceRecognizeHost, config.voiceRecognizeUri) + "&date=" + date + "&host=" + config.voiceRecognizeHost
-        this.ttsUrl = config.ttsHostUrl + "?authorization=" + getAuthStr(date, config.ttsHost, config.ttsUri) + "&date=" + date + "&host=" + config.ttsHost
+        this.voiceRecognizeUrl = config.voiceRecognizeHostUrl + "?authorization=" + this._getAuthStr(date, config.voiceRecognizeHost, config.voiceRecognizeUri) + "&date=" + date + "&host=" + config.voiceRecognizeHost
+        this.ttsUrl = config.ttsHostUrl + "?authorization=" + this._getAuthStr(date, config.ttsHost, config.ttsUri) + "&date=" + date + "&host=" + config.ttsHost
         switch (chatEngineModel) {
             case 'spark3.5':
             case 'spark3.5-max':
-                this.sparkUrl = config.spark35MaxHostUrl + "?authorization=" + getAuthStr(date, config.spark35MaxHost, config.spark35MaxUri) + "&date=" + date + "&host=" + config.spark35MaxHost
+                this.sparkUrl = config.spark35MaxHostUrl + "?authorization=" + this._getAuthStr(date, config.spark35MaxHost, config.spark35MaxUri) + "&date=" + date + "&host=" + config.spark35MaxHost
                 this.sparkDomain = config.spark35MaxModelDomain;
                 break;
             case 'spark4-ultra':
-                this.sparkUrl = config.spark4UltraHostUrl + "?authorization=" + getAuthStr(date, config.spark4UltraHost, config.spark4UltraUri) + "&date=" + date + "&host=" + config.spark4UltraHost
+                this.sparkUrl = config.spark4UltraHostUrl + "?authorization=" + this._getAuthStr(date, config.spark4UltraHost, config.spark4UltraUri) + "&date=" + date + "&host=" + config.spark4UltraHost
                 this.sparkDomain = config.spark4UltraModelDomain;
                 break;
             case 'spark-pro':
-                this.sparkUrl = config.spark3ProHostUrl + "?authorization=" + getAuthStr(date, config.spark3ProHost, config.spark3ProUri) + "&date=" + date + "&host=" + config.spark3ProHost
+                this.sparkUrl = config.spark3ProHostUrl + "?authorization=" + this._getAuthStr(date, config.spark3ProHost, config.spark3ProUri) + "&date=" + date + "&host=" + config.spark3ProHost
                 this.sparkDomain = config.spark3ProModelDomain;
                 break;
         }
@@ -414,7 +414,7 @@ class XFYAdapter {
             "audio": (data === '' ? data.toString('base64') : data),
             "encoding": "raw"
         }
-        const currentLanguage = global.appManager.storeManager.storeGet('system.locale');
+        const currentLanguage = this.storeManager.storeGet('system.locale');
         switch (this.recognizeFrameSendStatus) {
             case FRAME.STATUS_FIRST_FRAME:
                 frame = {
@@ -736,6 +736,34 @@ class XFYAdapter {
         this.sparkWS = undefined;
     }
 
+
+// 鉴权签名
+    _getAuthStr(date, host, uri) {
+        let sparkAIConfig = undefined;
+        if (this.aiConfigData !== undefined) {
+            sparkAIConfig = this.aiConfigData.sparkAIConfig;
+        }
+
+        if (sparkAIConfig === undefined) {
+            sparkAIConfig = this.storeManager.storeGet('aiConfig.xfy.apiAuth', {
+                appId: '',
+                apiSecret: '',
+                apiKey: ''
+            });
+        }
+        console.log('XYFAdapter: _getAuthStr: sparkAIConfig:', sparkAIConfig);
+
+        config.appid = sparkAIConfig.appId;
+        config.apiSecret = sparkAIConfig.apiSecret;
+        config.apiKey = sparkAIConfig.apiKey;
+
+        let signatureOrigin = `host: ${host}\ndate: ${date}\nGET ${uri} HTTP/1.1`
+        let signatureSha = CryptoJS.HmacSHA256(signatureOrigin, config.apiSecret)
+        let signature = CryptoJS.enc.Base64.stringify(signatureSha)
+        let authorizationOrigin = `api_key="${config.apiKey}", algorithm="hmac-sha256", headers="host date request-line", signature="${signature}"`
+        let authStr = CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(authorizationOrigin))
+        return authStr
+    }
 }
 
 // ======================================== END Chat Functions ========================================================
@@ -743,31 +771,6 @@ class XFYAdapter {
 
 // ======================================== Common Functions ==========================================================
 
-// 鉴权签名
-function getAuthStr(date, host, uri) {
-
-    let sparkAIConfig = storeManager.storeGet('aiConfig.xfy.apiAuth');
-    console.log('XYFAdapter: getAuthStr: sparkAIConfig:', sparkAIConfig);
-
-    if (sparkAIConfig === undefined) {
-        sparkAIConfig = {
-            appId: '',
-            apiSecret: '',
-            apiKey: ''
-        }
-    }
-
-    config.appid = sparkAIConfig.appId;
-    config.apiSecret = sparkAIConfig.apiSecret;
-    config.apiKey = sparkAIConfig.apiKey;
-
-    let signatureOrigin = `host: ${host}\ndate: ${date}\nGET ${uri} HTTP/1.1`
-    let signatureSha = CryptoJS.HmacSHA256(signatureOrigin, config.apiSecret)
-    let signature = CryptoJS.enc.Base64.stringify(signatureSha)
-    let authorizationOrigin = `api_key="${config.apiKey}", algorithm="hmac-sha256", headers="host date request-line", signature="${signature}"`
-    let authStr = CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(authorizationOrigin))
-    return authStr
-}
 
 function sleep(time) {
     return new Promise((resolve) => setTimeout(resolve, time));

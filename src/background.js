@@ -3,6 +3,7 @@
 import {protocol, shell, clipboard, app} from 'electron'
 import AppManager from './main/managers/app'
 import AIManager from "@/main/ai/AIManager";
+import GeneralAIManager from "@/main/ai/GeneralAIManager";
 
 const log = require('electron-log')
 console.log = log.log
@@ -75,7 +76,9 @@ const appManager = new AppManager(needFullLoad)
 
 global.appManager = appManager
 if (needFullLoad) {
-    global.aiManager = new AIManager(appManager)
+    const generalAIManager = new GeneralAIManager(appManager);
+    global.generalAIManager = generalAIManager;
+    global.aiChatManager = new AIManager(appManager, generalAIManager, true);
 }
 
 function moveFiles(srcFolderPath, destFolderPath) {

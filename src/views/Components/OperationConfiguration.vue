@@ -206,7 +206,7 @@
 
                     <AIConfigSettings
                         :ai-model-config-data="optionData.config.actions[0].value"
-                        v-else-if="optionData.childrenName === 'assistant'"
+                        v-else-if="optionData.childrenName === 'assistant' || optionData.config.type === 'assistant'"
                         @aiConfigUpdated="handleAIConfigUpdated"
                     />
 

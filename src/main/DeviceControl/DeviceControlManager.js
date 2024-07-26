@@ -39,6 +39,8 @@ import Constants from '@/utils/Constants';
 import WSManager from '@/main/DeviceControl/Connections/WSManager';
 import PluginWSServer from '@/main/DeviceControl/Connections/PluginWSServer';
 import PluginAdapter, { PLUGIN_TYPE } from '@/main/DeviceControl/Connections/PluginAdapter';
+import {getDeltaList} from "@/utils/Utils";
+import AIManager from "@/main/ai/AIManager";
 
 const robotjs = require('robotjs');
 const activeWindow = require('active-win');
@@ -113,6 +115,8 @@ const pluginHandlerMap = new Map();
 const deviceAppearPluginMap = new Map();
 
 const deviceProfileChangeRequestMap = new Map();
+
+const deviceAssistantManagerMap = new Map();
 
 let deviceProfileAppMonitorMap = undefined;
 class DeviceControlManager {
@@ -910,7 +914,16 @@ function reloadDeviceProfiles(
 
 function broadcastDeviceConnectionChange(serialNumber, connected, connectionType) {
     if (!connected) {
-        global.aiManager.cancelCurrentAssistantSession(serialNumber);
+        const deviceAIManagers = deviceAssistantManagerMap.get(serialNumber);
+
+        if (deviceAIManagers !== undefined && deviceAIManagers.length > 1) {
+            deviceAIManagers.forEach(assistantInfo => {
+                if (assistantInfo.aiManager === undefined) return;
+                assistantInfo.aiManager.destroyEngine();
+            });
+        }
+
+        deviceAssistantManagerMap.delete(serialNumber);
     }
 
     if (
@@ -1450,6 +1463,8 @@ async function loadConfigRelatedResource(serialNumber, resourceId, configDetail,
         multiActionIndex = 0;
     }
 
+    const newDeviceAssistantsList = [];
+
     let loadSoundInfos = [];
     for (let i = 0; i < configDetail.length; i++) {
         const configInfo = configDetail[i];
@@ -1468,6 +1483,20 @@ async function loadConfigRelatedResource(serialNumber, resourceId, configDetail,
                     oldResourceId
                 );
             }
+        } else if (configInfo.config.type === 'assistant') {
+            newDeviceAssistantsList.push({
+                keyCode: configInfo.keyCode,
+                aiConfigData: configInfo.config.actions[0].value
+            });
+        } else if (configInfo.config.type === 'knob') {
+            configInfo.config.subActions.forEach(subAction => {
+                if (subAction.config.type !== 'assistant') return;
+
+                newDeviceAssistantsList.push({
+                    keyCode: configInfo.keyCode,
+                    aiConfigData: subAction.config.actions[0].value
+                });
+            })
         }
 
         let soundPath = undefined,
@@ -1554,7 +1583,46 @@ async function loadConfigRelatedResource(serialNumber, resourceId, configDetail,
         });
     }
 
+
     if (!isMainEntry) return;
+
+    let deviceAssistantsList = deviceAssistantManagerMap.get(serialNumber);
+
+    let finalAssistantList = [];
+
+    if (deviceAssistantsList === undefined) {
+        deviceAssistantsList = [];
+    }
+
+    const result = getDeltaList(deviceAssistantsList, newDeviceAssistantsList, (a, b) => a.keyCode === b.keyCode && a.aiConfigData === b.aiConfigData);
+
+    console.log('DeviceControlManager: loadConfigRelatedResource: deltaAIManagerList: ', result);
+
+    result.removedList.forEach(assistantInfo => {
+        if (!assistantInfo.aiManager) return;
+
+        assistantInfo.aiManager.destroyEngine();
+    });
+
+    result.newList.forEach(assistantInfo => {
+        const newAssistantInfo = Object.assign({ aiManager: undefined }, assistantInfo);
+
+        console.log('DeviceControlManager: loadConfigRelatedResource: Generate new AIManager for : ' + assistantInfo.keyCode);
+
+        try {
+            const aiConfigData = JSON.parse(assistantInfo.aiConfigData);
+            newAssistantInfo.aiManager = new AIManager(appManager, global.generalAIManager, false, aiConfigData);
+        } catch (err) {
+            console.log('DeviceControlManager: loadConfigRelatedResource: Invalid AIConfig data for: ' + assistantInfo.keyCode + ' Data: ' + assistantInfo.aiConfigData);
+            newAssistantInfo.aiManager = new AIManager(appManager, global.generalAIManager, false, undefined);
+        }
+
+        finalAssistantList.push(newAssistantInfo);
+    });
+
+    finalAssistantList = finalAssistantList.concat(result.unchangedList);
+
+    deviceAssistantManagerMap.set(serialNumber, finalAssistantList);
 
     let disappearPluginList = [];
     let appearPluginList = [];
@@ -2562,7 +2630,7 @@ function processKnobActions(serialNumber, activeConfig, keyCode, action, downTim
 }
 
 function processAIAssistant(serialNumber, keyCode, action, downtime, eventtime) {
-    const assistantId = serialNumber + '-' + keyCode;
+    let assistantId = serialNumber + '-' + keyCode;
 
     console.log(
         'DeviceControlManager: processAIAssistant: For device: ' +
@@ -2574,14 +2642,31 @@ function processAIAssistant(serialNumber, keyCode, action, downtime, eventtime) 
             ' eventtime: ' +
             eventtime
     );
+
+    const deviceAIManagers = deviceAssistantManagerMap.get(serialNumber);
+
+    if (deviceAIManagers === undefined || deviceAIManagers.length === 0) {
+        notifyDeviceShowAlert(serialNumber, Constants.ALERT_TYPE_INVALID, keyCode);
+        return;
+    }
+
+    const assistantData = deviceAIManagers.find(assistantInfo => assistantInfo.keyCode === keyCode);
+
+    if (assistantData === undefined || assistantData.aiManager === undefined) {
+        notifyDeviceShowAlert(serialNumber, Constants.ALERT_TYPE_INVALID, keyCode);
+        return;
+    }
+
+    assistantId += '-' + assistantData.aiManager.getClassId();
+
     if (action === 0) {
-        if (!global.aiManager.startAssistantSession(serialNumber, assistantId, keyCode)) {
+        if (!assistantData.aiManager.startAssistantSession(serialNumber, assistantId, keyCode)) {
             notifyDeviceShowAlert(serialNumber, Constants.ALERT_TYPE_INVALID, keyCode);
         }
     } else if (action === 1) {
         setTimeout(() => {
             if (eventtime - downtime < 500) {
-                global.aiManager.cancelCurrentAssistantSession(serialNumber);
+                assistantData.aiManager.cancelCurrentAssistantSession(serialNumber);
             } else {
                 global.appManager.windowManager.aiAssistantWindow.win.webContents.send(
                     'StopAudioRecord',

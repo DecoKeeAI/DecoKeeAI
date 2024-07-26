@@ -55,3 +55,28 @@ export async function checkPortRange(startPort, endPort) {
     }
     return results;
 }
+
+export function getDeltaList(listA, listB, checkFunction) {
+
+    const unchangedList = [];
+    const newList = [];
+    const removedList = [];
+
+    listA.forEach((itemA) => {
+        const foundInB = listB.find((itemB) => checkFunction(itemA, itemB));
+        if (foundInB) {
+            unchangedList.push(itemA);
+        } else {
+            removedList.push(itemA);
+        }
+    });
+
+    listB.forEach((itemB) => {
+        const foundInA = listA.find((itemA) => checkFunction(itemA, itemB));
+        if (!foundInA) {
+            newList.push(itemB);
+        }
+    });
+
+    return { unchangedList, newList, removedList };
+}

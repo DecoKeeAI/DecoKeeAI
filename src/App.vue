@@ -47,7 +47,8 @@ export default {
             window.arch = remote.getGlobal('arch');
             this.windowTitle = remote.getCurrentWindow().getTitle()
             window.appManager = remote.getGlobal('appManager');
-            window.aiManager = remote.getGlobal('aiManager');
+            window.aiChatManager = remote.getGlobal('aiChatManager');
+            window.generalAIManager = remote.getGlobal('generalAIManager');
             window.store = remote.getGlobal('appManager').storeManager;
             window.windowManager = remote.getGlobal('appManager').windowManager;
             window.resourcesManager = remote.getGlobal('appManager').resourcesManager;
