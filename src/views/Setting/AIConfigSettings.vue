@@ -746,7 +746,7 @@ export default {
 
             switch (this.aiModelType) {
                 default: {
-                    this.customModelConfigData.supportCustomPrompt = this.aiModelType.startsWith('Custom-');
+                    this.customModelConfigData.supportCustomPrompt = this.aiModelType.startsWith('Custom-') || this.aiModelType.startsWith('HuoShan-');
 
                     const aiConfigKeyPrefix = 'aiConfig.' + this.aiModelType;
 
