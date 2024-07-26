@@ -25,6 +25,7 @@ DecoKeeAI 提出了一种通过 AI 技术与带显示快捷按键相结合的全
 * 跨平台快速打包 (Windows, Linux, MacOS)
 * 一键多语言切换
 * 支持功能：
+    - 多个AI智能体
     - 按键快捷键
     - 打开/关闭文件或程序
     - 预编译文本输入
@@ -38,12 +39,13 @@ DecoKeeAI 提出了一种通过 AI 技术与带显示快捷按键相结合的全
 * MDI 图标插件和第三方图标库导入
 * 支持三方插件导入 (如 HomeAssistant 插件等)
 * 支持主流AI大模型接口调用包含：(API key需自行在对应平台中注册并在设置中填入，若想取得最好的体验，建议使用 Groq 的 llama-3.1-70b-versatile 或 OpenAI 的 gpt-4o)
-    - OpenAI: gpt-4o-mini, gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5-turbo
-    - Groq (速度最快！目前免费！！！): llama3-70b-8192
-    - 讯飞星火: spark3.5-max, spark4-ultra
-    - 通义千问: qwen-turbo, qwen-plus, qwen-max, qwen-72b-chat, qwen1.5-32b-chat, qwen1.5-72b-chat, qwen1.5-110b-chat, qwen2-1.5b-instruct, qwen2-7b-instruct, qwen2-72b-instruct
-    - 智谱AI: glm-4-0520, glm-4, glm-4-air, glm-4-airx, glm-4-flash, glm-3-turbo
-    - 火山方舟: 可配置多个推理模型或智能体，需自行创建推理模型接入点和和智能体，详情参考 [火山方舟文档](https://www.volcengine.com/docs/82379/1267885)
+    - [OpenAI](https://platform.openai.com/apps): gpt-4o-mini, gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5-turbo
+    - [Groq](https://groq.com/) (速度最快！目前免费！！！): llama-3.1-405b-reasoning, llama-3.1-70b-versatile, llama-3.1-8b-instant, llama3-70b-8192, llama3-8b-8192, llama3-groq-70b-8192-tool-use-preview, llama3-groq-8b-8192-tool-use-preview, gemma2-9b-it, gemma-7b-it, mixtral-8x7b-32768 
+    - [讯飞星火](https://xinghuo.xfyun.cn/sparkapi): spark3.5-max, spark4-ultra
+    - [通义千问](https://dashscope.aliyun.com/?spm=5176.28197632.0.0.78417e06HoHqa3): qwen-turbo, qwen-plus, qwen-max, qwen-72b-chat, qwen1.5-32b-chat, qwen1.5-72b-chat, qwen1.5-110b-chat, qwen2-1.5b-instruct, qwen2-7b-instruct, qwen2-72b-instruct
+    - [智谱AI](https://www.zhipuai.cn/): glm-4-0520, glm-4, glm-4-air, glm-4-airx, glm-4-flash, glm-3-turbo
+    - [火山方舟](https://www.volcengine.com/): 可配置多个推理模型或智能体，需自行创建推理模型接入点和和智能体，详情参考 [火山方舟文档](https://www.volcengine.com/docs/82379/1267885)
+    - [Coze](https://www.coze.com/): 可配置多个智能体或工作流控制，详情参考 [Coze配置文档](https://www.coze.cn/docs/developer_guides/preparation)
     - 自定义: 任意自定义服务器，只需支持 openAI API 调用即可。 可配置多个自定义模型。
 * 支持语音服务 (STT&TTS)：
     - 讯飞星火, Microsoft Azure

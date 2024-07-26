@@ -25,6 +25,7 @@ DecoKeeAI is built using **vue-cli 5** and **Electron 23.0.0**, providing a modu
 * Cross-platform fast packaging (Windows, Linux, MacOS)
 * One-click multi-language switchingHere is the translation:
 * Supported features:
+  - Multi-Agent
   - Hotkey shortcuts
   - Open/close file or program
   - Pre-compiled text input
@@ -38,12 +39,13 @@ DecoKeeAI is built using **vue-cli 5** and **Electron 23.0.0**, providing a modu
 * MDI icon plugin and third-party icon library import
 * Support for third-party plugin import (such as HomeAssistant plugins, etc.)
 * Support for mainstream AI model interface calls, including: (API keys need to be registered on the corresponding platform and filled in the settings. For the best experience, it is recommended to use Groq's llama-3.1-70b-versatile or OpenAI's gpt-4o)
-    - OpenAI: gpt-4o-mini, gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5-turbo
-    - Groq (Fastest in response. FREE at the moment !!!!!!): llama3-70b-8192
-    - iFlytek: spark3.5-max, spark4-ultra
-    - Qwen: qwen-turbo, qwen-plus, qwen-max, qwen-72b-chat, qwen1.5-32b-chat, qwen1.5-72b-chat, qwen1.5-110b-chat, qwen2-1.5b-instruct, qwen2-7b-instruct, qwen2-72b-instruct
-    - Zhipu AI: glm-4-0520, glm-4, glm-4-air, glm-4-airx, glm-4-flash, glm-3-turbo
-    - Volcano Ark(HuoShan): Supports configuration of multiple Model Inference or Agents, requiring users to create their own Model Inference endpoint and Agents. For more details, please refer to the [Volcano Ark Documentation](https://www.volcengine.com/docs/82379/1267885)
+    - [OpenAI](https://platform.openai.com/apps): gpt-4o-mini, gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5-turbo
+    - [Groq](https://groq.com/) (Fastest in response. FREE at the moment !!!!!!): llama-3.1-405b-reasoning, llama-3.1-70b-versatile, llama-3.1-8b-instant, llama3-70b-8192, llama3-8b-8192, llama3-groq-70b-8192-tool-use-preview, llama3-groq-8b-8192-tool-use-preview, gemma2-9b-it, gemma-7b-it, mixtral-8x7b-32768
+    - [iFlytek](https://xinghuo.xfyun.cn/sparkapi): spark3.5-max, spark4-ultra
+    - [Qwen](https://dashscope.aliyun.com/?spm=5176.28197632.0.0.78417e06HoHqa3): qwen-turbo, qwen-plus, qwen-max, qwen-72b-chat, qwen1.5-32b-chat, qwen1.5-72b-chat, qwen1.5-110b-chat, qwen2-1.5b-instruct, qwen2-7b-instruct, qwen2-72b-instruct
+    - [Zhipu](https://www.zhipuai.cn/) AI: glm-4-0520, glm-4, glm-4-air, glm-4-airx, glm-4-flash, glm-3-turbo
+    - [Volcano Ark(HuoShan)](https://www.volcengine.com/): Supports configuration of multiple Model Inference or Agents, requiring users to create their own Model Inference endpoint and Agents. For more details, please refer to the [Volcano Ark Documentation](https://www.volcengine.com/docs/82379/1267885)
+    - [Coze](https://www.coze.com/): Supports configuration of multiple agents or workflow controls, see [Coze Documentation](https://www.coze.cn/docs/developer_guides/preparation) for details."
     - Custom: Any custom server, as long as it supports OpenAI API calls. Configurable with multiple custom models.
 * Support for speech services (STT&TTS):
     - iFlytek, Microsoft Azure
