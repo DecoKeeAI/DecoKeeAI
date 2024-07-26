@@ -16,23 +16,24 @@
                         <!-- eslint-disable vue/no-use-v-if-with-v-for -->
                         <div class="chat-container" v-for="(message, index) in message" :key="index" v-if="message.role !== 'system'" @mouseenter="enterInto(index)" @mouseleave="leaveOut(index)">
 
-                            <div :style="{maxWidth: (windowWidth - 120) + 'px'}" v-if="message.role === 'user'" :class="[message.content !== '' ? 'message-received' : '']">
+                            <div :style="{maxWidth: (windowWidth - 120) + 'px'}" v-if="message.role === 'user'" class="message-received">
                                 <div class="chat-user message">
-                                    <div v-if="editIndex && index === editIndex" class="user-input">
-                                        <el-input @input="changeUserMessage($event, index)" resize="none" type="textarea" v-model="message.content"></el-input>
-                                        <i class="el-icon-check" @click="confirmEdit(index)"></i>
-                                        <i class="el-icon-close" @click="cancelEdit"></i>
+                                    <div v-if="editIndex && index === editIndex " class="user-input">
+                                        <el-input :autosize="{ minRows: 2, maxRows: 6}" @input="changeUserMessage($event, index)" resize="none" type="textarea" v-model="message.content"></el-input>
+                                        <i class="el-icon-check" @click="confirmUserContent(index)"></i>
+                                        <i class="el-icon-close" @click="cancelUserContent"></i>
                                     </div>
 
                                     <span v-else>
                                         {{ message.content}}
                                     </span>
                                 </div>
-                                <div class="message-operate" v-if="isHover === index && !editIndex">
+
+                                <div class="message-operate" v-if="hoverIndex === index && !editIndex">
 
                                     <el-button class="copy-message" @click="copyMessageBtn(message.content)" type="text" icon="el-icon-document-copy">复制</el-button>
-                                    <i v-if="index === (maxIndex - 1)" @click="editAssistant(index)" class="el-icon-edit"></i>
-                                    <i @click="deleteAssistant(index)" class="el-icon-delete"></i>
+                                    <!-- <i v-if="userMaxIndex === hoverIndex" @click="editUserContent(index)" class="el-icon-edit"></i> -->
+                                    <i @click="deleteMessageBtn(index)" class="el-icon-delete"></i>
                                 </div>
                             </div>
 
@@ -48,17 +49,17 @@
                                 <div v-if=" message.content !== ''" class="message-regenerate message-operate">
                                     <!-- <el-link v-if="AIStatus === 1 && message.requestId" @click="stopAssistant" :underline="false">停止生成</el-link> -->
                                     <template v-if="index !==1 && AIStatus === 2">
-                                        <span v-if="index === maxIndex || isHover === index">
+                                        <span v-if="index === maxIndex || hoverIndex === index">
                                             <el-button class="copy-message" @click="copyMessageBtn(message.content)" type="text" icon="el-icon-document-copy">复制</el-button>
-                                            <i @click="regenerateAssistant" title="重新生成" v-if="index === maxIndex" class="el-icon-refresh"></i>
-                                            <i @click="deleteAssistant(index)" class="el-icon-delete"></i>
+                                            <i @click="regenerateMessage" title="重新生成" v-if="index === maxIndex" class="el-icon-refresh"></i>
+                                            <i @click="deleteMessageBtn(index)" class="el-icon-delete"></i>
                                         </span>
                                     </template>
                                 </div>
 
                             </div>
 
-                            <div v-for="(follow, index) in followUpArr" :key="index" class="chat-more" @click="chatMoreBtn(follow)" v-if="AIStatus === 2 && message.requestId">
+                            <div v-for="(follow, index) in followUpList" :key="index" class="chat-more" @click="chatMoreBtn(follow)" v-if="AIStatus === 2 && message.requestId">
                                 <el-tag>
                                     <span>{{ follow }}</span>
                                     <i class="el-icon-right"></i>
@@ -113,13 +114,20 @@
                     <el-button @click="aiModelconfigBtn" style="margin-left: 10px;" type="text">配置</el-button>
                 </el-form-item>
 
-                <el-form-item label="系统角色" class="selectRole">
-                    <el-select filterable v-model="systemRole" @change="aiSystemRoleChanged">
-                        <el-option v-for="item in supportedSystemRoles" :key="item.value" :label="item.role" :value="item.value" />
-                    </el-select>
-                    <el-input :disabled="systemRole === 0" v-model="systemRolePrompt" type="textarea" resize="none">
-                    </el-input>
-                </el-form-item>
+                <template v-if="isShowSystemRole">
+                    <el-form-item :label="$t('settings.customAIPromptRole')">
+                        <el-switch v-model="useCustomPrompt" />
+                    </el-form-item>
+
+                    <el-form-item label="角色" class="selectRole">
+                        <el-select v-if="!useCustomPrompt" filterable v-model="systemRole" @change="aiSystemRoleChange">
+                            <el-option v-for="item in supportedSystemRoles" :key="item.value" :label="item.role" :value="item.value" />
+                        </el-select>
+
+                        <el-input v-else v-model="systemRolePrompt" type="textarea" resize="none">
+                        </el-input>
+                    </el-form-item>
+                </template>
 
                 <el-form-item label="角色性格">
                     <el-slider v-model="top_p" :min="0" :max="1" :step="0.05" :marks="{ 0: '准确严谨', 1: '灵活创新' }"></el-slider>
@@ -242,7 +250,6 @@ export default {
         maxIndex() {
             return this.message.length - 1;
         },
-
     },
     data() {
         return {
@@ -265,21 +272,27 @@ export default {
             // 当前对话框的消息
             message: [],
             // 消息问题
-            followUpArr: [],
+            followUpList: [],
 
             // 当前输入的消息
             currentMessage: '',
             requestId: null, // 发送消息的 requestId
-
+            userMaxIndex: -1,
 
 
             aiModelType: ['Groq', 'llama-3.1-70b-versatile'],
             aiModelTypeList: [],
 
-            //  系统角色
+            //  角色
+            useCustomPrompt: false,
             supportedSystemRoles: AI_SUPPORT_BUILD_IN_ROLES,
+            // 选择角色
             systemRole: 0,
+            selectedSystemPrompt: '',
+            // 自定义角色
             systemRolePrompt: '',
+            // 是否显示角色
+            isShowSystemRole: true,
 
             top_p: 0.7,
             temperature: 1,
@@ -297,7 +310,7 @@ export default {
 
             searchHistory: '',
 
-            isHover: null,
+            hoverIndex: null,
             editIndex: null,
             // fileList
             fileList: '',
@@ -305,6 +318,7 @@ export default {
         };
     },
     created() {
+
         this.sendImg = window.resourcesManager.getRelatedSrcPath('@/send.png');
         this.printscreenImg = window.resourcesManager.getRelatedSrcPath('@/printscreen.png');
         this.selectFileImg = window.resourcesManager.getRelatedSrcPath('@/selectFile.png');
@@ -317,10 +331,16 @@ export default {
 
         if (window.store.storeGet('aiConfig.chat')) {
             this.aiModelType = window.store.storeGet('aiConfig.chat.selectedModelType') || ['Groq', 'llama-3.1-70b-versatile'];
+            this.isShowSystemRole = this.aiModelType[0] !== 'Coze'
 
             this.top_p = window.store.storeGet('aiConfig.chat.topP') || 0.7;
             this.temperature = window.store.storeGet('aiConfig.chat.temperature') || 1;
-            this.systemRole = window.store.storeGet('aiConfig.chat.character') || 0;
+
+            this.useCustomPrompt = window.store.storeGet('aiConfig.chat.useCustomPrompt') || false;
+            this.systemRole = window.store.storeGet('aiConfig.chat.systemRole') || 0;
+            this.selectedSystemPrompt = this.supportedSystemRoles[this.systemRole].prompt || ''
+
+            // 自定义角色
             this.systemRolePrompt = window.store.storeGet('aiConfig.chat.characterPrompt') || '';
         } else {
             this.updateBtn();
@@ -345,8 +365,12 @@ export default {
 
         this.historyList = window.store.chatHistoryGet('historyList');
         this.message = window.store.chatHistoryGet(`chatHistory.${this.selectKey}`);
-        this.followUpArr = window.store.chatHistoryGet(`followUpArr.${this.selectKey}`) || [];
-
+        this.followUpList = window.store.chatHistoryGet(`followUpList.${this.selectKey}`) || [];
+        this.message.forEach((item, index) => {
+            if (item.role === "user") {
+                this.userMaxIndex = index; // 更新最大索引
+            }
+        });
         this.$nextTick(() => {
             if (document.getElementById('chat-bottom')) {
                 this.windowHeight = window.innerHeight - document.getElementById('chat-bottom').offsetHeight - 70;
@@ -371,7 +395,6 @@ export default {
         });
     },
     mounted() {
-
         window.addEventListener('focus', () => {
             // console.log('AI对话窗口获得焦点');
             this.aiModelTypeList = window.generalAIManager.getAllSupportedModels();
@@ -415,32 +438,7 @@ export default {
 
     methods: {
         formater(message) {
-            // const md = new MarkdownIt({
-            //     breaks: true,
-            //     html: true,
-            //     linkify: true,
-            //     typographer: true,
-            //     highlight: function (str, lang) {
 
-            //         const codeIndex = parseInt(Date.now()) + Math.floor(Math.random() * 10000000);
-
-            //         const copyBtn = `<p style="cursor: pointer;" data-clipboard-action="copy" data-clipboard-target="#copy-target-${codeIndex}" class="copy-btn" >复制</p>`;
-            //         if (lang && hljs.getLanguage(lang)) {
-            //             const langHtml = `<span class="lang-name">${lang}</span>`;
-            //             // 处理代码高亮
-            //             // const preCode = hljs.highlight(lang, str, true).value;
-            //             const preCode = hljs.highlightAuto(str).value;
-
-            //             return `<pre class="chat-pre"><code class="language-${lang} hljs"><div class="chat-heard">${langHtml} ${copyBtn}</div><div id="copy-target-${codeIndex}" class="chat-code">${preCode}</div></code></pre>`;
-            //         }
-
-            //         const preCode = hljs.highlightAuto(str).value;
-            //         return `<pre class="chat-pre"><code class="hljs"><div class="chat-heard" style="justify-content: end;">${copyBtn}</div><div id="copy-target-${codeIndex}" class="chat-code">${preCode}</div></code></pre>`;
-            //     },
-            // });
-            // const randerMessage = md.render(message);
-
-            // return randerMessage;
 
             return this.markdown.makeHtml(message)
         },
@@ -477,12 +475,14 @@ export default {
                 this.isShow = 'none';
             }
         },
-        aiSystemRoleChanged(val) {
-            console.log(val);
-            this.systemRolePrompt = this.supportedSystemRoles[val].prompt;
+
+        aiSystemRoleChange(val) {
+            this.selectedSystemPrompt = this.supportedSystemRoles[val].prompt;
+            window.store.storeSet('aiConfig.chat.systemRole', val)
         },
         handleAIEngineChanged() {
             // console.log('AI聊天： handleAIEngineChanged', this.aiModelType);
+            this.isShowSystemRole = this.aiModelType[0] !== 'Coze'
             window.store.storeSet('aiConfig.chat.selectedModelType', this.aiModelType)
 
         },
@@ -494,7 +494,10 @@ export default {
             window.store.storeSet('aiConfig.chat.modelType', this.aiModelType[1]);
             window.store.storeSet('aiConfig.chat.topP', this.top_p);
             window.store.storeSet('aiConfig.chat.temperature', this.temperature);
-            window.store.storeSet('aiConfig.chat.character', this.systemRole);
+
+            window.store.storeSet('aiConfig.chat.useCustomPrompt', this.useCustomPrompt);
+            window.store.storeSet('aiConfig.chat.character', this.selectedSystemPrompt);
+
             window.store.storeSet('aiConfig.chat.characterPrompt', this.systemRolePrompt);
             this.isShow = 'none';
             ipcRenderer.send('ChatEngineTypeChange', {});
@@ -548,7 +551,7 @@ export default {
             this.selectKey = key;
             this.historyDrawer = false;
             this.message = window.store.chatHistoryGet(`chatHistory.${this.selectKey}`);
-            this.followUpArr = window.store.chatHistoryGet(`followUpArr.${this.selectKey}`);
+            this.followUpList = window.store.chatHistoryGet(`followUpList.${this.selectKey}`);
 
             window.store.storeSet('aiConfig.selectKey', this.selectKey);
             this.initScrollHeight();
@@ -561,15 +564,24 @@ export default {
             //     document.getElementById('edit-input').focus();
             // });
         },
-        deleteTitle(id) {
-            this.editKey = '';
-            this.historyList = this.historyList.filter(item => item.key !== id);
-            window.store.chatHistorySet('historyList', this.historyList);
-            let tempList = window.store.chatHistoryGet('chatHistory');
-
+        deleteObjFun(obj, id) {
+            let tempList = window.store.chatHistoryGet(`${obj}`);
             let str = JSON.stringify(tempList, (key, value) => (key === id ? undefined : value));
             tempList = JSON.parse(str);
-            window.store.chatHistorySet('chatHistory', tempList);
+            window.store.chatHistorySet(`${obj}`, tempList);
+        },
+
+
+        deleteTitle(id) {
+            this.editKey = '';
+
+            this.historyList = this.historyList.filter(item => item.key !== id);
+            window.store.chatHistorySet('historyList', this.historyList);
+
+            if (window.store.chatHistoryGet('followUpList') && window.store.chatHistoryGet('followUpList')[id]) {
+                this.deleteObjFun('followUpList', id)
+            }
+            this.deleteObjFun('chatHistory', id)
 
             if (this.historyList.length === 0) {
                 this.addSessionBtn();
@@ -632,14 +644,23 @@ export default {
         },
         sendChatMessage() {
             this.requestId = window.aiChatManager.sendChatMessage(this.message);
-            console.log(' AI聊天：发送消息的requestId', this.requestId);
+
+            console.log('AI聊天：发送消息的requestId', this.requestId);
+            console.log('AI聊天：发送消息', this.message);
+            this.message.push(
+                {
+                    role: 'assistant',
+                    content: '',
+                }
+            );
             let AIMessage = '';
-            this.followUpArr = []
+            this.followUpList = []
             window.aiChatManager.setChatResponseListener((requestId, status, message, msgType) => {
                 this.AIStatus = status;
 
                 if (status === -1) {
-                    this.message[this.message.length - 1].content = '生成失败...'
+                    this.message[this.message.length - 1].content = message
+
                 } else {
 
                     if (msgType === 'answer' || msgType === undefined) {
@@ -650,16 +671,16 @@ export default {
 
                     if (msgType === 'followUp') {
                         console.log('followUp message:', message);
-                        this.followUpArr.push(message)
-                        window.store.chatHistorySet(`followUpArr.${this.selectKey}`, this.followUpArr);
+                        this.followUpList.push(message)
+                        window.store.chatHistorySet(`followUpList.${this.selectKey}`, this.followUpList);
                     }
                 }
 
 
 
-                // console.log('msgType:', msgType);
-
-                // console.log('status:', status);
+                console.log('msgType:', msgType);
+                // console.log('message:', message);
+                console.log('status:', status);
 
                 this.updateScrollHeight();
                 window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
@@ -667,9 +688,11 @@ export default {
         },
 
         sendBtn() {
+
             if (this.AIStatus === 1) {
                 return;
             }
+            this.editIndex = null
             const reg = /^[\s]*$/;
 
             if (!reg.test(this.currentMessage)) {
@@ -691,16 +714,12 @@ export default {
                     }
                 );
 
+                this.userMaxIndex = this.message.length - 1; // 更新最大索引
                 this.updateScrollHeight();
 
                 this.sendChatMessage();
 
-                this.message.push(
-                    {
-                        role: 'assistant',
-                        content: '',
-                    }
-                );
+
 
                 // 更改 title
                 this.historyList = this.historyList.map(item => {
@@ -720,26 +739,24 @@ export default {
             }
         },
         leaveOut() {
-            this.isHover = null
+            this.hoverIndex = null
         },
         enterInto(index) {
-            this.isHover = index
-
+            this.hoverIndex = index
         },
         changeUserMessage(e, index) {
-            console.log(this.message[index].content);
             this.$set(this.message[index], this.message[index].content, e);
         },
-        cancelEdit() {
+        cancelUserContent() {
             this.editIndex = null
             this.message = window.store.chatHistoryGet(`chatHistory.${this.selectKey}`);
 
         },
-        confirmEdit(index) {
-            console.log(index);
+        confirmUserContent() {
             this.editIndex = null
-            console.log('111111111111111', this.message);
             window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
+            console.log(this.message);
+
         },
         // stopAssistant() {
         //     window.aiChatManager.cancelChatProcess(this.requestId)
@@ -760,25 +777,18 @@ export default {
                 that.$message.error('复制失败');
             });
         },
-        editAssistant(i) {
-            console.log(i);
+        editUserContent(i) {
             this.editIndex = i
         },
-        deleteAssistant(i) {
+        deleteMessageBtn(i) {
 
             this.message = this.message.filter((item, index) => index !== i)
             window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
         },
-        regenerateAssistant() {
-            this.message = this.message.map(item => {
-                if (item.requestId) {
-                    const newItem = { ...item };
-                    newItem.content = ''
-                    delete newItem.requestId;
-                    return newItem;
-                }
-                return item;
-            });
+        regenerateMessage() {
+
+            // eslint-disable-next-line no-unused-vars
+            const deleteItem = this.message.pop()
             this.sendChatMessage()
 
         },
@@ -797,10 +807,6 @@ export default {
                 {
                     role: 'user',
                     content: text,
-                },
-                {
-                    role: 'assistant',
-                    content: '',
                 }
             );
             console.log(this.message);

@@ -1,38 +1,28 @@
 <template>
     <div>
-        <div id="total-height" class="main">
-            <div class="main-screen">
+        <div class="main">
+            <div class="main-screen" :style="{width: (mainscreenWidth - 300) + 'px', height: windowHeight + 'px' }">
                 <!-- 按键功能 -->
                 <div v-if="!knobFun">
                     <!-- 格子 -->
-                    <div v-if="!isMultiActions" id="box-main" class="box-content">
+                    <div id="box-main" class="box-content">
                         <template>
                             <div v-if="showVIA" class="app-action-button button-red" @click="showVIA = false">
-                                <svg-icon
-                                    color="white"
-                                    name="close"
-                                    style="font-size: 24px; position: absolute; top: 10px; right: 10px; z-index: 1001"
-                                />
+                                <svg-icon color="white" name="close" style="font-size: 24px; position: absolute; top: 10px; right: 10px; z-index: 1001" />
                             </div>
-                            <webview
-                                v-if="showVIA"
-                                id="viaView"
-                                ref="viaView"
-                                :style="{
+                            <webview v-if="showVIA" id="viaView" ref="viaView" :style="{
                                     position: 'absolute',
                                     top: '0',
                                     left: 0,
                                     width: '100%',
                                     height: windowHeight + 'px',
                                     zIndex: 1000,
-                                }"
-                                :src="viaServerUrl"
-                                webpreferences="webSecurity=no,nodeIntegration=yes"
-                            >
+                                }" :src="viaServerUrl" webpreferences="webSecurity=no,nodeIntegration=yes">
                             </webview>
                         </template>
 
-                        <div>
+                        <template v-if="!isMultiActions">
+
                             <div class="box-profile">
                                 <div style="margin-bottom: 15px">
                                     <!-- 选择设备 -->
@@ -42,19 +32,12 @@
                                             <i class="el-icon-arrow-down el-icon--right"></i>
                                         </span>
                                         <el-dropdown-menu>
-                                            <el-scrollbar
-                                                :style="{
+                                            <el-scrollbar :style="{
                                                     height:
                                                         (deviceArr.length * 37 > 300 ? 300 : deviceArr.length * 37) +
                                                         'px',
-                                                }"
-                                            >
-                                                <el-dropdown-item
-                                                    v-for="item in deviceArr"
-                                                    :key="item.serialNumber"
-                                                    :command="item.serialNumber + '@' + item.connectionType"
-                                                    style="border-bottom: 1px solid #505050"
-                                                >
+                                                }">
+                                                <el-dropdown-item v-for="item in deviceArr" :key="item.serialNumber" :command="item.serialNumber + '@' + item.connectionType" style="border-bottom: 1px solid #505050">
                                                     {{ item.label }}
                                                 </el-dropdown-item>
                                             </el-scrollbar>
@@ -70,241 +53,145 @@
                                             <i class="el-icon-arrow-down el-icon--right"></i>
                                         </span>
                                         <el-dropdown-menu>
-                                            <el-scrollbar
-                                                :style="{
+                                            <el-scrollbar :style="{
                                                     height:
                                                         (dropdownMenu.length * 36 > 300
                                                             ? 300
                                                             : dropdownMenu.length * 36) + 'px',
-                                                }"
-                                            >
-                                                <el-dropdown-item
-                                                    v-for="item in dropdownMenu"
-                                                    :key="item.value"
-                                                    :command="item.label"
-                                                >
-                                                    <i
-                                                        v-if="selectedConfigProfile === item.label"
-                                                        class="el-icon-check"
-                                                    ></i>
+                                                }">
+                                                <el-dropdown-item v-for="item in dropdownMenu" :key="item.value" :command="item.label">
+                                                    <i v-if="selectedConfigProfile === item.label" class="el-icon-check"></i>
                                                     {{ item.label }}
                                                 </el-dropdown-item>
                                             </el-scrollbar>
 
-                                            <el-dropdown-item command="add" divided
-                                                >{{ $t('newProfile') }}
+                                            <el-dropdown-item command="add" divided>{{ $t('newProfile') }}
                                             </el-dropdown-item>
                                             <el-dropdown-item command="edit">{{ $t('editProfile') }}</el-dropdown-item>
                                         </el-dropdown-menu>
                                     </el-dropdown>
                                 </div>
                             </div>
-                        </div>
 
-                        <div style="display: flex; justify-content: center; align-items: center; margin: 0 0 15px 50px">
-                            <!-- 按键 -->
-                            <div class="box-square">
-                                <div v-for="i in deviceColCount" :key="i">
-                                    <div
-                                        v-for="j in deviceRowCount"
-                                        :key="j"
-                                        :class="{
+                            <div class="box-key">
+
+                                <!-- 按键 -->
+                                <el-scrollbar :style="{
+                                    height: (deviceRowCount * 120 > squareHeight ? squareHeight : deviceRowCount * 120) + 'px',
+                                    width: (deviceColCount * 110 > squareWidth ? squareWidth : deviceColCount * 110) + 'px',
+                                    maxWidth: '1070px'
+                                }">
+                                    <div class="box-square">
+                                        <div v-for="i in deviceColCount" :key="i">
+                                            <div v-for="j in deviceRowCount" :key="j" :class="{
                                             'highlight-box': selectedCell === `${j + ',' + i}`,
                                             'draggable-box': draggableCell === `${j + ',' + i}`,
-                                        }"
-                                        class="square"
-                                        @click="cellBtn(currentConfigArray[j - 1][i - 1], i, j)"
-                                        @dblclick="handleDoubleClick(currentConfigArray[j - 1][i - 1])"
-                                        @mouseenter="mouseEnter(i, j)"
-                                        @mouseleave="mouseLeave(i, j)"
-                                    >
-                                        <draggable
-                                            v-model="currentConfigArray"
-                                            :sort="false"
-                                            forceFallback="true"
-                                            @end="handleEnd(currentConfigArray[j - 1][i - 1], i, j)"
-                                            @start="handleStart(currentConfigArray[j - 1][i - 1])"
-                                            :disabled="currentConfigArray[j - 1][i - 1].config.type === 'back'"
-                                        >
-                                            <UnitControl
-                                                :icon="currentConfigArray[j - 1][i - 1]?.config.icon"
-                                                :item-data="currentConfigArray[j - 1][i - 1]"
-                                                style="margin-top: 0px"
-                                            ></UnitControl>
-                                        </draggable>
+                                        }" class="square" @click="cellBtn(currentConfigArray[j - 1][i - 1], i, j)" @dblclick="handleDoubleClick(currentConfigArray[j - 1][i - 1])" @mouseenter="mouseEnter(i, j)" @mouseleave="mouseLeave(i, j)">
+                                                <draggable v-model="currentConfigArray" :sort="false" forceFallback="true" @end="handleEnd(currentConfigArray[j - 1][i - 1], i, j)" @start="handleStart(currentConfigArray[j - 1][i - 1])" :disabled="currentConfigArray[j - 1][i - 1]?.config?.type === 'back'">
+                                                    <UnitControl :icon="currentConfigArray[j - 1][i - 1]?.config.icon" :item-data="currentConfigArray[j - 1][i - 1]" style="margin-top: 0px"></UnitControl>
+                                                </draggable>
+                                            </div>
+                                        </div>
                                     </div>
+                                </el-scrollbar>
+                                <!-- 旋钮 -->
+                                <div class="box-round" @dblclick="boxRoundBtn">
+                                    <UnitControl v-if="ceneterData?.config" :icon="ceneterData.config.icon" :itemData="ceneterData" style="padding: 30%"></UnitControl>
                                 </div>
                             </div>
-                            <!-- 旋钮 -->
-                            <div class="box-round" @dblclick="boxRoundBtn">
-                                <UnitControl
-                                    v-if="ceneterData?.config"
-                                    :icon="ceneterData.config.icon"
-                                    :itemData="ceneterData"
-                                    style="padding: 30%"
-                                ></UnitControl>
+
+                            <div class="box-setting">
+                                <!-- 设置 -->
+                                <el-button type="text" @click="showSettings()">
+                                    <svg-icon color="darkgray" name="settings" style="font-size: 48px" />
+                                </el-button>
+
+                                <!-- 页码 -->
+                                <div v-if="isPagination === 1" class="pagination">
+                                    <el-button :disabled="totalPageNumber === 1" class="plusBtn" icon="el-icon-minus" type="primary" @click="handleDeletePage"></el-button>
+
+                                    <el-pagination ref="pagination" :current-page="currentPage" :page-size="1" :total="totalPageNumber" background layout="pager" small @current-change="handleCurrentPageChanged"></el-pagination>
+
+                                    <el-button :disabled="totalPageNumber >= 10" class="plusBtn" icon="el-icon-plus" type="primary" @click="handleAddPage"></el-button>
+                                </div>
+
+                                <!-- 保存 -->
+                                <div class="box-save">
+                                    <el-button type="text" @click="() => saveBtn(false)">
+                                        {{ $t('save') }}
+                                    </el-button>
+                                </div>
+
                             </div>
-                        </div>
+                        </template>
 
-                        <!-- 页码 -->
-                        <div v-if="isPagination === 1" class="pagination">
-                            <el-button
-                                :disabled="totalPageNumber === 1"
-                                class="plusBtn"
-                                icon="el-icon-minus"
-                                type="primary"
-                                @click="handleDeletePage"
-                            ></el-button>
-
-                            <el-pagination
-                                ref="pagination"
-                                :current-page="currentPage"
-                                :page-size="1"
-                                :total="totalPageNumber"
-                                background
-                                layout="pager"
-                                small
-                                @current-change="handleCurrentPageChanged"
-                            ></el-pagination>
-
-                            <el-button
-                                :disabled="totalPageNumber >= 10"
-                                class="plusBtn"
-                                icon="el-icon-plus"
-                                type="primary"
-                                @click="handleAddPage"
-                            ></el-button>
-                        </div>
-
-                        <!-- 保存 -->
-                        <div class="box-save">
-                            <el-button type="text" @click="() => saveBtn(false)">
-                                {{ $t('save') }}
-                            </el-button>
-                        </div>
-                        <!-- 设置 -->
-                        <el-button
-                            style="position: absolute; bottom: 20px; left: 20px"
-                            type="text"
-                            @click="showSettings()"
-                        >
-                            <svg-icon color="darkgray" name="settings" style="font-size: 48px" />
-                        </el-button>
-                    </div>
-
-                    <!-- 多项操作 -->
-                    <template v-else>
-                        <div id="multi-action-container" style="padding: 60px">
-                            <el-page-header
-                                :content="$t('multiActions')"
-                                class="multiActions-title"
-                                @back="goBack"
-                            ></el-page-header>
-                            <div>
-                                <div class="box-multiActions" @mouseenter="multMouseEnter" @mouseleave="multMouseLeave">
-                                    <div class="el-container">
-                                        <el-scrollbar>
-                                            <draggable>
-                                                <div
-                                                    v-for="(item, index) in multiActionsArr"
-                                                    :key="index"
-                                                    :class="{ highlight: isHighlighted(index) }"
-                                                    class="multiActions-config"
-                                                    @click="multiActionsClick(item, index)"
-                                                >
-                                                    <IconHolder
-                                                        :icon-size="multiActionsIconSize"
-                                                        :icon-src="item.config.icon"
-                                                    />
-                                                    <div class="multiActions-name">
-                                                        <span>{{
+                        <!-- 多项操作 -->
+                        <template v-else>
+                            <div id="multi-action-container" style="padding: 60px">
+                                <el-page-header :content="$t('multiActions')" class="multiActions-title" @back="goBack"></el-page-header>
+                                <div>
+                                    <div class="box-multiActions" @mouseenter="multMouseEnter" @mouseleave="multMouseLeave">
+                                        <div class="el-container">
+                                            <el-scrollbar>
+                                                <draggable>
+                                                    <div v-for="(item, index) in multiActionsArr" :key="index" :class="{ highlight: isHighlighted(index) }" class="multiActions-config" @click="multiActionsClick(item, index)">
+                                                        <IconHolder :icon-size="multiActionsIconSize" :icon-src="item.config.icon" />
+                                                        <div class="multiActions-name">
+                                                            <span>{{
                                                             item.isPlugin ? item.childrenName : $t(item.childrenName)
                                                         }}</span>
-                                                        <span>{{ item.config.title.text }}</span>
+                                                            <span>{{ item.config.title.text }}</span>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </draggable>
-                                        </el-scrollbar>
+                                                </draggable>
+                                            </el-scrollbar>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </template>
-                </div>
-                <!-- 旋钮功能  -->
-                <KnobFunction
-                    v-else
-                    :ceneterData="ceneterData"
-                    :clickPos="clickPos"
-                    :dragPos="dragPos"
-                    :isknobDraggable="isknobDraggable"
-                    :leftData="leftData"
-                    :rightData="rightData"
-                    @changeClickPos="changeClickPos"
-                    @changeDragPos="changeDragPos"
-                    @currentKnob="currentKnob"
-                    @knobValue="knobValue"
-                    @outKnobBtn="outKnobBtn"
-                ></KnobFunction>
+                        </template>
+                    </div>
 
+                </div>
+
+                <!-- 旋钮功能  -->
+                <KnobFunction v-else :ceneterData="ceneterData" :clickPos="clickPos" :dragPos="dragPos" :isknobDraggable="isknobDraggable" :leftData="leftData" :rightData="rightData" @changeClickPos="changeClickPos" @changeDragPos="changeDragPos" @currentKnob="currentKnob" @knobValue="knobValue" @outKnobBtn="outKnobBtn"></KnobFunction>
                 <!-- 操作配置 -->
 
-                <el-scrollbar v-if="operationData.config" :style="{ height: Number(operationHeight) - 10 + 'px' }">
-                    <OperationConfiguration
-                        ref="operationConfig"
-                        :isMultiActions="isMultiActions"
-                        :operationData="operationData"
-                        :resourceId="resourceId"
-                        @deleteOperation="deleteOperation"
-                        @enterMultiActions="enterMultiActions"
-                        @updateOperationData="updateOperationData"
-                    ></OperationConfiguration>
-                </el-scrollbar>
-                <div v-else-if="!isMultiActions" class="prompt">
-                    {{ $t('dragMessage') }}
+                <!-- <el-scrollbar v-if="operationData.config" :style="{ height: Number(operationHeight) - 10 + 'px' }">
+                    <OperationConfiguration ref="operationConfig" :isMultiActions="isMultiActions" :operationData="operationData" :resourceId="resourceId" @deleteOperation="deleteOperation" @enterMultiActions="enterMultiActions" @updateOperationData="updateOperationData"></OperationConfiguration>
+                </el-scrollbar> -->
+                <div id="box-operation">
+                    <el-scrollbar v-if="operationData.config" :style="{ height: Number(operationHeight) - 10 + 'px', marginLeft: '-150%' }">
+                        <OperationConfiguration v-if="operationData.config" ref="operationConfig" id="operationConfiguration" :isMultiActions="isMultiActions" :operationData="operationData" :resourceId="resourceId" @deleteOperation="deleteOperation" @enterMultiActions="enterMultiActions" @updateOperationData="updateOperationData"></OperationConfiguration>
+                    </el-scrollbar>
+                    <div v-else-if="!isMultiActions" class="prompt">
+                        {{ $t('dragMessage') }}
+                    </div>
                 </div>
             </div>
 
             <!-- 侧边栏 -->
             <div v-if="!showVIA" :style="{ height: windowHeight + 'px' }" class="sidebar">
                 <div class="box-side">
-                    <el-input
-                        v-model="searchIpt"
-                        class="searchIpt"
-                        clearable
-                        placeholder="请输入内容"
-                        prefix-icon="el-icon-search"
-                        @input="handleSearchInput"
-                    />
+                    <el-input v-model="searchIpt" class="searchIpt" clearable placeholder="请输入内容" prefix-icon="el-icon-search" @input="handleSearchInput" />
                 </div>
 
                 <div id="scrollBarContainer" :style="{ maxHeight: maxScrollHeight + 'px' }" class="el-container">
                     <el-scrollbar>
                         <el-menu v-if="!knobFun">
-                            <el-submenu
-                                v-for="item in displayMenuKeyConfiguration"
-                                :key="item.subMenu"
-                                :index="item.subMenu"
-                            >
+                            <el-submenu v-for="item in displayMenuKeyConfiguration" :key="item.subMenu" :index="item.subMenu">
                                 <template slot="title">
                                     {{ item.isPlugin ? item.subMenu : $t(item.subMenu) }}
                                 </template>
 
                                 <el-menu-item-group v-for="children in item.children" :key="children.childrenName">
-                                    <draggable
-                                        dragClass="dragClass"
-                                        forceFallback="true"
-                                        @end="onEnd(children)"
-                                        @start="onStart()"
-                                    >
+                                    <draggable dragClass="dragClass" forceFallback="true" @end="onEnd(children)" @start="onStart()">
                                         <el-menu-item :index="children.childrenName">
                                             <div class="sideMenu">
-                                                <IconHolder
-                                                    :icon-size="iconSize"
-                                                    :icon-src="
+                                                <IconHolder :icon-size="iconSize" :icon-src="
                                                         item.isPlugin ? children.config.menuIcon : children.config.icon
-                                                    "
-                                                />
+                                                    " />
                                                 <span class="sideMenu-text">{{
                                                     item.isPlugin ? children.childrenName : $t(children.childrenName)
                                                 }}</span>
@@ -323,19 +210,10 @@
                                 </template>
                                 <el-menu-item-group v-for="children in item.children" :key="children.childrenName">
                                     <!--  v-bind='{ group: "children" }' -->
-                                    <draggable
-                                        dragClass="dragClass"
-                                        forceFallback="true"
-                                        v-bind="{ group: 'children' }"
-                                        @end="knobEnd(children)"
-                                        @start="knobStart(children)"
-                                    >
+                                    <draggable dragClass="dragClass" forceFallback="true" v-bind="{ group: 'children' }" @end="knobEnd(children)" @start="knobStart(children)">
                                         <el-menu-item :index="children.childrenName">
                                             <div class="sideMenu">
-                                                <IconHolder
-                                                    :icon-size="iconSize"
-                                                    :icon-src="children.config.icon"
-                                                ></IconHolder>
+                                                <IconHolder :icon-size="iconSize" :icon-src="children.config.icon"></IconHolder>
                                                 <span class="sideMenu-text">{{
                                                     item.isPlugin ? children.childrenName : $t(children.childrenName)
                                                 }}</span>
@@ -355,6 +233,7 @@
 <script>
 import Constants from '@/utils/Constants';
 import draggable from 'vuedraggable';
+// import VueDragResize from 'vue-drag-resize'
 import OperationConfiguration from '@/views/Components/OperationConfiguration';
 import { KeyConfiguration, keyMultiActions, knobMenu } from '@/plugins/KeyConfiguration.js';
 import UnitControl from '@/views/Components/UnitControl.vue';
@@ -368,6 +247,8 @@ export default {
     name: 'MainScreen',
     components: {
         draggable,
+        // eslint-disable-next-line vue/no-unused-components
+        // VueDragResize,
         IconHolder,
         OperationConfiguration,
         // 单元控件
@@ -392,7 +273,7 @@ export default {
 
             isWin32: true,
             bjImg: '',
-
+            mainscreenWidth: window.innerWidth,
             windowHeight: window.innerHeight - 32, // 初始窗口高度
             searchIpt: '',
             selectedCell: null, // box选中状态
@@ -461,6 +342,9 @@ export default {
             //   高度
             mainHeight: null,
             operationHeight: null,
+
+            squareHeight: 350,
+            squareWidth: 440
         };
     },
 
@@ -620,6 +504,7 @@ export default {
                 this.currentConfigArray[row] = new Array(this.deviceColCount);
             }
 
+
             setTimeout(() => {
                 this.getConfigInfo(this.deviceRowCount, this.deviceColCount);
                 this.deviceSend();
@@ -635,6 +520,7 @@ export default {
             this.loadStandardSideMenu();
             this.loadMultiKeyActionsMenu();
             this.updateMenuDisplay();
+
         });
     },
     methods: {
@@ -1097,8 +983,18 @@ export default {
                         this.operationHeight = this.windowHeight - this.mainHeight;
                     }
                 }
+
+                this.mainscreenWidth = window.innerWidth
+                this.squareHeight = 350
+                this.squareHeight +=  window.innerHeight - 700
+
+                this.squareWidth = 440
+                this.squareWidth +=  window.innerWidth - 1024
+
             });
         },
+
+
         handleStart() {
             this.selectedCell = null;
             this.isDraggable = !this.isDraggable;
@@ -1106,6 +1002,9 @@ export default {
         },
         handleEnd(movedKeyConfig) {
             // 拖拽时的高亮
+
+
+
             this.isDraggable = !this.isDraggable;
             this.draggableCell = '';
 
@@ -1273,18 +1172,18 @@ export default {
                         this.currentConfigArray = deepCopy(this.currentConfigArray);
                         this.saveBtn();
                     })
-                    .catch(() => {});
+                    .catch(() => { });
             }
             this.selectedCell = `${keyCode[0]},${keyCode[1]}`;
             console.log(
                 'MainScreen:   After Release: configSubItem: ' +
-                    JSON.stringify(configSubItem) +
-                    ' this.operationData: ' +
-                    JSON.stringify(this.operationData) +
-                    ' this.selectedCell: ' +
-                    this.selectedCell +
-                    ' keyCode: ' +
-                    keyCode
+                JSON.stringify(configSubItem) +
+                ' this.operationData: ' +
+                JSON.stringify(this.operationData) +
+                ' this.selectedCell: ' +
+                this.selectedCell +
+                ' keyCode: ' +
+                keyCode
             );
             this.saveBtn();
         },
@@ -1322,6 +1221,8 @@ export default {
                     this.multiActionsArr = deepCopy(item.config.subActions);
                 }
             }
+
+
         },
         // 双击
         handleDoubleClick(doubleItem) {
@@ -2093,24 +1994,22 @@ export default {
 .box-content {
     position: relative;
     border-bottom: 2px solid #222;
-    padding-bottom: 15px;
 }
 
 .box-profile {
     display: flex;
     flex-direction: column;
-    justify-content: end;
     align-items: end;
-    margin: 10px 15px 10px 0;
+    margin: 10px 15px;
 }
 
 .box-square {
     display: flex;
-    margin-right: 15px;
 }
 
 // 圆钮
 .box-round {
+    margin-left: 10px;
     width: 165px;
     height: 165px;
     border-radius: 165px;
@@ -2140,11 +2039,15 @@ export default {
 .draggable-box {
     border: 2px solid #909399;
 }
-
+.box-setting {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 50px;
+}
 // 分页
 .pagination {
     display: flex;
-    justify-content: center;
     align-items: center;
 
     .plusBtn {
@@ -2159,9 +2062,7 @@ export default {
 }
 
 .box-save {
-    display: flex;
-    justify-content: end;
-    margin: -35px 35px 0 0;
+    margin-right: 15px;
 }
 
 // 多项操作样式
@@ -2210,11 +2111,14 @@ export default {
         line-height: 20px;
     }
 }
+#box-operation {
+    position: fixed;
+    left: 50%;
+}
 
 .prompt {
-    display: flex;
-    justify-content: center;
-    margin: 60px;
+    margin-left: -100%;
+    margin-top: 30px;
     color: #fff;
 }
 </style>
@@ -2237,16 +2141,16 @@ export default {
 }
 
 .main {
-    display: flex;
-    justify-content: space-between;
-
+    position: relative;
     .main-screen {
-        flex: 1;
         background: #2d2d2d;
         border: 1px solid #222;
     }
 
     .sidebar {
+        position: fixed;
+        right: 0;
+        top: 32px;
         width: 300px;
         background-color: #2d2d2d;
         color: #fff;
@@ -2284,6 +2188,15 @@ export default {
 </style>
 
 <style lang="less" scoped>
+.box-key {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: '0 30px';
+    .el-scrollbar /deep/ .el-scrollbar__wrap {
+        overflow-x: auto;
+    }
+}
 .el-scrollbar /deep/ .el-scrollbar__wrap {
     overflow-x: hidden;
 }

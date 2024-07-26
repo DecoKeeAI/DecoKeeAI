@@ -19,14 +19,14 @@ ul {
   border-radius: 10px;
   box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
   -webkit-box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
-  background: #979a9f;
+  background: rgba(144,147,153,.3);
 }
 
 ::-webkit-scrollbar-track {
   box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
   -webkit-box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
   border-radius: 10px;
-  background: #EDEDED;
+  background: rgba(144,147,153,.3);
 }
 
 
