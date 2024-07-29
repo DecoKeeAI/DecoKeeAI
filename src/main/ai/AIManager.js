@@ -398,7 +398,8 @@ class AIManager {
             this.assistantDeviceSN = serialNumber;
             this.assistantDeviceInfo = {
                 requestId: requestId,
-                keyCode: keyCode
+                keyCode: keyCode,
+                deviceSN: requestId.split('-')[0]
             };
             console.log('startAssistantSession: For device: ' + serialNumber);
             this._setSessionState(AI_SESSION_STATE_ONGOING);
@@ -1164,6 +1165,7 @@ class AIManager {
         }
 
         const processKeyCode = this.assistantDeviceInfo.keyCode;
+        const deviceSN = this.assistantDeviceInfo.deviceSN;
 
         const deviceControlManager = this.appManager.deviceControlManager;
         switch (state) {
@@ -1172,7 +1174,7 @@ class AIManager {
                 deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_ANIMATION_ONGOING), processKeyCode, -1);
                 deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_ANIMATION_PROCESSING), processKeyCode, -1);
 
-                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_TYPE_KEY_CONFIG), processKeyCode, -2);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.appManager.deviceControlManager.getDeviceKeyIcon(deviceSN, processKeyCode), processKeyCode, -2);
 
                 this.assistantDeviceSN = '';
                 this.assistantDeviceInfo = undefined;
@@ -1185,21 +1187,21 @@ class AIManager {
             case AI_SESSION_STATE_ONGOING:
                 deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_ANIMATION_IDLE), processKeyCode, -1);
                 deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_ANIMATION_PROCESSING), processKeyCode, -1);
-                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_TYPE_KEY_CONFIG), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.appManager.deviceControlManager.getDeviceKeyIcon(deviceSN, processKeyCode), processKeyCode, -1);
 
                 deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_ANIMATION_ONGOING), processKeyCode, -2);
                 break;
             case AI_SESSION_STATE_PROCESSING:
                 deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_ANIMATION_IDLE), processKeyCode, -1);
                 deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_ANIMATION_ONGOING), processKeyCode, -1);
-                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_TYPE_KEY_CONFIG), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.appManager.deviceControlManager.getDeviceKeyIcon(deviceSN, processKeyCode), processKeyCode, -1);
 
                 deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_ANIMATION_PROCESSING), processKeyCode, -2);
                 break;
             case AI_SESSION_STATE_IDLE:
                 deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_ANIMATION_ONGOING), processKeyCode, -1);
                 deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_ANIMATION_PROCESSING), processKeyCode, -1);
-                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_TYPE_KEY_CONFIG), processKeyCode, -1);
+                deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.appManager.deviceControlManager.getDeviceKeyIcon(deviceSN, processKeyCode), processKeyCode, -1);
 
                 deviceControlManager.showDeviceAnimation(this.assistantDeviceSN, this.generalAIManager.getAnimationResourceId(Constants.ASSISTANT_ANIMATION_IDLE), processKeyCode, -2);
                 break;

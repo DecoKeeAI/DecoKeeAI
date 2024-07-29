@@ -569,6 +569,20 @@ class DeviceControlManager {
         WSDeviceManager = undefined;
     }
 
+    getDeviceKeyIcon(serialNumber, keyCode) {
+        const deviceActiveProfile = deviceActiveProfileMap.get(serialNumber);
+        if (deviceActiveProfile === undefined) return '';
+
+        const configDetail = deviceActiveProfile.configInfo;
+
+        for (let i = 0; i < configDetail.length; i++) {
+            const configData = configDetail[i];
+            if (configData.keyCode === keyCode) {
+                return configData.config.icon;
+            }
+        }
+    }
+
 }
 
 function loadAppMonitorConfigInfo() {
