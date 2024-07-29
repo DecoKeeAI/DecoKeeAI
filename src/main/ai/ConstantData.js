@@ -496,22 +496,25 @@ export function getChatPrePromptMsg(message, engineType) {
     - \`operatingComputer\`: 当需要帮助操作电脑时，如打开/关闭某一个程序，生成/写文档/作文, 生成/提供报告等。
     - \`generateConfiguration\`: 当需要生成/修改键盘/快捷键配置的帮助时。
     - \`standardChat\`: 当不符合其他 'userRequestAction' 的项目时。
+  - \`searchOptions\` 网络搜索相关的参数，包含以下信息:
+    - \`shouldDoWebSearch\`: 是否需要在网络中搜索相关内容来扩展LLM回复中的额外参考数据。
+    - \`searchString\`: 当需要搜索时，提供一条和用户问题最相关的用来搜索使用的搜索内容。
 
   ## 参考示例1:
     用户提问: 打开飞书
-    回复: {"userRequestAction": "operatingComputer"}
+    回复: {"userRequestAction":"operatingComputer","searchOptions":{"shouldDoWebSearch":false,"searchString":""}}
                         
   ## 参考示例2:
     用户提问: 给我一篇关于春天的100字作文。
-    回复: {"userRequestAction": "operatingComputer"}
+    回复: {"userRequestAction":"operatingComputer","searchOptions":{"shouldDoWebSearch":false,"searchString":""}}
                         
   ## 参考示例3:
     用户提问: 把我常用的应用配置到键盘上
-    回复: {"userRequestAction": "generateConfiguration"}
+    回复: {"userRequestAction":"generateConfiguration","searchOptions":{"shouldDoWebSearch":false,"searchString":""}}
                         
   ## 参考示例3:
-    用户提问: 今天天气如何
-    回复: {"userRequestAction": "standardChat"}
+    用户提问: 北京今天天气如何
+    回复: {"userRequestAction":"standardChat","searchOptions":{"shouldDoWebSearch":true,"searchString":"北京今日天气"}}
 `;
 
     switch (engineType) {
@@ -534,22 +537,25 @@ export function getChatPrePromptMsg(message, engineType) {
       - \`operatingComputer\`: When help is needed to operate the computer, such as opening/closing a program, generating/writing a document, generating a report, etc.
       - \`generateConfiguration\`: When help is needed to generate/modify keyboard/shortcut configurations.
       - \`standardChat\`: When it doesn't fit into other 'userRequestAction' items.
+    - \`searchOptions\` Parameters related to web search, including the following information:
+      - \`shouldDoWebSearch\`: Whether to search the web for relevant content to expand the LLM response with additional reference data.
+      - \`searchString\`: When searching is required, provides a search query that is most relevant to the user's question to use in the search engine.
 
   ## Reference Example 1:
     User question: Open Feishu
-    Reply: {"userRequestAction": "operatingComputer"}
+    Reply: {"userRequestAction":"operatingComputer","searchOptions":{"shouldDoWebSearch":false,"searchString":""}}
 
   ## Reference Example 2:
     User question: Write a 100-word essay about spring.
-    Reply: {"userRequestAction": "operatingComputer"}
+    Reply: {"userRequestAction":"operatingComputer","searchOptions":{"shouldDoWebSearch":false,"searchString":""}}
                     
   ## Reference Example 3:
     User question: Configure my frequently used apps to keyboard shortcuts
-    Reply: {"userRequestAction": "generateConfiguration"}
+    Reply: {"userRequestAction":"generateConfiguration","searchOptions":{"shouldDoWebSearch":false,"searchString":""}}
                     
   ## Reference Example 4:
-    User question: What's the weather like today?
-    Reply: {"userRequestAction": "standardChat"}
+    User question: How's the weather like today in LA?
+    Reply: {"userRequestAction":"standardChat","searchOptions":{"shouldDoWebSearch":true,"searchString":"LA today weather"}}
 `,
                 },
                 {

@@ -54,12 +54,12 @@ import {isURL, randomString} from '@/utils/Utils';
 import WebSpeechAudioAdapter from '@/main/ai/Connector/WebSpeechAudioAdapter';
 import {deepCopy} from '@/utils/ObjectUtil';
 import CozeAdapter from "@/main/ai/Connector/CozeAdapter";
+import FirecrawlEngineAdapter from "@/main/ai/Connector/FirecrawlEngineAdapter";
 
 const { exec } = require('child_process');
 const levenshtein = require('fast-levenshtein');
 const path = require('path');
 const fs = require('fs');
-
 
 const htmlDocx = require('html-docx-js');
 const showdown = require('showdown');
@@ -188,6 +188,8 @@ class AIManager {
         this.outputRobot = undefined;
 
         this.markdownConverter = undefined;
+
+        this.webSearchEngine = new FirecrawlEngineAdapter();
 
         this.operatePCContext = {
             stage: OPERATION_STAGE.STAGE_DECODE_END,
@@ -2258,6 +2260,17 @@ class AIManager {
                     return;
                 }
 
+                // let searchResult = undefined;
+                // if (responseConfigData.searchOptions !== undefined && responseConfigData.searchOptions.shouldDoWebSearch) {
+                //     searchResult = await this.webSearchEngine.search(responseConfigData.searchOptions.searchString, {
+                //         pageOptions: {
+                //             fetchPageContent: true
+                //         }
+                //     });
+                // }
+                //
+                // console.log('AIManager: handleAIAssistantProcess: Get Search Result: ', searchResult);
+
                 if (responseConfigData.userRequestAction === "operatingComputer") {
                     this.aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_OPERATE_PC);
                     this.aiAssistantChatAdapter.setChatResponseListener((requestId, status, message, messageType) => {
@@ -2375,17 +2388,22 @@ class AIManager {
                     }
                 };
                 break;
-            case AI_ENGINE_TYPE.ZhiPuChat:
+            case AI_ENGINE_TYPE.ZhiPuChat: {
+                const searchData = {
+                    enable: enableWebSearch,
+                    search_result: true
+                }
+                if (enableWebSearch) {
+                    searchData.search_query = message;
+                }
                 webSearchPlugin = {
                     tools: [{
                         type: 'web_search',
-                        web_search: {
-                            enable: enableWebSearch,
-                            search_result: true
-                        }
+                        web_search: searchData
                     }]
                 };
                 break;
+            }
         }
 
         const finalParam = Object.assign(enableWebSearch ? webSearchPlugin : {}, params);

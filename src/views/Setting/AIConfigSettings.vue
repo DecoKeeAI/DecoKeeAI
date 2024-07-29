@@ -166,16 +166,6 @@
                             <el-radio label="chatBot">{{ $t('settings.huoshanAgent') }} </el-radio>
                         </el-radio-group>
                     </el-form-item>
-                    <el-form-item :label="$t('settings.useDekiePrompt')">
-                        <el-switch v-model="useDekiePrompt" />
-
-                        <el-tooltip placement="top" style="margin-top: 8px">
-                            <div slot="content" style="white-space: pre-wrap; line-height: 20px">
-                                {{ $t('settings.useDekiePromptHint') }}
-                            </div>
-                            <i class="el-icon-question" style="margin-left: 24px"></i>
-                        </el-tooltip>
-                    </el-form-item>
                     <el-form-item label="Endpoint/Bot ID">
                         <el-input v-model="customModelName" clearable style="width: 191px"></el-input>
 
@@ -214,7 +204,13 @@
                 <el-form-item :label="$t('settings.useDekiePrompt')">
                     <el-switch v-model="useDekiePrompt" />
 
-                    <el-tooltip placement="top" style="margin-top: 8px">
+                    <el-tooltip v-if="aiModelType.startsWith('HuoShan-')" placement="top" style="margin-top: 8px">
+                        <div slot="content" style="white-space: pre-wrap; line-height: 20px">
+                            {{ $t('settings.useDekiePromptHint') }}
+                        </div>
+                        <i class="el-icon-question" style="margin-left: 24px"></i>
+                    </el-tooltip>
+                    <el-tooltip v-else placement="top" style="margin-top: 8px">
                         <div slot="content" style="white-space: pre-wrap; line-height: 20px">
                             {{ $t('settings.useDekiePromptHintCustom') }}
                         </div>
