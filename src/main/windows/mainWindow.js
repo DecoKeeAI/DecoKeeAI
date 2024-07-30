@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, Menu } from 'electron';
+import {BrowserWindow, ipcMain, Menu, shell} from 'electron';
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib';
 import { checkUpdate } from '@/plugins/VersionHelper';
 
@@ -135,6 +135,15 @@ class MainWindow {
                 const newWindowSize = that.win.getSize();
                 that.storeManager.storeSet('mainWindowSize', newWindowSize);
             }, 500);
+        });
+
+        this.win.webContents.on('will-navigate', (event, url) => {
+            // 拦截跳转 URL 的请求
+            console.log(`MainWindow Will navigate to: ${url}`);
+            // 可以在这里取消跳转或修改 URL
+            event.preventDefault();
+
+            shell.openExternal(url);
         });
     }
 
