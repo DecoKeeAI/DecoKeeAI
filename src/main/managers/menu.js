@@ -191,6 +191,17 @@ class MenuManager {
 
                     that.dragStartApplication = activeWindowInfo;
                 }
+                return;
+            }
+
+            if (!that.aiMenuShowProcessStart) {
+                that.shouldShowAIMenu = false;
+            } else if (that.aiMenuShown) {
+                that.shouldShowAIMenu = false;
+                that.aiMenuShown = false;
+                that.aiMenuShowProcessStart = false;
+                that.clipboardContent = {}
+                that.mouseAIMenu.closePopup();
             }
         });
 
