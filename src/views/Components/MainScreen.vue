@@ -78,10 +78,9 @@
                                 <!-- 按键 -->
                                 <el-scrollbar :style="{
                                     height: (deviceRowCount * 120 > squareHeight ? squareHeight : deviceRowCount * 120) + 'px',
-                                    width: (deviceColCount * 110 > squareWidth ? squareWidth : deviceColCount * 110) + 'px',
-                                    maxWidth: '1070px'
+                                    width: (deviceColCount * 106 > squareWidth ? squareWidth : deviceColCount * 106) + 'px',
                                 }">
-                                    <div class="box-square">
+                                    <div class="box-square" :style="{ height: (deviceRowCount * 120 > squareHeight ? squareHeight : deviceRowCount * 120) + 'px'}">
                                         <div v-for="i in deviceColCount" :key="i">
                                             <div v-for="j in deviceRowCount" :key="j" :class="{
                                             'highlight-box': selectedCell === `${j + ',' + i}`,
@@ -158,16 +157,11 @@
                 <KnobFunction v-else :ceneterData="ceneterData" :clickPos="clickPos" :dragPos="dragPos" :isknobDraggable="isknobDraggable" :leftData="leftData" :rightData="rightData" @changeClickPos="changeClickPos" @changeDragPos="changeDragPos" @currentKnob="currentKnob" @knobValue="knobValue" @outKnobBtn="outKnobBtn"></KnobFunction>
                 <!-- 操作配置 -->
 
-                <!-- <el-scrollbar v-if="operationData.config" :style="{ height: Number(operationHeight) - 10 + 'px' }">
-                    <OperationConfiguration ref="operationConfig" :isMultiActions="isMultiActions" :operationData="operationData" :resourceId="resourceId" @deleteOperation="deleteOperation" @enterMultiActions="enterMultiActions" @updateOperationData="updateOperationData"></OperationConfiguration>
-                </el-scrollbar> -->
-                <div id="box-operation">
-                    <el-scrollbar v-if="operationData.config" :style="{ height: Number(operationHeight) - 10 + 'px', marginLeft: '-150%' }">
-                        <OperationConfiguration v-if="operationData.config" ref="operationConfig" id="operationConfiguration" :isMultiActions="isMultiActions" :operationData="operationData" :resourceId="resourceId" @deleteOperation="deleteOperation" @enterMultiActions="enterMultiActions" @updateOperationData="updateOperationData"></OperationConfiguration>
-                    </el-scrollbar>
-                    <div v-else-if="!isMultiActions" class="prompt">
-                        {{ $t('dragMessage') }}
-                    </div>
+                <el-scrollbar v-if="operationData.config" :style="{ height: Number(operationHeight) - 10 + 'px' }">
+                    <OperationConfiguration :style="{ height: Number(operationHeight) - 10 + 'px' }" v-if="operationData.config" ref="operationConfig" id="operationConfiguration" :isMultiActions="isMultiActions" :operationData="operationData" :resourceId="resourceId" @deleteOperation="deleteOperation" @enterMultiActions="enterMultiActions" @updateOperationData="updateOperationData"></OperationConfiguration>
+                </el-scrollbar>
+                <div v-else-if="!isMultiActions" class="prompt">
+                    {{ $t('dragMessage') }}
                 </div>
             </div>
 
@@ -272,7 +266,6 @@ export default {
             configIdx: '',
 
             isWin32: true,
-            bjImg: '',
             mainscreenWidth: window.innerWidth,
             windowHeight: window.innerHeight - 32, // 初始窗口高度
             searchIpt: '',
@@ -349,7 +342,6 @@ export default {
     },
 
     created() {
-        this.bjImg = window.resourcesManager.getRelatedSrcPath('@/bj.jpg');
 
         const tempDeviceArr = window.appManager.deviceControlManager.getConnectedDevices();
 
@@ -969,27 +961,32 @@ export default {
                 const scrollTop = document.getElementById('scrollBarContainer').offsetTop;
                 this.maxScrollHeight = this.windowHeight - scrollTop;
 
-                if (this.isMultiActions) {
-                    const multiActionMain = document.getElementById('multi-action-container');
-                    if (multiActionMain) {
-                        this.mainHeight = multiActionMain.offsetHeight;
-                        this.operationHeight = this.windowHeight - this.mainHeight;
-                    }
-                } else {
-                    const boxMain = document.getElementById('box-main');
+                this.$nextTick(() => {
+                    if (this.isMultiActions) {
+                        const multiActionMain = document.getElementById('multi-action-container');
+                        if (multiActionMain) {
+                            this.mainHeight = multiActionMain.offsetHeight;
+                            this.operationHeight = this.windowHeight - this.mainHeight;
+                        }
+                    } else {
+                        // console.log('box-main: ', document.getElementById('box-main').offsetHeight);
 
-                    if (boxMain) {
-                        this.mainHeight = boxMain.offsetHeight;
-                        this.operationHeight = this.windowHeight - this.mainHeight;
+                        const boxMain = document.getElementById('box-main');
+
+                        if (boxMain) {
+                            this.mainHeight = boxMain.offsetHeight;
+                            this.operationHeight = this.windowHeight - this.mainHeight;
+                        }
                     }
-                }
+                })
+
 
                 this.mainscreenWidth = window.innerWidth
                 this.squareHeight = 350
-                this.squareHeight +=  window.innerHeight - 700
+                this.squareHeight += window.innerHeight - 700
 
                 this.squareWidth = 440
-                this.squareWidth +=  window.innerWidth - 1024
+                this.squareWidth += window.innerWidth - 1024
 
             });
         },
@@ -2111,14 +2108,11 @@ export default {
         line-height: 20px;
     }
 }
-#box-operation {
-    position: fixed;
-    left: 50%;
-}
 
 .prompt {
-    margin-left: -100%;
-    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+    margin: 60px;
     color: #fff;
 }
 </style>
@@ -2192,7 +2186,6 @@ export default {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: '0 30px';
     .el-scrollbar /deep/ .el-scrollbar__wrap {
         overflow-x: auto;
     }
