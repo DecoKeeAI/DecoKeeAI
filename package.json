@@ -1,6 +1,6 @@
 {
   "name": "decokee-ai",
-  "version": "0.0.52",
+  "version": "0.0.53",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
