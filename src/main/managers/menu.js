@@ -6,7 +6,7 @@ const activeWindow = require('active-win');
 const { nativeImage } = require('electron');
 const path = require('path');
 
-const SHOW_AI_MENU_THRESHOLD = 200; // 500 ms 内的点击算作双击
+const SHOW_AI_MENU_THRESHOLD = 500; // 500 ms 内的点击算作双击
 const CLIPBOARD_CONTENT_TYPE = {
     TEXT: 'text',
     FILE: 'file',
