@@ -264,6 +264,17 @@ export default {
             default: undefined
         }
     },
+    watch: {
+        aiModelConfigData: {
+            deep: true,
+            handler(newVal) {
+                console.log('AIConfigSettings: Model Data changed newVal: ', newVal);
+                if (newVal !== undefined) {
+                    this.loadConfigData(newVal);
+                }
+            }
+        }
+    },
     data() {
         return {
             sparkAIConfig: undefined,
@@ -357,130 +368,132 @@ export default {
         };
     },
     created() {
-
-        console.log('AIConfigSettings: Created aiModelConfigData is null: ', (this.aiModelConfigData === undefined));
-
-        if (this.aiModelConfigData !== undefined) {
-            try {
-                this.finalConfigData = JSON.parse(this.aiModelConfigData);
-            } catch (err) {
-                console.log('AIConfigSettings: Created Invalid aiModelConfigData: ', this.aiModelConfigData, err);
-                this.finalConfigData = {}
-            }
-        }
-
-        console.log('AIConfigSettings: Created finalConfigData is null: ', this.finalConfigData);
-
-        if (this.finalConfigData !== undefined) {
-            this.enableWebSearch = this.finalConfigData.enableWebSearch;
-            this.aiModelType = this.finalConfigData.aiModelType;
-            this.speechEngineType = this.finalConfigData.speechEngineType;
-            this.speechServiceAPIKey = this.finalConfigData.speechServiceAPIKey;
-            this.speechLanguageSelected = this.finalConfigData.speechLanguageSelected;
-            this.speechVoiceSelected = this.finalConfigData.speechVoiceSelected;
-            this.azureServiceRegion = this.finalConfigData.azureServiceRegion;
-        }
-
-        if (this.enableWebSearch === undefined) {
-            this.enableWebSearch = window.store.storeGet('aiConfig.webSearch', true);
-        }
-
-        if (this.aiModelType === undefined) {
-            this.aiModelType = window.store.storeGet('aiConfig.modelType', 'llama-3.1-70b-versatile');
-            window.store.storeSet('aiConfig.modelType', this.aiModelType);
-        }
-
-        if (this.finalConfigData !== undefined) {
-            this.supportedSystemRoles = window.generalAIManager.getSupportedSystemPrompts();
-            console.log('AIConfigSettings: this.supportedSystemRoles: ', this.supportedSystemRoles)
-        }
-
-        this.loadRelatedAIConfigs(true);
-
-        if (this.speechEngineType === undefined) {
-            this.speechEngineType = window.store.storeGet('aiConfig.speechEngineType', SPEECH_ENGINE_TYPE.XYF);
-            window.store.storeSet('aiConfig.speechEngineType', this.speechEngineType);
-        }
-
-        switch (this.speechEngineType) {
-            default:
-            case SPEECH_ENGINE_TYPE.XYF:
-                if (this.finalConfigData !== undefined) {
-                    this.sparkAIConfig = this.finalConfigData.sparkAIConfig;
-                }
-
-                if (this.sparkAIConfig === undefined) {
-                    this.sparkAIConfig = window.store.storeGet('aiConfig.xfy.apiAuth', {
-                        appId: '',
-                        apiSecret: '',
-                        apiKey: '',
-                    });
-                }
-                break;
-            case SPEECH_ENGINE_TYPE.AZURE:
-                if (this.finalConfigData !== undefined) {
-                    this.speechServiceAPIKey = this.finalConfigData.speechServiceAPIKey;
-                    this.speechLanguageSelected = this.finalConfigData.speechLanguageSelected;
-                    this.speechVoiceSelected = this.finalConfigData.speechVoiceSelected;
-                    this.azureServiceRegion = this.finalConfigData.azureServiceRegion;
-                }
-                if (this.speechServiceAPIKey === undefined) {
-                    this.speechServiceAPIKey = window.store.storeGet('aiConfig.azure.speechServiceKey');
-                }
-                if (this.speechLanguageSelected === undefined) {
-                    this.speechLanguageSelected = window.store.storeGet('aiConfig.azure.speechLanguage');
-                }
-                if (this.speechVoiceSelected === undefined) {
-                    this.speechVoiceSelected = window.store.storeGet('aiConfig.azure.speechLanguageVoice');
-                }
-                if (this.azureServiceRegion === undefined) {
-                    this.azureServiceRegion = window.store.storeGet('aiConfig.azure.serviceRegion', 'eastasia');
-                }
-                this.speechLanguages = this.azureSpeechLanguages;
-
-                this.speechVoiceNames = this.speechLanguages.find(
-                    languageInfo => languageInfo.value === this.speechLanguageSelected
-                ).children;
-
-                if (this.speechVoiceSelected === undefined) {
-                    this.speechVoiceSelected = this.speechVoiceNames[0].value;
-
-                    window.store.storeSet('aiConfig.azure.speechLanguageVoice', this.speechVoiceSelected);
-                }
-
-                this.speechLanguageSelectedItem = [this.speechLanguageSelected, this.speechVoiceSelected];
-
-                break;
-        }
-
-        this.supportedAIModels = window.generalAIManager.getAllSupportedModels();
-
-        this.supportedAIModels = this.supportedAIModels.map(modelGroup => {
-            const newGroupObj = deepCopy(modelGroup);
-            if (newGroupObj.label === 'Custom' || newGroupObj.label === 'HuoShan' || newGroupObj.label === 'Coze') {
-                newGroupObj.models.push({
-                    label: newGroupObj.label,
-                    isAddAction: true,
-                });
-            }
-
-            return newGroupObj;
-        });
-
-
-        this.supportedAIModels.forEach(modelGroup => {
-            const modelInfo = modelGroup.models.find((aiModel) => aiModel.value === this.aiModelType);
-
-            if (!modelInfo) return;
-
-            this.selectedModelType = [modelGroup.value, this.aiModelType];
-
-            console.log('AIConfigSettings: Created Find Selected ModelInfo: ', this.selectedModelType);
-        });
-
-        console.log('AIConfigSettings: All supported AIModels: ' + JSON.stringify(this.supportedAIModels));
+        this.loadConfigData(this.aiModelConfigData);
     },
     methods: {
+        loadConfigData(configData) {
+            console.log('AIConfigSettings: Created configData is null: ', (configData === undefined));
+
+            if (configData !== undefined) {
+                try {
+                    this.finalConfigData = JSON.parse(configData);
+                } catch (err) {
+                    console.log('AIConfigSettings: Created Invalid configData: ', configData, err);
+                    this.finalConfigData = {}
+                }
+            }
+
+            console.log('AIConfigSettings: Created finalConfigData is null: ', this.finalConfigData);
+
+            if (this.finalConfigData !== undefined) {
+                this.enableWebSearch = this.finalConfigData.enableWebSearch;
+                this.aiModelType = this.finalConfigData.aiModelType;
+                this.speechEngineType = this.finalConfigData.speechEngineType;
+                this.speechServiceAPIKey = this.finalConfigData.speechServiceAPIKey;
+                this.speechLanguageSelected = this.finalConfigData.speechLanguageSelected;
+                this.speechVoiceSelected = this.finalConfigData.speechVoiceSelected;
+                this.azureServiceRegion = this.finalConfigData.azureServiceRegion;
+            }
+
+            if (this.enableWebSearch === undefined) {
+                this.enableWebSearch = window.store.storeGet('aiConfig.webSearch', true);
+            }
+
+            if (this.aiModelType === undefined) {
+                this.aiModelType = window.store.storeGet('aiConfig.modelType', 'llama-3.1-70b-versatile');
+                window.store.storeSet('aiConfig.modelType', this.aiModelType);
+            }
+
+            if (this.finalConfigData !== undefined) {
+                this.supportedSystemRoles = window.generalAIManager.getSupportedSystemPrompts();
+                console.log('AIConfigSettings: this.supportedSystemRoles: ', this.supportedSystemRoles)
+            }
+
+            this.loadRelatedAIConfigs(true);
+
+            if (this.speechEngineType === undefined) {
+                this.speechEngineType = window.store.storeGet('aiConfig.speechEngineType', SPEECH_ENGINE_TYPE.XYF);
+                window.store.storeSet('aiConfig.speechEngineType', this.speechEngineType);
+            }
+
+            switch (this.speechEngineType) {
+                default:
+                case SPEECH_ENGINE_TYPE.XYF:
+                    if (this.finalConfigData !== undefined) {
+                        this.sparkAIConfig = this.finalConfigData.sparkAIConfig;
+                    }
+
+                    if (this.sparkAIConfig === undefined) {
+                        this.sparkAIConfig = window.store.storeGet('aiConfig.xfy.apiAuth', {
+                            appId: '',
+                            apiSecret: '',
+                            apiKey: '',
+                        });
+                    }
+                    break;
+                case SPEECH_ENGINE_TYPE.AZURE:
+                    if (this.finalConfigData !== undefined) {
+                        this.speechServiceAPIKey = this.finalConfigData.speechServiceAPIKey;
+                        this.speechLanguageSelected = this.finalConfigData.speechLanguageSelected;
+                        this.speechVoiceSelected = this.finalConfigData.speechVoiceSelected;
+                        this.azureServiceRegion = this.finalConfigData.azureServiceRegion;
+                    }
+                    if (this.speechServiceAPIKey === undefined) {
+                        this.speechServiceAPIKey = window.store.storeGet('aiConfig.azure.speechServiceKey');
+                    }
+                    if (this.speechLanguageSelected === undefined) {
+                        this.speechLanguageSelected = window.store.storeGet('aiConfig.azure.speechLanguage');
+                    }
+                    if (this.speechVoiceSelected === undefined) {
+                        this.speechVoiceSelected = window.store.storeGet('aiConfig.azure.speechLanguageVoice');
+                    }
+                    if (this.azureServiceRegion === undefined) {
+                        this.azureServiceRegion = window.store.storeGet('aiConfig.azure.serviceRegion', 'eastasia');
+                    }
+                    this.speechLanguages = this.azureSpeechLanguages;
+
+                    this.speechVoiceNames = this.speechLanguages.find(
+                        languageInfo => languageInfo.value === this.speechLanguageSelected
+                    ).children;
+
+                    if (this.speechVoiceSelected === undefined) {
+                        this.speechVoiceSelected = this.speechVoiceNames[0].value;
+
+                        window.store.storeSet('aiConfig.azure.speechLanguageVoice', this.speechVoiceSelected);
+                    }
+
+                    this.speechLanguageSelectedItem = [this.speechLanguageSelected, this.speechVoiceSelected];
+
+                    break;
+            }
+
+            this.supportedAIModels = window.generalAIManager.getAllSupportedModels();
+
+            this.supportedAIModels = this.supportedAIModels.map(modelGroup => {
+                const newGroupObj = deepCopy(modelGroup);
+                if (newGroupObj.label === 'Custom' || newGroupObj.label === 'HuoShan' || newGroupObj.label === 'Coze') {
+                    newGroupObj.models.push({
+                        label: newGroupObj.label,
+                        isAddAction: true,
+                    });
+                }
+
+                return newGroupObj;
+            });
+
+
+            this.supportedAIModels.forEach(modelGroup => {
+                const modelInfo = modelGroup.models.find((aiModel) => aiModel.value === this.aiModelType);
+
+                if (!modelInfo) return;
+
+                this.selectedModelType = [modelGroup.value, this.aiModelType];
+
+                console.log('AIConfigSettings: Created Find Selected ModelInfo: ', this.selectedModelType);
+            });
+
+            console.log('AIConfigSettings: All supported AIModels: ' + JSON.stringify(this.supportedAIModels));
+        },
         updateAIConfig() {
             if (this.finalConfigData !== undefined) {
 
