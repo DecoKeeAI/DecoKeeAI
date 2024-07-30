@@ -1,72 +1,26 @@
 <template>
     <div class="box-knob">
-        <div
-            :class="{ draggableHighlight: dragPos === 'left', clickHighlight: clickPos === 'left' }"
-            class="leftKnob common"
-            @click="
+        <div :class="{ draggableHighlight: dragPos === 'left', clickHighlight: clickPos === 'left' }" class="leftKnob common" @click="
                 $emit('currentKnob', 'left', newLeftData);
                 currentClick('left');
-            "
-            @mouseenter="mouseEnter('left')"
-            @mouseleave="mouseLeave('left')"
-        >
-            <UnitControl
-                v-if="newLeftData?.config"
-                :icon="newLeftData.config.icon"
-                :itemData="newLeftData"
-            ></UnitControl>
+            " @mouseenter="mouseEnter('left')" @mouseleave="mouseLeave('left')">
+            <UnitControl v-if="newLeftData?.config" :icon="newLeftData.config.icon" :itemData="newLeftData"></UnitControl>
         </div>
-        <div
-            :class="{
-                draggableHighlight: dragPos === 'center',
-                clickHighlight: clickPos === 'center',
-            }"
-            class="centerKnob common"
-            @click="
+        <div :class="{ draggableHighlight: dragPos === 'center',clickHighlight: clickPos === 'center' }" class="centerKnob common" @click="
                 $emit('currentKnob', 'center', newCeneterData);
                 currentClick('center');
-            "
-            @mouseenter="mouseEnter('center')"
-            @mouseleave="mouseLeave('center')"
-        >
-            <!-- <el-image class="leftImg" :src='leftImg'></el-image>
-            <el-image class="rightImg" :src='rightImg'></el-image> -->
-            <UnitControl
-                v-if="newCeneterData?.config"
-                :icon="newCeneterData.config.icon"
-                :itemData="newCeneterData"
-            >
+            " @mouseenter="mouseEnter('center')" @mouseleave="mouseLeave('center')">
+
+            <UnitControl v-if="newCeneterData?.config" :icon="newCeneterData.config.icon" :itemData="newCeneterData">
             </UnitControl>
         </div>
 
-        <div
-            :class="{
-                draggableHighlight: dragPos === 'right',
-                clickHighlight: clickPos === 'right',
-            }"
-            class="rightKnob common"
-            @click="
-                $emit('currentKnob', 'right', newRightData);
-                currentClick('right');
-            "
-            @mouseenter="mouseEnter('right')"
-            @mouseleave="mouseLeave('right')"
-        >
-            <UnitControl
-                v-if="newRightData?.config"
-                :icon="newRightData.config.icon"
-                :itemData="newRightData"
-            ></UnitControl>
+        <div :class="{ draggableHighlight: dragPos === 'right', clickHighlight: clickPos === 'right' }" class="rightKnob common" @click="$emit('currentKnob', 'right', newRightData); currentClick('right');" @mouseenter="mouseEnter('right')" @mouseleave="mouseLeave('right')">
+            <UnitControl v-if="newRightData?.config" :icon="newRightData.config.icon" :itemData="newRightData"></UnitControl>
         </div>
 
-        <el-button
-            class="out"
-            type="text"
-            @click="
-                $emit('outKnobBtn', false);
-                $emit('changeClickPos', '');
-            "
-            >退出
+        <el-button class="out" type="text" @click=" $emit('outKnobBtn', false); $emit('changeClickPos', '');">
+            退出
         </el-button>
     </div>
 </template>
@@ -116,8 +70,7 @@ export default {
             newRightData: {},
             newCeneterData: {},
             knobDraggable: '',
-            // leftImg: '',
-            // rightImg: ''
+
         };
     },
     created() {
@@ -126,8 +79,6 @@ export default {
         this.newRightData = deepCopy(this.rightData);
         this.newCeneterData = deepCopy(this.ceneterData);
 
-        // this.leftImg = window.resourcesManager.getRelatedSrcPath('@/left.png');
-        // this.rightImg = window.resourcesManager.getRelatedSrcPath('@/right.png');
     },
 
     methods: {
@@ -174,12 +125,10 @@ export default {
 
 <style lang="less" scoped>
 .box-knob {
-    position: relative;
-    border-bottom: 2px solid #222;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 50px 70px;
+    padding: 70px 0;
 }
 
 .leftKnob,
@@ -200,18 +149,11 @@ export default {
 
 .centerKnob {
     overflow: hidden;
-    position: relative;
     width: 163px;
     height: 163px;
     border: 1px solid #474747;
     border-radius: 163px;
     margin: 0 20px;
-}
-
-.leftImg {
-    position: absolute;
-    left: 0;
-    top: 0;
 }
 
 .out {

@@ -2,10 +2,10 @@
     <div>
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px">
             <div style="display: flex; align-items: center">
-                <img :src="historyImg" title="历史记录" style="width: auto; height: 35px; cursor: pointer;" @click="historyBtn" />
+                <img :src="historyImg" :title="$t('history')" style="width: auto; height: 35px; cursor: pointer;" @click="historyBtn" />
             </div>
 
-            <img :src="configImg" alt="配置" style="width: auto; height: 35px; cursor: pointer" @click="cinfigBtn" />
+            <img :src="configImg" :title="$t('settings.aiModelSetting')" style="width: auto; height: 35px; cursor: pointer" @click="cinfigBtn" />
         </div>
 
         <!-- 聊天 -->
@@ -31,7 +31,7 @@
 
                                 <div class="message-operate" v-if="hoverIndex === index && !editIndex">
 
-                                    <el-button class="copy-message" @click="copyMessageBtn(message.content)" type="text" icon="el-icon-document-copy">复制</el-button>
+                                    <el-button class="copy-message" @click="copyMessageBtn(message.content)" type="text" icon="el-icon-document-copy">{{ $t('settings.copy') }}</el-button>
                                     <!-- <i v-if="userMaxIndex === hoverIndex" @click="editUserContent(index)" class="el-icon-edit"></i> -->
                                     <i @click="deleteMessageBtn(index)" class="el-icon-delete"></i>
                                 </div>
@@ -50,8 +50,8 @@
                                     <!-- <el-link v-if="AIStatus === 1 && message.requestId" @click="stopAssistant" :underline="false">停止生成</el-link> -->
                                     <template v-if="index !==1 && AIStatus === 2">
                                         <span v-if="index === maxIndex || hoverIndex === index">
-                                            <el-button class="copy-message" @click="copyMessageBtn(message.content)" type="text" icon="el-icon-document-copy">复制</el-button>
-                                            <i @click="regenerateMessage" title="重新生成" v-if="index === maxIndex" class="el-icon-refresh"></i>
+                                            <el-button class="copy-message" @click="copyMessageBtn(message.content)" type="text" icon="el-icon-document-copy">{{ $t('settings.copy') }}</el-button>
+                                            <i @click="regenerateMessage" :title="$t('regenerate')" v-if="index === maxIndex" class="el-icon-refresh"></i>
                                             <i @click="deleteMessageBtn(index)" class="el-icon-delete"></i>
                                         </span>
                                     </template>
@@ -91,7 +91,7 @@
 
                             <!-- <img class="select-img" @click="selectFileBtn" title="选择文件" :src="selectFileImg" alt="" /> -->
 
-                            <img class="send-img" @click="sendBtn" title="发送" :src="sendImg" alt="" :style="{ cursor: AIStatus === 1 ? 'not-allowed' : 'pointer' }" />
+                            <img class="send-img" @click="sendBtn" :title="$t('send')" :src="sendImg" alt="" :style="{ cursor: AIStatus === 1 ? 'not-allowed' : 'pointer' }" />
                         </div>
                     </div>
                 </div>
@@ -111,7 +111,7 @@
                         </template>
                     </el-cascader>
 
-                    <el-button @click="aiModelconfigBtn" style="margin-left: 10px;" type="text">配置</el-button>
+                    <el-button @click="aiModelconfigBtn" style="margin-left: 10px;" type="text">{{ $t('config')}}</el-button>
                 </el-form-item>
 
                 <template v-if="isShowSystemRole">
@@ -119,7 +119,7 @@
                         <el-switch v-model="useCustomPrompt" />
                     </el-form-item>
 
-                    <el-form-item label="角色" class="selectRole">
+                    <el-form-item :label="$t('settings.aiPromptRole')" class="selectRole">
                         <el-select v-if="!useCustomPrompt" filterable v-model="systemRole" @change="aiSystemRoleChange">
                             <el-option v-for="item in supportedSystemRoles" :key="item.value" :label="item.role" :value="item.value" />
                         </el-select>
@@ -129,15 +129,15 @@
                     </el-form-item>
                 </template>
 
-                <el-form-item label="角色性格">
-                    <el-slider v-model="top_p" :min="0" :max="1" :step="0.05" :marks="{ 0: '准确严谨', 1: '灵活创新' }"></el-slider>
+                <el-form-item :label="$t('settings.rolePersonality')">
+                    <el-slider v-model="top_p" :min="0" :max="1" :step="0.05" :marks="{ 0: $t('settings.personalityPrecise'), 1: $t('settings.personalityFlexible') }"></el-slider>
                 </el-form-item>
-                <el-form-item label="回答质量">
-                    <el-slider v-model="temperature" :min="0" :max="2" :step="0.05" :marks="{ 0: '重复保守', 2: '胡言乱语' }"></el-slider>
+                <el-form-item :label="$t('settings.responseQuality')">
+                    <el-slider v-model="temperature" :min="0" :max="2" :step="0.05" :marks="{ 0: $t('settings.qualityConservative'), 2: $t('settings.qualityGibberish') }"></el-slider>
                 </el-form-item>
             </el-form>
             <el-button @click="updateBtn" size="small" type="primary" style="float: right; margin-top: 10px">
-                更新
+                {{ $t('update') }}
             </el-button>
         </div>
 
@@ -183,7 +183,7 @@
                     justifyContent: 'center',
                     alignItems: 'center',
                 }">
-                <el-empty description="暂无聊天记录" :image-size="100"></el-empty>
+                <el-empty :description="$t('No chatHistory')" :image-size="100"></el-empty>
             </div>
         </el-drawer>
     </div>
@@ -192,8 +192,8 @@
 import { AI_SUPPORT_BUILD_IN_ROLES } from '@/plugins/KeyConfiguration.js';
 import { dialog } from '@electron/remote';
 import { ipcRenderer } from 'electron';
-
-
+import { setI18nLanguage } from '@/plugins/i18n';
+// import 'github-markdown-css'
 import 'highlight.js/styles/an-old-hope.css';
 // eslint-disable-next-line no-unused-vars
 const hljsExtension = function () {
@@ -233,10 +233,7 @@ const hljsExtension = function () {
 
 
 import ClipboardJS from 'clipboard';
-
-// eslint-disable-next-line no-unused-vars
 import showdown from "showdown";
-// eslint-disable-next-line no-unused-vars
 import showdownHighlight from 'showdown-highlight'
 
 export default {
@@ -351,10 +348,17 @@ export default {
         this.selectKey = window.store.storeGet('aiConfig.selectKey') || 'key-1';
         if (!window.store.chatHistoryGet('historyList') || !window.store.chatHistoryGet('chatHistory')) {
             window.store.chatHistorySet('historyList', this.historyList);
+
+            let systemContent
+            if (this.isShowSystemRole) {
+                systemContent = this.useCustomPrompt ? window.store.storeGet('aiConfig.chat.characterPrompt') : window.store.storeGet('aiConfig.chat.character')
+            } else {
+                systemContent = ''
+            }
             window.store.chatHistorySet(`chatHistory.${this.selectKey}`, [
                 {
                     role: 'system',
-                    content: window.store.storeGet('aiConfig.chat.characterPrompt'),
+                    content: systemContent,
                 },
                 {
                     role: 'assistant',
@@ -378,6 +382,8 @@ export default {
             }
         });
 
+
+        // showdown
         this.markdown = new showdown.Converter({
             tables: true,
             ghCompatibleHeaderId: true,
@@ -406,12 +412,17 @@ export default {
         });
     },
     mounted() {
+
+
         window.addEventListener('focus', () => {
             // console.log('AI对话窗口获得焦点');
             this.aiModelTypeList = window.generalAIManager.getAllSupportedModels();
+
+            setI18nLanguage(window.store.storeGet('system.locale'))
         });
 
         window.addEventListener('resize', this.handleResize);
+
         this.$nextTick(() => {
             this.initScrollHeight();
 
@@ -512,6 +523,20 @@ export default {
             window.store.storeSet('aiConfig.chat.characterPrompt', this.systemRolePrompt);
             this.isShow = 'none';
             ipcRenderer.send('ChatEngineTypeChange', {});
+
+
+            if (this.message.length) {
+                let systemContent
+                if (this.isShowSystemRole) {
+
+                    systemContent = this.useCustomPrompt ? window.store.storeGet('aiConfig.chat.characterPrompt') : window.store.storeGet('aiConfig.chat.character')
+                } else {
+                    systemContent = ''
+                }
+                this.message[0].content = systemContent
+                window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
+            }
+
         },
 
         historyBtn() {
@@ -543,10 +568,19 @@ export default {
             this.historyList = window.store.chatHistoryGet('historyList');
 
             this.selectKey = this.historyList[0].key;
+
+            let systemContent
+            if (this.isShowSystemRole) {
+
+                systemContent = this.useCustomPrompt ? window.store.storeGet('aiConfig.chat.characterPrompt') : window.store.storeGet('aiConfig.chat.character')
+            } else {
+                systemContent = ''
+            }
+
             window.store.chatHistorySet(`chatHistory.${this.selectKey}`, [
                 {
                     role: 'system',
-                    content: window.store.storeGet('aiConfig.chat.characterPrompt'),
+                    content: systemContent,
                 },
                 {
                     role: 'assistant',
@@ -773,20 +807,14 @@ export default {
         //     window.aiChatManager.cancelChatProcess(this.requestId)
         //     this.AIStatus = 2
         // },
-        copyMessageBtn(message) {
-            const that = this
-            const clipboard = new ClipboardJS('.copy-message', {
-                text: () => message
-            });
-            clipboard.on('success', e => {
-                e.clearSelection();
-                that.$message.success('复制成功');
-            });
+        async copyMessageBtn(messge) {
 
-            clipboard.on('error', function (e) {
-                e.clearSelection();
-                that.$message.error('复制失败');
-            });
+            try {
+                await navigator.clipboard.writeText(messge);
+                this.$message.success(this.$t('copySucceeded'));
+            } catch (err) {
+                this.$message.error(this.$t('copyFailed'));
+            }
         },
         editUserContent(i) {
             this.editIndex = i

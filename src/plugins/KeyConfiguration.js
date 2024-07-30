@@ -34,7 +34,7 @@
  * limitations under the License.
  */
 
-export const KeyConfiguration = [
+export const ALL_MENU_SIDEBAR = [
   // 菜单1
   {
     subMenu: 'decoKeeAI',
@@ -515,7 +515,8 @@ export const KeyConfiguration = [
 ]
 
 // 多项操作侧边栏
-export const keyMultiActions = [
+
+export const MULTIACTIONS_SIDEBAR = [
   // 菜单1
   {
     subMenu: 'decoKeeAI',
@@ -899,7 +900,8 @@ export const keyMultiActions = [
     ]
   }
 ]
-export const mediaOption = [
+
+export const MEDIA_OPTION = [
 
   {
     value: 'audio_mute',
@@ -952,7 +954,7 @@ export const mediaOption = [
 
 ]
 
-export const brightnessOption = [
+export const BRIGHTNESS_OPTION = [
   {
     value: 0,
     type: 'lighten'
@@ -983,7 +985,7 @@ export const brightnessOption = [
   },
 ]
 
-export const cascaderOptions = [
+export const KEY_VALUES_OPTION = [
   {
     value: 'alphanumeric',
     label: '字母数字',
@@ -1611,7 +1613,7 @@ export const cascaderOptions = [
 ]
 
 // 音频操作
-export const audioOperation = [
+export const AUDIO_OPTION = [
   {
     value: 0,
     type: 'play/stop'
@@ -1630,7 +1632,7 @@ export const audioOperation = [
   },
 ]
 
-export const audioFadeOptions = [
+export const AUDIO_FADE_OPTION = [
   {
     value: 0,
     type: 'noFade-in-out'
@@ -1648,7 +1650,8 @@ export const audioFadeOptions = [
     type: 'fade-in-out'
   }
 ]
-export const audioFadeTime = [
+
+export const AUDIO_FADETIME_OPTION = [
   {
     value: 1,
     type: '1s'
@@ -1672,7 +1675,8 @@ export const audioFadeTime = [
 ]
 
 // 旋钮菜单
-export const knobMenu = [
+
+export const KNOB_MENU_SIDEBAR = [
 
 
   // 菜单1

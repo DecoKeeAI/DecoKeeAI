@@ -91,8 +91,8 @@
                                     </div>
                                     <div>
                                         <el-dropdown-item class="dropdownMenu">
-                                            <el-input-number v-model="fontSize" :max="18" :min="6" controls-position="right" size="mini">
-                                            </el-input-number>
+                                            <el-input-number v-model="fontSize" :max="18" :min="6" controls-position="right" size="mini" />
+
                                             <el-checkbox-group v-model="fontPattern" class="fontPattern" size="mini" @change="changeFontPattern">
                                                 <el-checkbox-button label="bold">
                                                     <IconHolder :icon-size="fontStyleSize" img-src="@/icon/bold.png" />
@@ -118,7 +118,7 @@
 
                     <el-form-item v-if="optionData.childrenName === 'brightness'" :label="$t('operation')">
                         <el-select v-model="briSelect" :placeholder="$t('pleaseSelect')" clearable size="mini" @change="handleBrightness">
-                            <el-option v-for="item in brightnessOption" :key="item.value" :label="$t(item.type)" :value="item.value"></el-option>
+                            <el-option v-for="item in BRIGHTNESS_OPTION" :key="item.value" :label="$t(item.type)" :value="item.value"></el-option>
                         </el-select>
                     </el-form-item>
                     <!-- 打开功能 -->
@@ -178,13 +178,13 @@
 
                         <el-form-item :label="$t('operation')">
                             <el-select v-model="audioAction" :placeholder="$t('pleaseSelect')" clearable size="mini" style="width: 115px" @change="handleAudioAction">
-                                <el-option v-for="item in audioOperation" :key="item.value" :label="$t(item.type)" :value="item.value"></el-option>
+                                <el-option v-for="item in AUDIO_OPTION" :key="item.value" :label="$t(item.type)" :value="item.value"></el-option>
                             </el-select>
                             <el-select v-model="audioFade" :placeholder="$t('pleaseSelect')" clearable size="mini" style="width: 110px; margin: 0 5px" @change="handleAudioFade">
-                                <el-option v-for="item in audioFadeOptions" :key="item.value" :label="$t(item.type)" :value="item.value"></el-option>
+                                <el-option v-for="item in AUDIO_FADE_OPTION" :key="item.value" :label="$t(item.type)" :value="item.value"></el-option>
                             </el-select>
                             <el-select v-if="audioFade !== 0" v-model="fadeTime" :placeholder="$t('pleaseSelect')" clearable size="mini" style="width: 80px" @change="handleFadeTime">
-                                <el-option v-for="item in audioFadeTime" :key="item.value" :label="item.type" :value="item.value * 1000"></el-option>
+                                <el-option v-for="item in AUDIO_FADETIME_OPTION" :key="item.value" :label="item.type" :value="item.value * 1000"></el-option>
                             </el-select>
                         </el-form-item>
                         <el-form-item :label="$t('volume')">
@@ -203,7 +203,7 @@
                             <el-button v-if="!isMultiActions" circle class="changeIconBtn" icon="el-icon-right" @click="enterMultiActions"></el-button>
                         </span>
                     </el-form-item>
-
+                    <!-- 智能助手 -->
                     <AIConfigSettings
                         :ai-model-config-data="optionData.config.actions[0].value"
                         v-else-if="optionData.childrenName === 'assistant' || optionData.config.type === 'assistant'"
@@ -224,7 +224,7 @@ import { deepCopy } from '@/utils/ObjectUtil';
 import Constants from '@/utils/Constants';
 import OperationConfig from '@/views/Components/config/OperationConfig';
 import { dialog } from '@electron/remote';
-import { audioFadeOptions, audioFadeTime, audioOperation, brightnessOption } from '@/plugins/KeyConfiguration.js';
+import { AUDIO_FADE_OPTION, AUDIO_FADETIME_OPTION, AUDIO_OPTION, BRIGHTNESS_OPTION } from '@/plugins/KeyConfiguration.js';
 import defaultResourcesMap from '@/assets/resources.js';
 import { ipcRenderer } from 'electron';
 import AIConfigSettings from "@/views/Setting/AIConfigSettings.vue";
@@ -268,7 +268,7 @@ export default {
             optionData: {},
             switchIcon: null,
             // 亮度
-            brightnessOption,
+            BRIGHTNESS_OPTION,
             briSelect: 0,
             briAction: {
                 type: 'lighten',
@@ -290,9 +290,9 @@ export default {
 
             // 音频
             soundPath: '',
-            audioOperation,
-            audioFadeOptions,
-            audioFadeTime,
+            AUDIO_OPTION,
+            AUDIO_FADE_OPTION,
+            AUDIO_FADETIME_OPTION,
             audioAction: 0,
             audioFade: 0,
             fadeTime: 1 * 1000,
@@ -1008,7 +1008,9 @@ export default {
 
         // 多项操作
         enterMultiActions() {
-            this.$emit('enterMultiActions', true);
+            // this.$emit('enterMultiActions', true);
+            this.$emit('enterMultiActions', 2);
+
         },
 
         handleAIConfigUpdated(newAIConfigData) {

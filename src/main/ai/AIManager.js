@@ -36,7 +36,7 @@
 import XFYAdapter from '@/main/ai/Connector/XFYAdapter';
 import OpenAIAdapter from '@/main/ai/Connector/OpenAIAdapter';
 import Constants from '@/utils/Constants';
-import {app, clipboard, ipcMain, shell} from 'electron';
+import { app, clipboard, ipcMain, shell } from 'electron';
 import {
     AI_CONSTANT_CONFIG,
     AI_SUPPORT_FUNCTIONS,
@@ -47,12 +47,12 @@ import {
     getPCOperationBotPrePrompt,
     KEY_CONFIG_OBJ,
 } from '@/main/ai/ConstantData';
-import {i18nRender} from '@/plugins/i18n';
-import {KeyConfiguration} from '@/plugins/KeyConfiguration';
+import { i18nRender } from '@/plugins/i18n';
+import { ALL_MENU_SIDEBAR } from '@/plugins/KeyConfiguration';
 
-import {isURL, randomString} from '@/utils/Utils';
+import { isURL, randomString } from '@/utils/Utils';
 import WebSpeechAudioAdapter from '@/main/ai/Connector/WebSpeechAudioAdapter';
-import {deepCopy} from '@/utils/ObjectUtil';
+import { deepCopy } from '@/utils/ObjectUtil';
 import CozeAdapter from "@/main/ai/Connector/CozeAdapter";
 import FirecrawlEngineAdapter from "@/main/ai/Connector/FirecrawlEngineAdapter";
 
@@ -242,7 +242,7 @@ class AIManager {
         ipcMain.on('RecorderEnded', this.recorderEndHandler);
         ipcMain.on('STTRequest', this.sttRequestHandler);
 
-        KeyConfiguration.forEach(menuConfig => {
+        ALL_MENU_SIDEBAR.forEach(menuConfig => {
             menuConfig.children.forEach(configData => {
                 this.configToResIdMap.set(configData.config.type, configData.config.icon);
                 if (configData.config.alterIcon !== undefined) {
@@ -370,7 +370,7 @@ class AIManager {
                 return false;
             }
 
-            this.appManager.windowManager.aiAssistantWindow.win.webContents.send('PlayTTSAudio', {requestId: requestId, data: data});
+            this.appManager.windowManager.aiAssistantWindow.win.webContents.send('PlayTTSAudio', { requestId: requestId, data: data });
 
         });
         this.ttsEngineAdapter.setRecognizeResultListener((requestId, data) => this._handleRecognizeResult(requestId, data));
@@ -405,7 +405,7 @@ class AIManager {
             };
             console.log('startAssistantSession: For device: ' + serialNumber);
             this._setSessionState(AI_SESSION_STATE_ONGOING);
-            this.appManager.windowManager.aiAssistantWindow.win.webContents.send('StartAudioRecord', {requestAssistantId: requestId});
+            this.appManager.windowManager.aiAssistantWindow.win.webContents.send('StartAudioRecord', { requestAssistantId: requestId });
         }, delayMills);
         return true;
     }
@@ -694,8 +694,8 @@ class AIManager {
         clearTimeout(this.waitChatMsgTimeoutTask);
         this.waitChatMsgTimeoutTask = undefined;
 
-        this.appManager.windowManager.aiAssistantWindow.win.webContents.send('StopAudioRecord', {requestAssistantId: this.assistantDeviceInfo.requestId});
-        this.appManager.windowManager.aiAssistantWindow.win.webContents.send('StopTTSPlay', {requestAssistantId: this.assistantDeviceInfo.requestId});
+        this.appManager.windowManager.aiAssistantWindow.win.webContents.send('StopAudioRecord', { requestAssistantId: this.assistantDeviceInfo.requestId });
+        this.appManager.windowManager.aiAssistantWindow.win.webContents.send('StopTTSPlay', { requestAssistantId: this.assistantDeviceInfo.requestId });
 
         this.assistantChatHistory = [];
         this.aiAssistantRequestId = undefined;
@@ -1253,7 +1253,7 @@ class AIManager {
             if (keyCode === '0,1') continue;
 
             if (oldConfig[i].config.type === 'pageUp' || oldConfig[i].config.type === 'pageDown'
-                    || oldConfig[i].config.type === 'back') {
+                || oldConfig[i].config.type === 'back') {
                 continue;
             }
 
@@ -1382,7 +1382,7 @@ class AIManager {
             case 'hotkey':
             case 'hotkeySwitch':
                 newConfigItem.config.actions = newConfigItem.config.actions.map(actionItem => {
-                    if (actionItem.operationName === 'key' ) {
+                    if (actionItem.operationName === 'key') {
                         let hotKeyValue = actionItem.operationValue.toLowerCase().trim();
                         if (hotKeyValue === 'ctrl') {
                             hotKeyValue = hotKeyValue.replace('ctrl', 'control');
@@ -2315,7 +2315,7 @@ class AIManager {
                         chatMsgs = [{
                             role: 'system',
                             content: this.aiConfigData.systemPrompt === undefined ? '' : this.aiConfigData.systemPrompt
-                        },{
+                        }, {
                             role: 'user',
                             content: message
                         }]
@@ -2467,9 +2467,9 @@ class AIManager {
         } catch (err) {
             console.log('AIManager: handleAIAssistantProcess: Invalid Json. Try fix.');
             params.messages = [{
-                    role: "user",
-                    content: '修复以下 JSON: ' + chatFrameResponse + ' \n ConfigData中每一个数据的value的格式应为: ```' + JSON.stringify(KEY_CONFIG_OBJ) + '``` 注意：我不需要你的解释，仅返回给我正确的JSON数据。'
-                }]
+                role: "user",
+                content: '修复以下 JSON: ' + chatFrameResponse + ' \n ConfigData中每一个数据的value的格式应为: ```' + JSON.stringify(KEY_CONFIG_OBJ) + '``` 注意：我不需要你的解释，仅返回给我正确的JSON数据。'
+            }]
             chatFrameResponse = await this._awaitWithTimeout(this.aiAssistantChatAdapter.chatWithAssistant(requestId, params), AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
 
             console.log('AIManager: handleAIAssistantProcess: Fixed Json: ' + chatFrameResponse);
@@ -2560,7 +2560,7 @@ class AIManager {
         preChatDecodeDataStartIdx = finalResponseDataJsonString.indexOf("{");
         let preChatDecodeDataEndIdx = finalResponseDataJsonString.lastIndexOf("}");
 
-        console.log('AIManager: getResponseDataJsonString: preChatDecodeDataStartIdx: ' + preChatDecodeDataStartIdx + ' preChatDecodeDataEndIdx: '+ preChatDecodeDataEndIdx);
+        console.log('AIManager: getResponseDataJsonString: preChatDecodeDataStartIdx: ' + preChatDecodeDataStartIdx + ' preChatDecodeDataEndIdx: ' + preChatDecodeDataEndIdx);
 
         if (preChatDecodeDataStartIdx < 0 || preChatDecodeDataEndIdx < 1) {
             return undefined;

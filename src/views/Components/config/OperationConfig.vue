@@ -38,7 +38,7 @@
                 @change="handleMedia"
             >
                 <el-option
-                    v-for="item in mediaOption"
+                    v-for="item in MEDIA_OPTION"
                     :key="item.value"
                     :label="$t(item.type)"
                     :value="item.value"
@@ -69,7 +69,7 @@
                     type="primary"
                 ></el-button>
                 <el-cascader-panel
-                    :options="cascaderOptions"
+                    :options="KEY_VALUES_OPTION"
                     :props="{ expandTrigger: 'hover' }"
                     @change="hotKeyChange"
                 ></el-cascader-panel>
@@ -96,7 +96,7 @@
                         type="primary"
                     ></el-button>
                     <el-cascader-panel
-                        :options="cascaderOptions"
+                        :options="KEY_VALUES_OPTION"
                         :props="{ expandTrigger: 'hover' }"
                         @change="hotkeySwitch1Change"
                     ></el-cascader-panel>
@@ -121,7 +121,7 @@
                         type="primary"
                     ></el-button>
                     <el-cascader-panel
-                        :options="cascaderOptions"
+                        :options="KEY_VALUES_OPTION"
                         :props="{ expandTrigger: 'hover' }"
                         @change="hotkeySwitch2Change"
                     ></el-cascader-panel>
@@ -202,7 +202,7 @@
 
 <script>
 import { deepCopy } from '@/utils/ObjectUtil';
-import { cascaderOptions, mediaOption } from '@/plugins/KeyConfiguration.js';
+import { KEY_VALUES_OPTION, MEDIA_OPTION } from '@/plugins/KeyConfiguration.js';
 import Constants from '@/utils/Constants';
 import {
     commonBlur,
@@ -367,7 +367,7 @@ export default {
             url: '',
             // 多媒体
             media: '',
-            mediaOption,
+            MEDIA_OPTION,
 
             // 创建文件夹
             folder: 0,
@@ -375,7 +375,7 @@ export default {
             hotKeyValue: this.$t('hotkeyMatching'),
             hotkeySwitch1: this.$t('hotkeyMatching'),
             hotkeySwitch2: this.$t('hotkeyMatching'),
-            cascaderOptions,
+            KEY_VALUES_OPTION,
             // 文本
             textarea: '',
             textchecked: false,

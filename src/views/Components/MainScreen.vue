@@ -3,9 +3,9 @@
         <div class="main">
             <div class="main-screen" :style="{width: (mainscreenWidth - 300) + 'px', height: windowHeight + 'px' }">
                 <!-- 按键功能 -->
-                <div v-if="!knobFun">
-                    <!-- 格子 -->
-                    <div id="box-main" class="box-content">
+                <!-- 格子 -->
+                <div id="box-main" class="box-content">
+                    <template v-if="!knobFun">
                         <template>
                             <div v-if="showVIA" class="app-action-button button-red" @click="showVIA = false">
                                 <svg-icon color="white" name="close" style="font-size: 24px; position: absolute; top: 10px; right: 10px; z-index: 1001" />
@@ -149,16 +149,15 @@
                                 </div>
                             </div>
                         </template>
-                    </div>
+                    </template>
 
+                    <!-- 旋钮功能  -->
+                    <KnobFunction v-else :ceneterData="ceneterData" :clickPos="clickPos" :dragPos="dragPos" :isknobDraggable="isknobDraggable" :leftData="leftData" :rightData="rightData" @changeClickPos="changeClickPos" @changeDragPos="changeDragPos" @currentKnob="currentKnob" @knobValue="knobValue" @outKnobBtn="outKnobBtn"></KnobFunction>
                 </div>
 
-                <!-- 旋钮功能  -->
-                <KnobFunction v-else :ceneterData="ceneterData" :clickPos="clickPos" :dragPos="dragPos" :isknobDraggable="isknobDraggable" :leftData="leftData" :rightData="rightData" @changeClickPos="changeClickPos" @changeDragPos="changeDragPos" @currentKnob="currentKnob" @knobValue="knobValue" @outKnobBtn="outKnobBtn"></KnobFunction>
                 <!-- 操作配置 -->
-
-                <el-scrollbar v-if="operationData.config" :style="{ height: Number(operationHeight) - 10 + 'px' }">
-                    <OperationConfiguration :style="{ height: Number(operationHeight) - 10 + 'px' }" v-if="operationData.config" ref="operationConfig" id="operationConfiguration" :isMultiActions="isMultiActions" :operationData="operationData" :resourceId="resourceId" @deleteOperation="deleteOperation" @enterMultiActions="enterMultiActions" @updateOperationData="updateOperationData"></OperationConfiguration>
+                <el-scrollbar v-if="operationData.config" :style="{ height: Number(operationHeight) + 'px' }">
+                    <OperationConfiguration :style="{ height: Number(operationHeight)+ 'px' }" v-if="operationData.config" ref="operationConfig" id="operationConfiguration" :isMultiActions="isMultiActions" :operationData="operationData" :resourceId="resourceId" @deleteOperation="deleteOperation" @enterMultiActions="enterMultiActions" @updateOperationData="updateOperationData"></OperationConfiguration>
                 </el-scrollbar>
                 <div v-else-if="!isMultiActions" class="prompt">
                     {{ $t('dragMessage') }}
@@ -198,7 +197,7 @@
 
                         <!-- 旋钮侧边栏 -->
                         <el-menu v-else-if="knobFun">
-                            <el-submenu v-for="item in knobMenu" :key="item.subMenu" :index="item.subMenu">
+                            <el-submenu v-for="item in KNOB_MENU_SIDEBAR" :key="item.subMenu" :index="item.subMenu">
                                 <template slot="title">
                                     {{ $t(item.subMenu) }}
                                 </template>
@@ -208,9 +207,9 @@
                                         <el-menu-item :index="children.childrenName">
                                             <div class="sideMenu">
                                                 <IconHolder :icon-size="iconSize" :icon-src="children.config.icon"></IconHolder>
-                                                <span class="sideMenu-text">{{
-                                                    item.isPlugin ? children.childrenName : $t(children.childrenName)
-                                                }}</span>
+                                                <span class="sideMenu-text">
+                                                    {{ item.isPlugin ? children.childrenName : $t(children.childrenName) }}
+                                                </span>
                                             </div>
                                         </el-menu-item>
                                     </draggable>
@@ -229,7 +228,7 @@ import Constants from '@/utils/Constants';
 import draggable from 'vuedraggable';
 // import VueDragResize from 'vue-drag-resize'
 import OperationConfiguration from '@/views/Components/OperationConfiguration';
-import { KeyConfiguration, keyMultiActions, knobMenu } from '@/plugins/KeyConfiguration.js';
+import { ALL_MENU_SIDEBAR, MULTIACTIONS_SIDEBAR, KNOB_MENU_SIDEBAR } from '@/plugins/KeyConfiguration.js';
 import UnitControl from '@/views/Components/UnitControl.vue';
 import IconHolder from './IconHolder';
 import KnobFunction from './config/KnobFunction.vue';
@@ -304,7 +303,6 @@ export default {
             // 多项操作
             isMultiActions: false, // 是否显示多项操作
             selectedIndex: null, // 多项操作选中状态
-            keyMultiActions,
             multiActionsArr: [],
             multiActionsKeyCode: [],
             multiActionsIconSize: {
@@ -315,7 +313,7 @@ export default {
             multBox: null,
 
             // 旋钮
-            knobMenu,
+            KNOB_MENU_SIDEBAR,
             knobFun: false,
             isHover: false,
             pos: '', // 位置
@@ -517,9 +515,9 @@ export default {
     },
     methods: {
         loadStandardSideMenu() {
-            this.standardKeyConfiguration = deepCopy(KeyConfiguration);
+            this.standardKeyConfiguration = deepCopy(ALL_MENU_SIDEBAR);
             const streamDeckPlugins = window.store.storeGet('plugin.streamDeck');
-            // console.log('MainScreen: loadStandardSideMenu: this.standardKeyConfiguration: ', this.standardKeyConfiguration, ' KeyConfiguration: ', KeyConfiguration, ' streamDeckPlugins: ', streamDeckPlugins)
+            // console.log('MainScreen: loadStandardSideMenu: this.standardKeyConfiguration: ', this.standardKeyConfiguration, ' ALL_MENU_SIDEBAR: ', ALL_MENU_SIDEBAR, ' streamDeckPlugins: ', streamDeckPlugins)
             if (!streamDeckPlugins || streamDeckPlugins.length === 0) return;
 
             streamDeckPlugins.forEach(pluginInfo => {
@@ -551,7 +549,7 @@ export default {
             });
         },
         loadMultiKeyActionsMenu() {
-            this.multiActionsKeyConfiguration = deepCopy(keyMultiActions);
+            this.multiActionsKeyConfiguration = deepCopy(MULTIACTIONS_SIDEBAR);
             const streamDeckPlugins = window.store.storeGet('plugin.streamDeck');
             if (!streamDeckPlugins || streamDeckPlugins.length === 0) return;
 
@@ -594,8 +592,8 @@ export default {
             console.log(
                 'MainScreen: loadMultiKeyActionsMenu: this.multiActionsKeyConfiguration: ',
                 this.multiActionsKeyConfiguration,
-                ' keyMultiActions: ',
-                keyMultiActions,
+                ' MULTIACTIONS_SIDEBAR: ',
+                MULTIACTIONS_SIDEBAR,
                 ' streamDeckPlugins: ',
                 streamDeckPlugins
             );
@@ -1712,6 +1710,7 @@ export default {
         },
         // 旋钮
         boxRoundBtn() {
+
             this.knobFun = true;
             this.operationData = {};
             const knobInfo = window.resourcesManager.getConfigInfo(this.resourceId);
@@ -1722,12 +1721,20 @@ export default {
                 this.rightData = deepCopy(newKnobData[2] || {});
                 this.knobData = deepCopy(knobInfo[knobInfo.length - 1]);
             }
+
+            this.$nextTick(() => {
+                this.operationHeight = this.windowHeight - document.getElementById('box-main').offsetHeight;
+            })
         },
 
         // 退出旋钮
         outKnobBtn(val) {
             this.knobFun = val;
+            this.selectedCell = null;
             this.operationData = {};
+            this.$nextTick(() => {
+                this.operationHeight = this.windowHeight - document.getElementById('box-main').offsetHeight;
+            })
         },
         knobValue(val, isHover) {
             this.pos = val;
@@ -1846,10 +1853,7 @@ export default {
                 const finalMenuConfigs = [];
                 tempFilterList.forEach(configItem => {
                     const filteredConfigs = configItem.children.filter(
-                        childrenInfo =>
-                            childrenInfo.childrenName.toLowerCase().includes(searchName.toLowerCase()) ||
-                            (!configItem.isPlugin &&
-                                that.$t(childrenInfo.childrenName).toLowerCase().includes(searchName.toLowerCase()))
+                        childrenInfo => childrenInfo.childrenName.toLowerCase().includes(searchName.toLowerCase()) || (!configItem.isPlugin && that.$t(childrenInfo.childrenName).toLowerCase().includes(searchName.toLowerCase()))
                     );
                     if (!filteredConfigs || filteredConfigs.length === 0) {
                         return;
@@ -1997,7 +2001,7 @@ export default {
     display: flex;
     flex-direction: column;
     align-items: end;
-    margin: 10px 15px;
+    padding: 10px 15px;
 }
 
 .box-square {
@@ -2118,22 +2122,6 @@ export default {
 </style>
 
 <style lang="less" scoped>
-.el-tabs /deep/ .el-tabs__header {
-    margin: 0px !important;
-    display: flex;
-    justify-content: space-around;
-}
-
-.el-tabs /deep/ .el-tabs__item {
-    color: #909399 !important;
-    // padding: 0;
-    padding-left: 60px;
-}
-
-.el-tabs /deep/ .el-tabs__nav-wrap::after {
-    background-color: transparent;
-}
-
 .main {
     position: relative;
     .main-screen {
@@ -2153,6 +2141,9 @@ export default {
             padding: 10px 10px 0;
             display: flex;
             align-items: center;
+            .el-input /deep/ .el-input__suffix {
+                top: -5px;
+            }
         }
 
         .searchIpt {
