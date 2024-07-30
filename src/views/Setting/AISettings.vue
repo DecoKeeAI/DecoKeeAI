@@ -30,9 +30,23 @@
                     @focus="handleAssistantHotKeyFocus"
                 ></el-input>
             </el-form-item>
+            <el-form-item :label="$t('settings.aiTextSelection')">
+                <el-switch v-model="aiTextSelection" @change="handleAITextSelectionChanged" />
+            </el-form-item>
+            <el-form-item v-if="aiTextSelection && disabledTextSelectionApps.length > 0" :label="$t('settings.disabledTextSelectionApp')">
+                <el-tag
+                    v-for="appInfo in disabledTextSelectionApps"
+                    :key="appInfo.owner.path"
+                    closable
+                    size="medium"
+                    type="warning"
+                    @close="handleRemoveDisabledApps(appInfo.owner.path)">
+                    {{appInfo.owner.name}}
+                </el-tag>
+            </el-form-item>
         </el-form>
         <el-divider content-position="left">{{ $t('settings.aiModelSetting') }}</el-divider>
-        <AIConfigSettings ref="AIConfigSettings"/>
+        <AIConfigSettings ref="AIConfigSettings" />
 
         <el-button size="mini" style="margin-left: 50%; margin-bottom: 12px" type="primary" @click="updateAIConfig"
             >{{ $t('save') }}
@@ -43,12 +57,12 @@
 <script>
 import { EventType } from 'uiohook-napi';
 import { commonBlur, commonFocus, handleKeyUserInput, transferKeyName } from '@/plugins/hotKeyFun.js';
-import AIConfigSettings from "@/views/Setting/AIConfigSettings.vue";
+import AIConfigSettings from '@/views/Setting/AIConfigSettings.vue';
 
 export default {
     name: 'AISettings',
     components: {
-        AIConfigSettings
+        AIConfigSettings,
     },
     data() {
         return {
@@ -56,7 +70,9 @@ export default {
             micSelectList: [],
             assistantHotKey: '',
             keyStatusMap: {},
-            enableGlobalHotKey: false
+            enableGlobalHotKey: false,
+            aiTextSelection: true,
+            disabledTextSelectionApps: []
         };
     },
     created() {
@@ -77,6 +93,9 @@ export default {
         } else {
             this.assistantHotKey = savedHotKeyValue;
         }
+
+        this.aiTextSelection = window.store.storeGet('aiConfig.textSelection.enabled', true);
+        this.disabledTextSelectionApps = window.store.storeGet('aiConfig.textSelection.disabledApps', []);
     },
     methods: {
         getInputDevices() {
@@ -112,7 +131,6 @@ export default {
             });
         },
         updateAIConfig() {
-
             if (this.defaultSelectedMic !== this.$t('settings.selectMic')) {
                 window.store.storeSet('aiConfig.defaultMic', this.defaultSelectedMic);
             } else {
@@ -159,6 +177,21 @@ export default {
 
                 this.$refs.assistantHotKey.blur();
             }
+        },
+        handleAITextSelectionChanged() {
+            window.store.storeSet('aiConfig.textSelection.enabled', this.aiTextSelection);
+            if (this.aiTextSelection) {
+                window.appManager.menuManager.startMouseAIHelperMenu();
+            } else {
+                window.appManager.menuManager.stopMouseAIHelperMenu();
+            }
+        },
+        handleRemoveDisabledApps(removePath) {
+            console.log('profileConfig: removeDisabledApps', removePath);
+            this.disabledTextSelectionApps = this.disabledTextSelectionApps.filter(appInfo => appInfo.owner.path !== removePath);
+            window.store.storeSet('aiConfig.textSelection.disabledApps', this.disabledTextSelectionApps);
+
+            window.appManager.menuManager.startMouseAIHelperMenu();
         }
     },
 };
@@ -227,5 +260,4 @@ export default {
     color: white;
     font-size: 16px;
 }
-
 </style>

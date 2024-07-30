@@ -393,6 +393,17 @@ export default {
             extensions: [showdownHighlight(), hljsExtension]
 
         });
+
+        const that = this;
+        ipcRenderer.on('AIHelperMessage', (event, args) => {
+            console.log('AIAssistantContent::AIHelperMessage', args);
+            that.addSessionBtn();
+
+            setTimeout(() => {
+                that.currentMessage = args.requestMsg;
+                that.sendBtn();
+            }, 1000);
+        });
     },
     mounted() {
         window.addEventListener('focus', () => {
@@ -678,9 +689,9 @@ export default {
 
 
 
-                console.log('msgType:', msgType);
+                // console.log('msgType:', msgType);
                 // console.log('message:', message);
-                console.log('status:', status);
+                // console.log('status:', status);
 
                 this.updateScrollHeight();
                 window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);

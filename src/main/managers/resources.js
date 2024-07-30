@@ -1240,7 +1240,7 @@ class ResourcesManager {
         return true;
     }
 
-    getRelatedSrcPath(resourcePath) {
+    getRelatedSrcPath(resourcePath, fileAccessPath = false) {
         if (!resourcePath.startsWith('@/')) {
             return resourcePath;
         }
@@ -1248,9 +1248,9 @@ class ResourcesManager {
         const newResPath = resourcePath.replace('@/', '');
 
         if (process.env.WEBPACK_DEV_SERVER_URL) {
-            return 'file://' + path.join(this.defaultInstallPath, '/../../../../public/', newResPath);
+            return fileAccessPath ? '' : 'file://' + path.join(this.defaultInstallPath, '/../../../../public/', newResPath);
         } else {
-            return 'file://' + path.join(this.defaultInstallPath, '..', DEFAULT_RESOURCE_PATH, '..', newResPath);
+            return fileAccessPath ? '' : 'file://' + path.join(this.defaultInstallPath, '..', DEFAULT_RESOURCE_PATH, '..', newResPath);
         }
     }
 

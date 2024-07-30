@@ -84,7 +84,9 @@
         "responseQuality": "回答质量",
         "qualityConservative": "重复保守",
         "qualityGibberish": "胡言乱语",
-        "chatPendingTimeout": "对话超时(秒)"
+        "chatPendingTimeout": "对话超时(秒)",
+        "aiTextSelection": "快捷划词工具",
+        "disabledTextSelectionApp": "已禁用应用"
     },
     "success": "成功",
     "failed": "失败",
@@ -221,5 +223,19 @@
         "deleteIconPackSuccess": "移除图标库 {{iconPackName}} 成功" ,
         "deleteIconPackFailed": "移除图标库 {{iconPackName}} 失败",
         "iconPackSupportType": "支持类型(zip文件)：\n    - Stream Deck Icon Pack \n    - Iconfont "
+    },
+    "aiHelperMenu": {
+        "chat": "呆聊一下",
+        "copy": "复制",
+        "explain": "解释",
+        "summarize": "总结",
+        "translate": "翻译",
+        "disable": "禁用",
+        "currentApp": "当前应用",
+        "allApp": "全部禁用"
+    },
+    "trayMenu": {
+        "resume": "恢复窗口",
+        "exit": "退出"
     }
 }

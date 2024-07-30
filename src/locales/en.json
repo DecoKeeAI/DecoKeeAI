@@ -84,7 +84,9 @@
     "responseQuality": "Reply Quality",
     "qualityConservative": "Conservative",
     "qualityGibberish": "Gibberish",
-    "chatPendingTimeout": "Chat Timeout(s)"
+    "chatPendingTimeout": "Chat Timeout(s)",
+    "aiTextSelection": "Quick Text Selection",
+    "disabledTextSelectionApp": "Disabled Apps"
   },
   "success": "Success",
   "failed": "Failed",
@@ -221,5 +223,19 @@
     "deleteIconPackSuccess": "Uninstall icon pack {{iconPackName}} success." ,
     "deleteIconPackFailed": "Uninstall icon pack {{iconPackName}} failed.",
     "iconPackSupportType": "Support types (zip file)：\n    - Stream Deck Icon Pack \n    - Iconfont "
+  },
+  "aiHelperMenu": {
+    "chat": "Dekie Time",
+    "copy": "Copy",
+    "explain": "Explain",
+    "summarize": "Summarize",
+    "translate": "Translate",
+    "disable": "Disable",
+    "currentApp": "Current application",
+    "allApp": "All application"
+  },
+  "trayMenu": {
+    "resume": "Resume",
+    "exit": "Exit"
   }
 }

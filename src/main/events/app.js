@@ -1,6 +1,6 @@
 import {app, globalShortcut, ipcMain} from 'electron'
 import {setLogSavePath} from "@/plugins/logOutput";
-import { uIOhook, UiohookKey } from 'uiohook-napi'
+import { uIOhook } from 'uiohook-napi'
 
 class AppEvents {
     create(appManager) {

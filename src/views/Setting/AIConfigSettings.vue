@@ -676,6 +676,9 @@ export default {
             if (this.useDekiePrompt === undefined) {
                 this.useDekiePrompt = true;
             }
+
+            if (this.finalConfigData === undefined) return;
+
             this.finalConfigData.apiKey = this.openAIAPIKey;
             this.finalConfigData.useDekiePrompt = this.useDekiePrompt;
             this.finalConfigData.useCustomPrompt = this.useCustomPrompt;
