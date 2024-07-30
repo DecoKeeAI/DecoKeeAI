@@ -128,6 +128,14 @@ class MainWindow {
                 item.removeAllListeners();
             });
         });
+
+        this.win.on('resize', () => {
+            clearTimeout(that.storeNewWindowSizeTask);
+            that.storeNewWindowSizeTask = setTimeout(() => {
+                const newWindowSize = that.win.getSize();
+                that.storeManager.storeSet('mainWindowSize', newWindowSize);
+            }, 500);
+        });
     }
 
     createWindow() {
@@ -144,13 +152,15 @@ class MainWindow {
 
         let win = null;
 
+        const mainWindowSize = this.storeManager.storeGet('mainWindowSize', [1024, 700]);
+
         if (process.platform === 'win32') {
             win = new BrowserWindow({
                 title: 'DecoKeeAI',
                 minWidth: 1024,
                 minHeight: 700,
-                width: 1024,
-                height: 700,
+                width: mainWindowSize[0],
+                height: mainWindowSize[1],
                 center: true,
                 webPreferences: {
                     accessibleTitle: 'MainView',
@@ -173,6 +183,8 @@ class MainWindow {
                 title: 'DecoKeeAI',
                 minWidth: 1280,
                 minHeight: 720,
+                width: mainWindowSize[0],
+                height: mainWindowSize[1],
                 center: true,
                 webPreferences: {
                     contextIsolation: false,
