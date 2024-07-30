@@ -56,6 +56,14 @@ class AIAssistantWindow {
 
             shell.openExternal(url);
         });
+
+        this.win.on('resize', () => {
+            clearTimeout(that.storeNewWindowSizeTask);
+            that.storeNewWindowSizeTask = setTimeout(() => {
+                const newWindowSize = that.win.getSize();
+                that.storeManager.storeSet('aiAssistantWindowSize', newWindowSize);
+            }, 500);
+        });
     }
 
     createWindow() {
@@ -65,6 +73,7 @@ class AIAssistantWindow {
             console.warn('window is already exists!');
             return;
         }
+        const aiWindowSize = this.storeManager.storeGet('aiAssistantWindowSize', [450, 660]);
 
         let win = null;
 
@@ -73,8 +82,8 @@ class AIAssistantWindow {
                 title: 'AIAssistant',
                 minWidth: 450,
                 minHeight: 660,
-                width: 450,
-                height: 660,
+                width: aiWindowSize[0],
+                height: aiWindowSize[1],
                 center: true,
                 resizable: true,
                 webPreferences: {
@@ -98,8 +107,8 @@ class AIAssistantWindow {
                 title: 'AIAssistant',
                 minWidth: 450,
                 minHeight: 660,
-                width: 450,
-                height: 660,
+                width: aiWindowSize[0],
+                height: aiWindowSize[1],
                 center: true,
                 resizable: true,
                 webPreferences: {

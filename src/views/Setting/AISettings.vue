@@ -33,15 +33,30 @@
             <el-form-item :label="$t('settings.aiTextSelection')">
                 <el-switch v-model="aiTextSelection" @change="handleAITextSelectionChanged" />
             </el-form-item>
-            <el-form-item v-if="aiTextSelection && disabledTextSelectionApps.length > 0" :label="$t('settings.disabledTextSelectionApp')">
+            <el-form-item v-if="aiTextSelection" :label="$t('settings.aiTextSelectionSkills')">
+                <template v-for="menuOptions in aiHelperMenuOptions">
+                    <el-checkbox
+                        v-if="menuOptions.editable"
+                        :key="menuOptions.label"
+                        :label="menuOptions.label.startsWith('i18n-') ? $t(menuOptions.label.substring(5).trim()) : menuOptions.label"
+                        :checked="menuOptions.showInMenu"
+                        @change="value => handleAIMenuOptionChanged(value, menuOptions.label)">
+                    </el-checkbox>
+                </template>
+            </el-form-item>
+            <el-form-item
+                v-if="aiTextSelection && disabledTextSelectionApps.length > 0"
+                :label="$t('settings.disabledTextSelectionApp')"
+            >
                 <el-tag
                     v-for="appInfo in disabledTextSelectionApps"
                     :key="appInfo.owner.path"
                     closable
                     size="medium"
                     type="warning"
-                    @close="handleRemoveDisabledApps(appInfo.owner.path)">
-                    {{appInfo.owner.name}}
+                    @close="handleRemoveDisabledApps(appInfo.owner.path)"
+                >
+                    {{ appInfo.owner.name }}
                 </el-tag>
             </el-form-item>
         </el-form>
@@ -72,7 +87,8 @@ export default {
             keyStatusMap: {},
             enableGlobalHotKey: false,
             aiTextSelection: true,
-            disabledTextSelectionApps: []
+            disabledTextSelectionApps: [],
+            aiHelperMenuOptions: [],
         };
     },
     created() {
@@ -96,6 +112,7 @@ export default {
 
         this.aiTextSelection = window.store.storeGet('aiConfig.textSelection.enabled', true);
         this.disabledTextSelectionApps = window.store.storeGet('aiConfig.textSelection.disabledApps', []);
+        this.aiHelperMenuOptions = window.appManager.menuManager.getSupportedAIHelperMenuOptions();
     },
     methods: {
         getInputDevices() {
@@ -188,10 +205,27 @@ export default {
         },
         handleRemoveDisabledApps(removePath) {
             console.log('profileConfig: removeDisabledApps', removePath);
-            this.disabledTextSelectionApps = this.disabledTextSelectionApps.filter(appInfo => appInfo.owner.path !== removePath);
+            this.disabledTextSelectionApps = this.disabledTextSelectionApps.filter(
+                appInfo => appInfo.owner.path !== removePath
+            );
             window.store.storeSet('aiConfig.textSelection.disabledApps', this.disabledTextSelectionApps);
 
             window.appManager.menuManager.startMouseAIHelperMenu();
+        },
+        handleAIMenuOptionChanged(newValue, menuLabel) {
+            console.log('profileConfig: aiMenuOptionChanged', newValue, menuLabel);
+
+            this.aiHelperMenuOptions = this.aiHelperMenuOptions.map(menuOption => {
+                if (menuOption.label !== menuLabel) return menuOption;
+
+                const menuObjCp = Object.assign({}, menuOption);
+
+                menuObjCp.showInMenu = newValue;
+
+                return menuObjCp;
+            });
+
+            window.appManager.menuManager.updateAIHelperMenuOptions(this.aiHelperMenuOptions);
         }
     },
 };

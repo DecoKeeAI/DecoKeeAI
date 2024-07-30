@@ -14,13 +14,15 @@ const CLIPBOARD_CONTENT_TYPE = {
 }
 
 const AI_MENU_ITEMS = {
+    CUSTOM_FUNCTION: -1,
     CHAT: 0,
     COPY: 1,
     EXPLAIN: 2,
     SUMMARIZE: 3,
     TRANSLATE: 4,
-    DISABLE_CURRENT: 5,
-    DISABLE_ALL: 6
+    DEBUG_CODE: 5,
+    DISABLE_CURRENT: 6,
+    DISABLE_ALL: 7,
 }
 
 class MenuManager {
@@ -100,77 +102,66 @@ class MenuManager {
         this.aiMenuShowProcessStart = false;
     }
 
+    getSupportedAIHelperMenuOptions() {
+        return this.appManager.storeManager.storeGet('aiConfig.textSelection.menuOption', [
+            {
+                label: 'i18n-aiHelperMenu.chat',
+                iconPath: path.join(__static, 'app.png'),
+                editable: false,
+                showInMenu: true,
+                itemAction: AI_MENU_ITEMS.CHAT,
+            },
+            {
+                label: 'i18n-aiHelperMenu.copy',
+                iconPath: path.join(__static, 'icon', 'copy.png'),
+                editable: true,
+                showInMenu: true,
+                itemAction: AI_MENU_ITEMS.COPY,
+            },
+            {
+                label: 'i18n-aiHelperMenu.explain',
+                iconPath: path.join(__static, 'icon', 'explain.png'),
+                editable: true,
+                showInMenu: true,
+                itemAction: AI_MENU_ITEMS.EXPLAIN,
+            },
+            {
+                label: 'i18n-aiHelperMenu.summarize',
+                iconPath: path.join(__static, 'icon', 'summarize.png'),
+                editable: true,
+                showInMenu: true,
+                itemAction: AI_MENU_ITEMS.SUMMARIZE,
+            },
+            {
+                label: 'i18n-aiHelperMenu.translate',
+                iconPath: path.join(__static, 'icon', 'translate.png'),
+                editable: true,
+                showInMenu: true,
+                itemAction: AI_MENU_ITEMS.TRANSLATE,
+            },
+            {
+                label: 'i18n-aiHelperMenu.codeOptimize',
+                iconPath: path.join(__static, 'icon', 'code_optimize.png'),
+                editable: true,
+                showInMenu: false,
+                itemAction: AI_MENU_ITEMS.DEBUG_CODE,
+            },
+        ]);
+    }
+
+    updateAIHelperMenuOptions(menuOptions) {
+        this.appManager.storeManager.storeSet('aiConfig.textSelection.menuOption', menuOptions);
+
+        setTimeout(() => {
+            this._createAIHelperMenu();
+        }, 100);
+    }
+
     _initAIHelperMenu() {
         this.mouseAIRobot = require('robotjs');
-        const iconPath = path.join(__static, 'app.png');
-        const dekieTalkIcon = nativeImage.createFromPath(iconPath).resize({ width: 20, height: 20 });
         const that = this;
 
-        const copyIcon = nativeImage.createFromPath(path.join(__static, 'icon', 'copy.png')).resize({ width: 20, height: 20 });
-        const explainIcon = nativeImage.createFromPath(path.join(__static, 'icon', 'explain.png')).resize({ width: 20, height: 20 });
-        const summarizeIcon =  nativeImage.createFromPath(path.join(__static, 'icon', 'summarize.png')).resize({ width: 20, height: 20 });
-        const translateIcon = nativeImage.createFromPath(path.join(__static, 'icon', 'translate.png')).resize({ width: 20, height: 20 });
-        const disableIcon = nativeImage.createFromPath(path.join(__static, 'icon', 'disable.png')).resize({ width: 20, height: 20 });
-
-        this.mouseAIMenu = Menu.buildFromTemplate([
-            {
-                label: i18nRender('aiHelperMenu.chat'),
-                icon: dekieTalkIcon,
-                click: () => {
-                    that._handleAIMenuClicked(AI_MENU_ITEMS.CHAT);
-                },
-            },
-            {
-                label: i18nRender('aiHelperMenu.copy'),
-                icon: copyIcon,
-                click: () => {
-                    that._handleAIMenuClicked(AI_MENU_ITEMS.COPY);
-                },
-            },
-            {
-                label: i18nRender('aiHelperMenu.explain'),
-                icon: explainIcon,
-                click: () => {
-                    that._handleAIMenuClicked(AI_MENU_ITEMS.EXPLAIN);
-                },
-            },
-            {
-                label: i18nRender('aiHelperMenu.summarize'),
-                icon: summarizeIcon,
-                click: () => {
-                    that._handleAIMenuClicked(AI_MENU_ITEMS.SUMMARIZE);
-                },
-            },
-            {
-                label: i18nRender('aiHelperMenu.translate'),
-                icon: translateIcon,
-                click: () => {
-                    that._handleAIMenuClicked(AI_MENU_ITEMS.TRANSLATE);
-                },
-            },
-            {
-                type: 'separator'
-            },
-            {
-                label: i18nRender('aiHelperMenu.disable'),
-                icon: disableIcon,
-                submenu: [
-                    {
-                        label: i18nRender('aiHelperMenu.currentApp'),
-                        click: () => {
-                            that._handleAIMenuClicked(AI_MENU_ITEMS.DISABLE_CURRENT);
-                        },
-                    },
-                    {
-                        label: i18nRender('aiHelperMenu.allApp'),
-                        click: () => {
-                            that._handleAIMenuClicked(AI_MENU_ITEMS.DISABLE_ALL);
-                        },
-                    }
-                ]
-            }
-        ]);
-
+        this._createAIHelperMenu();
 
         // 监听鼠标右键点击事件
         uIOhook.on('mousedown', async event => {
@@ -259,6 +250,53 @@ class MenuManager {
         uIOhook.start();
 
         this.initAIHelperDone = true;
+    }
+
+    _createAIHelperMenu() {
+        const that = this;
+        const disableIcon = nativeImage.createFromPath(path.join(__static, 'icon', 'disable.png')).resize({ width: 20, height: 20 });
+
+        const configedMenuOptions = this.getSupportedAIHelperMenuOptions();
+
+        const menuOptions = [];
+
+        configedMenuOptions.forEach(item => {
+            if (!item.showInMenu) return;
+
+            menuOptions.push({
+                label: item.label.startsWith('i18n-') ? i18nRender(item.label.substring(5).trim()) : item.label,
+                icon: nativeImage.createFromPath(item.iconPath).resize({ width: 20, height: 20 }),
+                click: () => {
+                    that._handleAIMenuClicked(item.itemAction);
+                }
+            });
+        });
+
+        menuOptions.push(
+            {
+                type: 'separator'
+            });
+
+        menuOptions.push({
+            label: i18nRender('aiHelperMenu.disable'),
+            icon: disableIcon,
+            submenu: [
+                {
+                    label: i18nRender('aiHelperMenu.currentApp'),
+                    click: () => {
+                        that._handleAIMenuClicked(AI_MENU_ITEMS.DISABLE_CURRENT);
+                    },
+                },
+                {
+                    label: i18nRender('aiHelperMenu.allApp'),
+                    click: () => {
+                        that._handleAIMenuClicked(AI_MENU_ITEMS.DISABLE_ALL);
+                    },
+                }
+            ]
+        });
+
+        this.mouseAIMenu = Menu.buildFromTemplate(menuOptions);
     }
 
     _isDisabledCheckingApp(ownerInfo) {
@@ -355,6 +393,9 @@ class MenuManager {
                 break;
             case AI_MENU_ITEMS.TRANSLATE:
                 requestMsg = '翻译以下信息: ' + this.clipboardContent.data;
+                break;
+            case AI_MENU_ITEMS.DEBUG_CODE:
+                requestMsg = '检查以下代码，指出存在的问题并给出修改后的完整代码。我的代码: \n' + this.clipboardContent.data;
                 break;
             case AI_MENU_ITEMS.DISABLE_CURRENT:
                 activeWindow().then(result => {
