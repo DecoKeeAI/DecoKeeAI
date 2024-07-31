@@ -237,7 +237,8 @@ class MenuManager {
 
                     const dragEndApplication = await activeWindow();
 
-                    if (that.dragStartApplication.bounds.x !== dragEndApplication.bounds.x
+                    if (that.dragStartApplication.owner.path !== dragEndApplication.owner.path
+                        || that.dragStartApplication.bounds.x !== dragEndApplication.bounds.x
                         || that.dragStartApplication.bounds.y !== dragEndApplication.bounds.y
                         || that.dragStartApplication.bounds.width !== dragEndApplication.bounds.width
                         || that.dragStartApplication.bounds.height !== dragEndApplication.bounds.height) {
@@ -336,10 +337,12 @@ class MenuManager {
     _showAIHelperMenu() {
         if (!this.shouldShowAIMenu) return;
 
+        const isOnMac = process.platform === 'darwin';
+
         this.aiMenuShowProcessStart = true;
         const oldClipboardData = clipboard.readText();
         clipboard.clear();
-        this.mouseAIRobot.keyTap('c', 10, ['control']);
+        this.mouseAIRobot.keyTap('c', 10, [isOnMac ? 'command' : 'control']);
 
         setTimeout(() => {
             if (!this.shouldShowAIMenu) {
