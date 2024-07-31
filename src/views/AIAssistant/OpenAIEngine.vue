@@ -194,7 +194,7 @@ export default {
 
                     that.removeRequestId(requestId);
 
-                    console.log('OpenAIEngine: sendChatMessage: Cost: ', (chatContext ? chatContext.usage : 'unknown'));
+                    console.log('OpenAIEngine: sendChatMessage: Stream Cost: ', (chatContext ? chatContext.usage : 'unknown'));
                     return;
                 }
 
@@ -247,7 +247,7 @@ export default {
                     message: chatFrameResponse,
                 });
 
-                console.log('OpenAIEngine: sendChatMessage: Cost: ', (chatContext ? chatContext.usage : 'unknown'));
+                console.log('OpenAIEngine: sendChatMessage: Non-Stream Cost: ', (chatContext ? chatContext.usage : 'unknown'));
             } catch (err) {
                 console.log('OpenAIEngine: chatWithOpenAI: failed to connect to OpenAI server. Cancel Chat process. Error: ', err);
                 ipcRenderer.send('AssistantChatResponse', {
