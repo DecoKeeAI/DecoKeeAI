@@ -229,7 +229,7 @@ export default {
                         ipcRenderer.send('AssistantChatResponse', {
                             requestId: requestId,
                             status: -1,
-                            message: '',
+                            message: 'Failed to get chat response from server.',
                         });
                         this.removeRequestId(requestId);
                         return;
@@ -253,7 +253,7 @@ export default {
                 ipcRenderer.send('AssistantChatResponse', {
                     requestId: requestId,
                     status: -1,
-                    message: '',
+                    message: err.message
                 });
                 this.removeRequestId(requestId);
             }

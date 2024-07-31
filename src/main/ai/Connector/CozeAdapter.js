@@ -155,7 +155,9 @@ class CozeAdapter {
 
         this.chatRequestId = requestId;
 
-        this._sendChatMessage(requestId, params);
+        this._sendChatMessage(requestId, params).catch(err => {
+            console.log('CozeAdapter: chatWithAI: detect error: ', err);
+        });
     }
 
     setChatResponseListener(listener) {
@@ -190,6 +192,7 @@ class CozeAdapter {
 
             that.waitChatResponseCallback = resolve;
 
+            let responseRejected = false;
             axios(requestParams)
                 .then(response => {
                     if (!params.stream) {
@@ -226,6 +229,7 @@ class CozeAdapter {
                             try {
                                 const tempData = JSON.parse(cachedChunkMsg);
                                 if (tempData.code) {
+                                    responseRejected = true;
                                     if (that.chatResponseListener !== undefined) {
                                         that.chatResponseListener(requestId, -1, tempData.msg);
                                     }
@@ -234,8 +238,9 @@ class CozeAdapter {
                                 reject();
                                 return;
                             } catch (err) {
+                                responseRejected = true;
                                 if (that.chatResponseListener !== undefined) {
-                                    that.chatResponseListener(requestId, -1, '');
+                                    that.chatResponseListener(requestId, -1, 'Invalid response');
                                 }
                                 console.log('CozeAdapter: sendChatMessage: Received Error chunk: ', cachedChunkMsg);
                                 reject();
@@ -285,9 +290,9 @@ class CozeAdapter {
                                 break;
                             case 'error':
                                 console.log('CozeAdapter: sendChatMessage: Returned Error: ', data);
-
+                                responseRejected = true;
                                 if (that.chatResponseListener !== undefined) {
-                                    that.chatResponseListener(requestId, -1, '');
+                                    that.chatResponseListener(requestId, -1, data);
                                 }
 
                                 reject();
@@ -303,6 +308,8 @@ class CozeAdapter {
                         console.log('CozeAdapter: sendChatMessage: Stream ended.');
                         that.requestIdReqControllerMap.delete(requestId);
 
+                        if (responseRejected) return;
+
                         if (that.chatResponseListener !== undefined) {
                             that.chatResponseListener(requestId, 2, '');
                         }
@@ -314,7 +321,7 @@ class CozeAdapter {
                     that.requestIdReqControllerMap.delete(requestId);
 
                     if (that.chatResponseListener !== undefined) {
-                        that.chatResponseListener(requestId, -1, '');
+                        that.chatResponseListener(requestId, -1, 'Failed to get response');
                     }
                     reject();
                 });
