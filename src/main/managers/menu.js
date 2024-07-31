@@ -3,8 +3,9 @@ import {uIOhook, UiohookKey} from 'uiohook-napi';
 import {i18nRender} from "@/plugins/i18n";
 
 const activeWindow = require('active-win');
-const { nativeImage } = require('electron');
+const { nativeImage, nativeTheme } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 const SHOW_AI_MENU_THRESHOLD = 500; // 500 ms 内的点击算作双击
 const CLIPBOARD_CONTENT_TYPE = {
@@ -265,7 +266,9 @@ class MenuManager {
 
     _createAIHelperMenu() {
         const that = this;
-        const disableIcon = nativeImage.createFromPath(path.join(__static, 'icon', 'disable.png')).resize({ width: 20, height: 20 });
+        const systemIsDarkMode = nativeTheme.shouldUseDarkColors;
+
+        const disableIcon = nativeImage.createFromPath(path.join(__static, 'icon', systemIsDarkMode ? 'disable.png' : 'disable_dark.png')).resize({ width: 20, height: 20 });
 
         const configedMenuOptions = this.getSupportedAIHelperMenuOptions();
 
@@ -273,10 +276,26 @@ class MenuManager {
 
         configedMenuOptions.forEach(item => {
             if (!item.showInMenu) return;
+            const iconFilePathInfo = path.parse(item.iconPath);
+            const iconFileName = iconFilePathInfo.name;
+
+            let finalIconFilePath = item.iconPath;
+
+            if (systemIsDarkMode && iconFileName.endsWith('_dark')) {
+                finalIconFilePath = finalIconFilePath.replace('_dark.', '.');
+            } else if (!systemIsDarkMode && !iconFileName.endsWith('_dark')) {
+                finalIconFilePath = path.join(iconFilePathInfo.dir, iconFileName + '_dark.png');
+            }
+
+            console.log('finalIconFilePath: ', finalIconFilePath, ' iconFilePathInfo: ', iconFilePathInfo, ' iconFileName: ', iconFileName);
+
+            if (!fs.existsSync(finalIconFilePath)) {
+                finalIconFilePath = item.iconPath;
+            }
 
             menuOptions.push({
                 label: item.label.startsWith('i18n-') ? i18nRender(item.label.substring(5).trim()) : item.label,
-                icon: nativeImage.createFromPath(item.iconPath).resize({ width: 20, height: 20 }),
+                icon: nativeImage.createFromPath(finalIconFilePath).resize({ width: 20, height: 20 }),
                 click: () => {
                     that._handleAIMenuClicked(item.itemAction);
                 }

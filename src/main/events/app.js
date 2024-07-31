@@ -85,8 +85,6 @@ class AppEvents {
             console.log('EventAPP New WebContentCreate: ', e);
 
             webContents.on('page-title-updated', (e, title, explicitSet) => {
-                console.log('EventAPP page-title-updated: title: ', title, ' explicitSet: ', explicitSet);
-
                 if (!reverseDnsRegex.test(title)) return;
 
                 const currentPluginList = appManager.storeManager.storeGet("plugin.streamDeck");
