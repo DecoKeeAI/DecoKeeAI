@@ -1973,55 +1973,7 @@ class AIManager {
             });
             return;
         }
-        shell.openPath(applicationPath).then(res => {
-            console.log('AIManager: openApplication: OpenApplication ret: ' + JSON.stringify(res));
-            setTimeout(() => {
-                this._bringApplicationToFront(applicationPath);
-            }, 1000);
-        }).catch(err => {
-            console.log('AIManager: openApplication: OpenApplication err: ' + JSON.stringify(err));
-        });
-    }
-
-    _bringApplicationToFront(applicationPath) {
-        let bringToFrontScript = '', script = '', appName;
-        switch (process.platform) {
-            case 'win32':
-                appName = path.basename(applicationPath, '.exe');
-
-                script = `
-                        $mainWindowHandle = (Get-Process -Name '${appName}').MainWindowHandle;
-                        Add-Type -Name User32 -Namespace Win32 -MemberDefinition @"
-                            [DllImport("user32.dll")]
-                            public static extern bool SetForegroundWindow(IntPtr hWnd);
-                "@
-                        [Win32.User32]::SetForegroundWindow($mainWindowHandle);
-                    `;
-
-                console.log('AIManager: _bringApplicationToFront: AppPath: ' + applicationPath + ' AppName: ' + appName + ' Script: ' + script);
-                bringToFrontScript = 'powershell -Command "' + script + '"';
-                break;
-            case 'darwin':
-                script = 'tell application "System Events" to set frontmost of process "' + applicationPath + '" to true';
-                bringToFrontScript = 'osascript -e \'' + script;
-                break;
-            case 'linux':
-                bringToFrontScript = 'xdotool search --onlyvisible --name "' + applicationPath + '" windowactivate';
-                break;
-            default:
-                console.error('Unsupported platform');
-                return;
-        }
-
-        console.log('AIManager: _bringApplicationToFront: bringToFrontScript: ' + bringToFrontScript);
-
-        exec(bringToFrontScript, (wmError, wmStdout, wmStderr) => {
-            if (wmError) {
-                console.error(`AIManager: _bringApplicationToFront: Error setting foreground window: ${wmError.message}   wmStdout: ${wmStdout} wmStderr: ${wmStderr}`);
-            } else {
-                console.log(`AIManager: _bringApplicationToFront: Application ${applicationPath} opened and set to foreground. wmStdout: ${wmStdout} wmStderr: ${wmStderr}`);
-            }
-        });
+        this.appManager.deviceControlManager.openApplication(applicationPath);
     }
 
     _closeApplication(requestId, applicationPath, execName) {

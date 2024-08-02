@@ -63,3 +63,12 @@ module.exports.getOpenWindowsSync = options => {
 
 	throw new Error('macOS, Linux, and Windows only');
 };
+
+module.exports.bringAppToFront = appPid => {
+
+	if (process.platform === 'win32') {
+		return require('./lib/windows.js').bringAppToFront(appPid);
+	}
+
+	throw new Error('Windows only');
+};

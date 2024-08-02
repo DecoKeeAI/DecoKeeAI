@@ -154,6 +154,13 @@ declare const activeWindow: {
 	Windows are returned in order from front to back.
 	*/
 	getOpenWindowsSync(options?: activeWindow.Options): activeWindow.Result[];
+
+	/**
+	Get metadata about all open windows synchronously.
+
+	Windows are returned in order from front to back.
+	*/
+	bringAppToFront(pid: Number): Number;
 };
 
 export = activeWindow;

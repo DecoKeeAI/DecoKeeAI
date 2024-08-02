@@ -43,10 +43,11 @@ import {getDeltaList} from "@/utils/Utils";
 import AIManager from "@/main/ai/AIManager";
 import {PROTOCOL_OP_CODE, PROTOCOL_RAW_RES_TYPE} from "@/main/DeviceControl/Connections/ProtocolUtil";
 import {deepCopy} from "@/utils/ObjectUtil";
+import path from "path";
 
 const robotjs = require('robotjs');
 const activeWindow = require('active-win');
-const { getOpenWindowsSync } = require('active-win');
+const { getOpenWindowsSync, bringAppToFront } = require('active-win');
 const fs = require('fs');
 
 const { shell } = require('electron');
@@ -575,6 +576,10 @@ class DeviceControlManager {
 
     reloadAppMonitorConfigInfo() {
         loadAppMonitorConfigInfo();
+    }
+
+    openApplication(appPath) {
+        processOpenAction('', '', appPath);
     }
 
     async destroy() {
@@ -1263,24 +1268,7 @@ function processConfiguredAction(
                 notifyDeviceShowAlert(serialNumber, Constants.ALERT_TYPE_INVALID, keyCode);
                 return;
             }
-            shell
-                .openPath(filePath)
-                .then(res => {
-                    console.log('DeviceControlManager: processConfiguredAction: openPath ret: ', res);
-
-                    if (res && res !== '' && res !== ' ') {
-                        notifyDeviceShowAlert(serialNumber, Constants.ALERT_TYPE_INVALID, keyCode);
-                    }
-                })
-                .catch(err => {
-                    console.log(
-                        'DeviceControlManager: processConfiguredAction: openPath err: ',
-                        err
-                    );
-                    if (err) {
-                        notifyDeviceShowAlert(serialNumber, Constants.ALERT_TYPE_INVALID, keyCode);
-                    }
-                });
+            processOpenAction(serialNumber, keyCode, filePath);
             break;
         case 'close':
             if (action === 1) break;
@@ -2597,6 +2585,115 @@ function processTimerActions(serialNumber, keyActions, keyCode) {
     } catch (err) {
         console.log('DeviceControlManager: processTimerActions detect err: ', err);
     }
+}
+
+function processOpenAction(serialNumber, keyCode, filePath) {
+    if (process.platform === 'win32') {
+        if (filePath.toLowerCase().endsWith('.exe')) {
+            let exeName = filePath.split('\\').pop();
+            if (!exeName || exeName === '') {
+                exeName = filePath.split('/').pop();
+            }
+            if (exeName && exeName !== '') {
+
+                exec('tasklist | findstr ' + exeName, (error, stdout, stderr) => {
+                    if (error) {
+                        doOpenAction(serialNumber, keyCode, filePath);
+                        return;
+                    }
+
+                    const pid = stdout.split(/\s+/)[1]; // 根据 tasklist 的输出格式获取 PID
+                    console.log(`DeviceControlManager: processOpenAction: pid ${pid} for ${filePath} processName: ${exeName}`);
+
+                    try {
+                        if (pid && Number(pid) > 0) {
+                            bringApplicationToFront(filePath, Number(pid)).then(result => {
+                                if (result) return;
+                                doOpenAction(serialNumber, keyCode, filePath);
+                            });
+                        }
+                    } catch (err) {
+                        console.log(`Invalid pid ${pid} info after search. Do open directly. ${err.message}`);
+                        doOpenAction(serialNumber, keyCode, filePath);
+                    }
+                });
+
+                return;
+            }
+        }
+    }
+
+    doOpenAction(serialNumber, keyCode, filePath);
+}
+
+function doOpenAction(serialNumber, keyCode, filePath) {
+    shell
+        .openPath(filePath)
+        .then(res => {
+            console.log('DeviceControlManager: processConfiguredAction: openPath ret: ', res);
+
+            if (res && res !== '' && res !== ' ' && serialNumber !== '' && keyCode !== '') {
+                notifyDeviceShowAlert(serialNumber, Constants.ALERT_TYPE_INVALID, keyCode);
+            }
+        })
+        .catch(err => {
+            console.log(
+                'DeviceControlManager: processConfiguredAction: openPath err: ',
+                err
+            );
+            if (err) {
+                if (serialNumber !== '' && keyCode !== '') {
+                    notifyDeviceShowAlert(serialNumber, Constants.ALERT_TYPE_INVALID, keyCode);
+                }
+            }
+        });
+}
+
+function bringApplicationToFront(applicationPath, pid) {
+    return new Promise((resolve) => {
+        let bringToFrontScript = '', script = '', appName;
+        switch (process.platform) {
+            case 'win32':
+                const bringToFrontResult = bringAppToFront(pid);
+                console.log('bringToFrontResult: ', bringToFrontResult);
+
+                if (bringToFrontResult !== 0) {
+                    resolve(false);
+                } else {
+                    resolve(true);
+                }
+
+                return;
+            case 'darwin':
+                script = 'tell application "System Events" to set frontmost of process "' + applicationPath + '" to true';
+                bringToFrontScript = 'osascript -e \'' + script;
+                break;
+            case 'linux':
+                bringToFrontScript = 'xdotool search --onlyvisible --name "' + applicationPath + '" windowactivate';
+                break;
+            default:
+                console.error('Unsupported platform');
+                resolve(false);
+                return;
+        }
+
+        // console.log('DeviceControlManager: bringApplicationToFront: bringToFrontScript: ' + bringToFrontScript);
+
+        if (bringToFrontScript === '') {
+            resolve(false);
+            return;
+        }
+
+        exec(bringToFrontScript, (wmError, wmStdout, wmStderr) => {
+            if (wmError) {
+                console.error(`DeviceControlManager: bringApplicationToFront: Error setting foreground window: ${wmError.message}   wmStdout: ${wmStdout} wmStderr: ${wmStderr}`);
+                resolve(false);
+            } else {
+                console.log(`DeviceControlManager: bringApplicationToFront: Application ${applicationPath} opened and set to foreground. wmStdout: ${wmStdout} wmStderr: ${wmStderr}`);
+                resolve(true);
+            }
+        });
+    });
 }
 
 function processCloseAction(serialNumber, keyCode, filePath) {

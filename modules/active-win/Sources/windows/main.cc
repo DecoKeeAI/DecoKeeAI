@@ -17,6 +17,11 @@ struct OwnerWindowInfo {
 	std::string name;
 };
 
+struct EnumWindowsData {
+    std::vector<HWND> windowHandles;
+    DWORD processId;
+};
+
 template <typename T>
 T getValueFromCallbackData(const Napi::CallbackInfo &info, unsigned handleIndex) {
 	return reinterpret_cast<T>(info[handleIndex].As<Napi::Number>().Int64Value());
@@ -266,9 +271,69 @@ Napi::Array getOpenWindows(const Napi::CallbackInfo &info) {
 	return values;
 }
 
+
+BOOL CALLBACK EnumWindowsProc(HWND hWnd, LPARAM lParam) {
+    EnumWindowsData* data = reinterpret_cast<EnumWindowsData*>(lParam);
+    DWORD processId;
+    GetWindowThreadProcessId(hWnd, &processId);
+
+    if (processId == data->processId) {
+        data->windowHandles.push_back(hWnd);
+    }
+    return TRUE; // Continue enumerating
+}
+
+HWND GetMainWindowHandle(DWORD processId) {
+    auto data = std::make_unique<EnumWindowsData>();
+    data->processId = processId;
+    EnumWindows(EnumWindowsProc, reinterpret_cast<LPARAM>(data.get()));
+
+    for (HWND hWnd : data->windowHandles) {
+        if (IsWindowVisible(hWnd) && GetParent(hWnd) == NULL) {
+            return hWnd; // Return the first visible window with no parent (usually the main window)
+        }
+    }
+    return NULL;
+}
+
+int bringToFront(DWORD processId) {
+    HWND hWnd = GetMainWindowHandle(processId);
+
+    // Check if the window is minimized
+    if (IsIconic(hWnd)) {
+        // Restore the window
+        ShowWindow(hWnd, SW_RESTORE);
+    }
+
+    if (hWnd == NULL) {
+        return 2; // Window not found
+    }
+
+    if (SetForegroundWindow(hWnd)) {
+        return 0;
+    } else {
+        DWORD error = GetLastError();
+        std::cerr << "SetForegroundWindow failed with error: " << error << std::endl;
+        return 3;
+    }
+}
+
+Napi::Number BringToFrontWrapped(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (info.Length() < 1 || !info[0].IsNumber()) {
+        Napi::TypeError::New(env, "Number expected").ThrowAsJavaScriptException();
+        return Napi::Number::New(env, 4);
+    }
+
+    DWORD processId = info[0].As<Napi::Number>().Uint32Value();
+    int result = bringToFront(processId);
+    return Napi::Number::New(env, result);
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
 	exports.Set(Napi::String::New(env, "getActiveWindow"), Napi::Function::New(env, getActiveWindow));
 	exports.Set(Napi::String::New(env, "getOpenWindows"), Napi::Function::New(env, getOpenWindows));
+	exports.Set(Napi::String::New(env, "bringAppToFront"), Napi::Function::New(env, BringToFrontWrapped));
 	return exports;
 }
 

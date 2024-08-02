@@ -6,7 +6,8 @@ const bindingPath = binary.find(path.resolve(path.join(__dirname, '../package.js
 
 const binding = (fs.existsSync(bindingPath)) ? require(bindingPath) : {
 	getActiveWindow: () => {},
-	getOpenWindows: () => {}
+	getOpenWindows: () => {},
+	bringAppToFront: () => {}
 };
 
 module.exports = binding;
