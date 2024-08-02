@@ -7,7 +7,7 @@
 
 <script>
 export default {
-    name: 'IconHolder',
+        name: 'IconHolder',
     props: {
         imgSrc: {
             type: String,

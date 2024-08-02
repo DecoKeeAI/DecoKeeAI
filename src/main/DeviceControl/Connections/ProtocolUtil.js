@@ -35,6 +35,16 @@
  */
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
+const DEBUG_PROTOCOL = false;
+
+export const PROTOCOL_OP_CODE = {
+    OP_RESOURCE_FILE: 0x01,
+    OP_RAW_RESOURCE: 0x02
+}
+
+export const PROTOCOL_RAW_RES_TYPE = {
+    RES_TYPE_JPEG: 0x00
+}
 
 export function JSONstringifyHex(arr) {
     let str='[';
@@ -63,7 +73,7 @@ export function checkDataValid(dataBytes) {
                 return "";
             case 0xA1:
                 const dataLength = bytesToInt(dataBytes.slice(1, 3));
-                console.log('checkDataValid 0xA1 dataLength: ', dataLength);
+                if (DEBUG_PROTOCOL) console.log('checkDataValid 0xA1 dataLength: ', dataLength);
 
                 let sum = 0;
                 for (let i = 0; i < dataLength; i++) {
@@ -72,14 +82,14 @@ export function checkDataValid(dataBytes) {
                 const resultCheckSum = sum % 0xFF;
                 const checkSum = dataBytes[3 + dataLength];
 
-                console.log('checkDataValid: dataCheckSum: ', checkSum, ' ResultCheckSum: ', resultCheckSum);
+                if (DEBUG_PROTOCOL) console.log('checkDataValid: dataCheckSum: ', checkSum, ' ResultCheckSum: ', resultCheckSum);
 
                 if (resultCheckSum !== checkSum) {
                     return null;
                 }
 
                 const dataJson = textDecoder.decode(dataBytes.slice(3, 3 + dataLength))
-                console.log('checkDataValid: getDataJson: ' + JSON.stringify(dataJson));
+                if (DEBUG_PROTOCOL) console.log('checkDataValid: getDataJson: ' + JSON.stringify(dataJson));
                 return JSON.parse(dataJson);
         }
     } catch (err) {
@@ -89,7 +99,7 @@ export function checkDataValid(dataBytes) {
     return null;
 }
 
-export function wrapData(type, data, opCode, resourceId, sequenceId) {
+export function wrapData(type, data, opCode, resourceInfoDetail, sequenceId) {
     try {
         let wrappedData = [];
         switch (type) {
@@ -112,39 +122,65 @@ export function wrapData(type, data, opCode, resourceId, sequenceId) {
             case 0xA2:
                 wrappedData.push(0xA2);
                 const fullDataLength = intToBytes(data.length + 7, 2);
-                console.log('Full protocol resource length: ' + fullDataLength[0] + ' ' + fullDataLength[1] + " dataLength: " + data.length);
+                if (DEBUG_PROTOCOL) console.log('Full protocol resource length: ' + fullDataLength[0] + ' ' + fullDataLength[1] + " dataLength: " + data.length);
                 wrappedData = wrappedData.concat(fullDataLength);
 
                 wrappedData.push(opCode);
 
-                const resourceInfo = resourceId.split('-');
-                const resourceInfoPreId = intToBytes(parseInt(resourceInfo[0]), 1);
-                const resourceInfoEndId = intToBytes(parseInt(resourceInfo[1]), 4);
-                wrappedData = wrappedData.concat(resourceInfoPreId);
-                wrappedData = wrappedData.concat(resourceInfoEndId);
-                console.log("wrapData AfterAddResourceId: ", wrappedData, ' ResourceId: ' + resourceId);
+                let totalSum = 0;
+                totalSum += opCode;
+
+                switch (opCode) {
+                    case PROTOCOL_OP_CODE.OP_RESOURCE_FILE: {
+                        const resourceInfo = resourceInfoDetail.split('-');
+                        const resourceInfoPreId = intToBytes(parseInt(resourceInfo[0]), 1);
+                        const resourceInfoEndId = intToBytes(parseInt(resourceInfo[1]), 4);
+                        wrappedData = wrappedData.concat(resourceInfoPreId);
+                        wrappedData = wrappedData.concat(resourceInfoEndId);
+
+
+                        totalSum += resourceInfoPreId[0];
+                        totalSum += resourceInfoEndId[0] + resourceInfoEndId[1] + resourceInfoEndId[2] + resourceInfoEndId[3];
+
+                        break;
+                    }
+                    case PROTOCOL_OP_CODE.OP_RAW_RESOURCE: {
+                        const resourceInfo = resourceInfoDetail.split('-');
+                        const resType = intToBytes(parseInt(resourceInfo[0]), 1);
+                        wrappedData = wrappedData.concat(resType);
+
+                        const rowId = intToBytes(parseInt(resourceInfo[1].charAt(0)), 1);
+                        const colId = intToBytes(parseInt(resourceInfo[1].charAt(1)), 1);
+
+                        wrappedData = wrappedData.concat(rowId);
+                        wrappedData = wrappedData.concat(colId);
+                        wrappedData = wrappedData.concat([0x00, 0x00]);
+
+                        totalSum += resType[0];
+                        totalSum += rowId[0];
+                        totalSum += colId[0];
+                        break;
+                    }
+                }
+                if (DEBUG_PROTOCOL) console.log("wrapData AfterAddresourceInfoDetail: ", wrappedData, ' resourceInfoDetail: ' + resourceInfoDetail);
 
                 wrappedData = wrappedData.concat(intToBytes(sequenceId, 1));
 
                 // console.log("wrapData AfterSequenceId: ", wrappedData, ' data: ', data);
-                console.log("wrapData AfterSequenceId: ", wrappedData);
+                if (DEBUG_PROTOCOL) console.log("wrapData AfterSequenceId: ", wrappedData);
 
                 wrappedData = wrappedData.concat(data);
                 // console.log("wrapData AfterAddData ", wrappedData);
 
-                let totalSum = 0;
-                totalSum += opCode;
-                totalSum += resourceInfoPreId[0];
-                totalSum += resourceInfoEndId[0] + resourceInfoEndId[1] + resourceInfoEndId[2] + resourceInfoEndId[3];
                 totalSum += sequenceId;
-                console.log("wrapData totalSum before data ", totalSum);
+                if (DEBUG_PROTOCOL) console.log("wrapData totalSum before data ", totalSum);
                 for (let i = 0; i < data.length; i++) {
                     totalSum += data[i];
                 }
 
-                console.log("wrapData totalSum after data ", totalSum);
+                if (DEBUG_PROTOCOL) console.log("wrapData totalSum after data ", totalSum);
                 wrappedData.push(totalSum % 0xFF);
-                console.log("wrapData totalSum final " + (totalSum % 0xFF) + ' wrappedData.length: ' + wrappedData.length);
+                if (DEBUG_PROTOCOL) console.log("wrapData totalSum final " + (totalSum % 0xFF) + ' wrappedData.length: ' + wrappedData.length);
                 // console.log("wrapData totalSum final ", totalSum % 0xFF, ' wrappedData: ', wrappedData, ' wrappedData.length: ' + wrappedData.length);
 
                 return wrappedData;

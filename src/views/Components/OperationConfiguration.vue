@@ -149,6 +149,9 @@
                                 </el-option>
                             </el-select>
                         </el-form-item>
+                        <el-form-item :label="$t('monitorAppView') + ':'">
+                            <el-switch v-model="monitorAppView" @change="handleMonitorAppViewChanged" />
+                        </el-form-item>
                     </template>
 
                     <!-- 关闭 -->
@@ -300,6 +303,7 @@ export default {
 
             // 自定义更改图片
             defaultResourcesMap,
+            monitorAppView: false
         };
     },
     created() {
@@ -325,12 +329,19 @@ export default {
             case 'brightness':
                 this.briSelect = this.optionData.config.actions[0].value;
                 break;
-            case 'open':
+            case 'open': {
                 this.fullPath = this.optionData.config.actions[0].value;
                 // eslint-disable-next-line no-case-declarations
                 const filterName = this.appOption.filter(item => item.appLaunchPath === this.fullPath)[0]
                 this.appLaunchPath = filterName ? filterName.appName : ''
+
+                const monitorAppViewConfigIdx = this.optionData.config.actions.findIndex(actionInfo => actionInfo.type === 'monitorAppView');
+
+                if (monitorAppViewConfigIdx > -1) {
+                    this.monitorAppView = this.optionData.config.actions[monitorAppViewConfigIdx].value;
+                }
                 break;
+            }
             case 'close':
                 this.closePath = this.optionData.config.actions[0].value;
                 if (this.optionData.config.actions[1].type) {
@@ -439,12 +450,19 @@ export default {
                 case 'brightness':
                     this.briSelect = optionData.config.actions[0].value;
                     break;
-                case 'open':
+                case 'open': {
                     this.fullPath = optionData.config.actions[0].value;
                     // eslint-disable-next-line no-case-declarations
                     const filterName = this.appOption.filter(item => item.appLaunchPath === this.fullPath)[0]
                     this.appLaunchPath = filterName ? filterName.appName : ''
+                    this.monitorAppView = false;
+                    const monitorAppViewConfigIdx = optionData.config.actions.findIndex(actionInfo => actionInfo.type === 'monitorAppView');
+
+                    if (monitorAppViewConfigIdx > -1) {
+                        this.monitorAppView = optionData.config.actions[monitorAppViewConfigIdx].value;
+                    }
                     break;
+                }
                 case 'close':
                     this.closePath = optionData.config.actions[0].value;
                     if (optionData.config.actions[1].type) {
@@ -728,7 +746,8 @@ export default {
             dialog
                 .showOpenDialog({ properties: ['openDirectory'] })
                 .then(result => {
-                    this.appLaunchPath = ''
+                    this.appLaunchPath = '';
+                    this.monitorAppView = false;
                     console.log('打开文件夹', result);
                     if (result.filePaths.length === 0) return;
                     const fileName = result.filePaths[0].split('\\');
@@ -1017,6 +1036,20 @@ export default {
             console.log('OperationConfiguration: handleAIConfigUpdated: ', newAIConfigData);
             this.optionData.config.actions[0].value = JSON.stringify(newAIConfigData);
             this.updateOperationData(true);
+        },
+        handleMonitorAppViewChanged() {
+            console.log('OperationConfiguration: handleMonitorAppViewChanged: ', this.monitorAppView);
+
+            const monitorAppViewConfigIdx = this.optionData.config.actions.findIndex(actionInfo => actionInfo.type === 'monitorAppView');
+            if (monitorAppViewConfigIdx === -1) {
+                this.optionData.config.actions.push({
+                    type: 'monitorAppView',
+                    value: this.monitorAppView
+                });
+            } else {
+                this.optionData.config.actions[monitorAppViewConfigIdx].value = this.monitorAppView;
+            }
+            this.updateOperationData();
         }
     },
 };

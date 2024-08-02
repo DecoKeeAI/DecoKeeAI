@@ -168,10 +168,10 @@ class HIDManager {
         return false;
     }
 
-    sendResource(serialNumber, resourceBytes, resourceId, sequenceId) {
+    sendResource(serialNumber, resourceBytes, opCode, resourceId, sequenceId) {
         if (!serialNumber || !HidActiveDeviceMap.get(serialNumber)) return;
         try {
-            const rc = HidActiveDeviceMap.get(serialNumber).write(wrapData(0xA2, resourceBytes, 0x01, resourceId, sequenceId));
+            const rc = HidActiveDeviceMap.get(serialNumber).write(wrapData(0xA2, resourceBytes, opCode, resourceId, sequenceId));
             console.log("HID sendResource sent size: ", resourceBytes.length, " actual size:", rc);
         } catch (err) {
             console.log('HID sendResource detected error on send resource info.', err);

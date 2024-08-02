@@ -41,9 +41,12 @@ import PluginWSServer from '@/main/DeviceControl/Connections/PluginWSServer';
 import PluginAdapter, { PLUGIN_TYPE } from '@/main/DeviceControl/Connections/PluginAdapter';
 import {getDeltaList} from "@/utils/Utils";
 import AIManager from "@/main/ai/AIManager";
+import {PROTOCOL_OP_CODE, PROTOCOL_RAW_RES_TYPE} from "@/main/DeviceControl/Connections/ProtocolUtil";
+import {deepCopy} from "@/utils/ObjectUtil";
 
 const robotjs = require('robotjs');
 const activeWindow = require('active-win');
+const { getOpenWindowsSync } = require('active-win');
 const fs = require('fs');
 
 const { shell } = require('electron');
@@ -117,6 +120,14 @@ const deviceAppearPluginMap = new Map();
 const deviceProfileChangeRequestMap = new Map();
 
 const deviceAssistantManagerMap = new Map();
+
+const deviceMonitoryAppViewMap = new Map();
+const deviceMonitorAppViewContext = {
+    deviceMonitoryAppViewData: {},
+    monitorAppViewTask: undefined,
+    isRunning: false,
+    monitorWindowInfos: []
+};
 
 let deviceProfileAppMonitorMap = undefined;
 class DeviceControlManager {
@@ -326,6 +337,26 @@ class DeviceControlManager {
                 if (activeProfile) {
                     notifyDeviceShowAlert(serialNumber, args.alertType, keyCode);
                 }
+            });
+
+            ipcMain.handle('send-window-data', (event, args) => {
+                const currentMonitorViewList = deviceMonitorAppViewContext.monitorWindowInfos;
+                const windowId = args.windowId;
+
+                // console.log('DeviceControlManager: handle send-window-data: for windowId: ', windowId, ' currentMonitorViewList: ', currentMonitorViewList);
+
+                if (currentMonitorViewList === undefined || currentMonitorViewList.length === 0) return;
+
+                const monitorDevicesInfo = currentMonitorViewList.find(monitorAppInfo => monitorAppInfo.sourceViewId === windowId);
+
+                if (monitorDevicesInfo === undefined) return;
+
+                const windowData = args.windowData;
+                // console.log('DeviceControlManager: handle send-window-data: for windowId: ', windowId, ' DataLength: ', windowData.length, ' monitorDevicesInfo.targetKeys: ', monitorDevicesInfo);
+
+                monitorDevicesInfo.targetKeys.forEach(targetKey => {
+                    sendRawResourceToDeviceKey(targetKey.serialNumber, PROTOCOL_RAW_RES_TYPE.RES_TYPE_JPEG, Array.from(windowData), targetKey.keyCode);
+                });
             });
         } catch (err) {
             console.log(
@@ -938,6 +969,9 @@ function broadcastDeviceConnectionChange(serialNumber, connected, connectionType
         }
 
         deviceAssistantManagerMap.delete(serialNumber);
+
+        deviceMonitoryAppViewMap.delete(serialNumber);
+
     }
 
     if (
@@ -1479,6 +1513,10 @@ async function loadConfigRelatedResource(serialNumber, resourceId, configDetail,
 
     const newDeviceAssistantsList = [];
 
+    const monitorAppViewList = [];
+
+    const pcInstalledApps = appManager.resourcesManager.getInstalledApps();
+
     let loadSoundInfos = [];
     for (let i = 0; i < configDetail.length; i++) {
         const configInfo = configDetail[i];
@@ -1511,6 +1549,29 @@ async function loadConfigRelatedResource(serialNumber, resourceId, configDetail,
                     aiConfigData: subAction.config.actions[0].value
                 });
             })
+        } else if (configInfo.config.type === 'open') {
+            let monitorAppPath = '';
+            let shouldMonitorAppView = false;
+            configInfo.config.actions.forEach(actionItem => {
+                if (actionItem.type === 'path') {
+                    monitorAppPath = actionItem.value;
+                    return;
+                }
+
+                if (actionItem.type === 'monitorAppView' && actionItem.value) {
+                    shouldMonitorAppView = true;
+                }
+            });
+
+            if (shouldMonitorAppView && monitorAppPath !== undefined && monitorAppPath !== '') {
+                const appInfo = pcInstalledApps.filter(appInfoDetail =>  appInfoDetail.appLaunchPath === monitorAppPath);
+                monitorAppViewList.push({
+                    serialNumber: serialNumber,
+                    keyCode: configInfo.keyCode,
+                    appPath: monitorAppPath,
+                    appName: (appInfo === undefined || appInfo.length === 0) ? '' : appInfo[0].appName
+                });
+            }
         }
 
         let soundPath = undefined,
@@ -1599,6 +1660,42 @@ async function loadConfigRelatedResource(serialNumber, resourceId, configDetail,
 
 
     if (!isMainEntry) return;
+
+    let deviceMonitoryAppViewList = deviceMonitoryAppViewMap.get(serialNumber);
+    if (deviceMonitoryAppViewList === undefined) {
+        deviceMonitoryAppViewList = [];
+    }
+
+    let finalMonitorAppViewList = [];
+    const monitoryAppViewListDelta = getDeltaList(deviceMonitoryAppViewList, monitorAppViewList, (a, b) => a.keyCode === b.keyCode && a.appPath === b.appPath);
+    console.log('DeviceControlManager: loadConfigRelatedResource: monitoryAppViewListDelta: ', monitoryAppViewListDelta);
+
+    finalMonitorAppViewList = finalMonitorAppViewList.concat(monitoryAppViewListDelta.unchangedList);
+    finalMonitorAppViewList = finalMonitorAppViewList.concat(monitoryAppViewListDelta.newList);
+
+    if (finalMonitorAppViewList.length === 0) {
+        deviceMonitoryAppViewMap.delete(serialNumber);
+    } else {
+        deviceMonitoryAppViewMap.set(serialNumber, finalMonitorAppViewList);
+    }
+
+    deviceMonitorAppViewContext.deviceMonitoryAppViewData = Array.from(deviceMonitoryAppViewMap.values()).reduce((acc, currentValue) => {
+        currentValue.forEach((obj) => {
+            const appPath = obj.appPath;
+            if (!acc[appPath]) {
+                acc[appPath] = [];
+            }
+            acc[appPath].push(obj);
+        });
+        return acc;
+    }, {});
+
+
+    if (!deviceMonitorAppViewContext.isRunning) {
+        setTimeout(() => {
+            checkAndStartMonitorAppViewTask();
+        }, 1000);
+    }
 
     let deviceAssistantsList = deviceAssistantManagerMap.get(serialNumber);
 
@@ -1767,10 +1864,6 @@ function getAllRelatedPluginList(resourceId, configDetail, multiActionIndex) {
 
 function readFileInChunks(filePath, chunkSize) {
     const fileData = fs.readFileSync(filePath);
-    const fileSize = fileData.length;
-    const numChunks = Math.ceil(fileSize / chunkSize);
-    const chunks = [];
-
     if (filePath.includes('KeyConfig') && filePath.endsWith('.json')) {
         console.log(
             'readFileInChunks: KeyConfig Detail: ',
@@ -1778,10 +1871,19 @@ function readFileInChunks(filePath, chunkSize) {
         );
     }
 
+    return splitDataInChunks(fileData, chunkSize);
+}
+
+function splitDataInChunks(dataBytes, chunkSize) {
+    const fileSize = dataBytes.length;
+
+    const numChunks = Math.ceil(fileSize / chunkSize);
+    const chunks = [];
+
     for (let i = 0; i < numChunks; i++) {
         const start = i * chunkSize;
         const end = start + chunkSize;
-        const chunk = fileData.slice(start, end);
+        const chunk = dataBytes.slice(start, end);
         chunks.push(chunk);
     }
 
@@ -2890,7 +2992,7 @@ function sendInvalidResourceInfo(deviceManager, serialNumber, resourceId) {
                     sequenceId,
                 ' Size: ' + dataBytes.length
             );
-            deviceManager.sendResource(serialNumber, Array.from(dataBytes), resourceId, sequenceId);
+            deviceManager.sendResource(serialNumber, Array.from(dataBytes), PROTOCOL_OP_CODE.OP_RESOURCE_FILE, resourceId, sequenceId);
         }
     }, 500);
 }
@@ -3011,11 +3113,51 @@ function sendResourceToDevice(serialNumber, resourceId, version, generateTime) {
                     sequenceId,
                 ' Size: ' + dataBytes.length
             );
-            deviceManager.sendResource(serialNumber, Array.from(dataBytes), resourceId, sequenceId);
+            deviceManager.sendResource(serialNumber, Array.from(dataBytes), PROTOCOL_OP_CODE.OP_RESOURCE_FILE, resourceId, sequenceId);
         }
     }, 500);
 
     return true;
+}
+
+function sendRawResourceToDeviceKey(serialNumber, resourceType, resourceData, keyCode) {
+    const deviceType = deviceTypeMap.get(serialNumber);
+
+    if (!deviceType) return;
+
+    let deviceManager = undefined;
+
+    switch (deviceType) {
+        case CONNECTION_TYPE_HID:
+            deviceManager = HIDDeviceManager;
+            // console.log('DeviceControlManager: sendRawResourceToDeviceKey TO HID device.');
+            break;
+        case CONNECTION_TYPE_WS:
+            deviceManager = WSDeviceManager;
+            // console.log('DeviceControlManager: sendRawResourceToDeviceKey TO WS device.');
+            break;
+    }
+
+    if (!deviceManager) return;
+
+    const dataChunks = splitDataInChunks(resourceData, 65500);
+
+    const [rowId, colId] = keyCode.split(',');
+    const resourceInfoDetail = resourceType + '-' + rowId + colId;
+
+    for (let i = 0; i < dataChunks.length; i++) {
+        const dataBytes = dataChunks[i];
+        const sequenceId = i + 1 === dataChunks.length ? 0 : i + 1;
+        // console.log(
+        //     'DeviceControlManager: sendRawResourceToDeviceKey: sending chunk to SN:Key ' +
+        //     serialNumber + ':' + keyCode +
+        //     ' idx: ' +
+        //     sequenceId,
+        //     ' Size: ' + dataBytes.length
+        // );
+        deviceManager.sendResource(serialNumber, Array.from(dataBytes), PROTOCOL_OP_CODE.OP_RAW_RESOURCE, resourceInfoDetail, sequenceId);
+    }
+
 }
 
 function loadAllPluginHandler(isDelete, pluginId) {
@@ -3144,6 +3286,137 @@ function isPluginSupportOnCurrentPlatform(pluginInfo) {
         return false;
     }
     return true;
+}
+
+async function checkAndStartMonitorAppViewTask() {
+    clearTimeout(deviceMonitorAppViewContext.monitorAppViewTask);
+
+    if (deviceMonitoryAppViewMap.size === 0) {
+        deviceMonitorAppViewContext.isRunning = false;
+
+        deviceMonitorAppViewContext.deviceMonitoryAppViewData = {};
+        deviceMonitorAppViewContext.monitorAppViewTask = undefined;
+        deviceMonitorAppViewContext.monitorWindowInfos = [];
+
+        // if (
+        //     appManager &&
+        //     appManager.windowManager &&
+        //     appManager.windowManager.mainWindow &&
+        //     appManager.windowManager.mainWindow.win
+        // ) {
+        //     appManager.windowManager.mainWindow.win.webContents.send('UpdateWindowMonitorIds', {
+        //         windowIds: []
+        //     });
+        // }
+        return;
+    }
+
+    deviceMonitorAppViewContext.isRunning = true;
+
+    const openedWindow = getOpenWindowsSync();
+    // console.log('DeviceControlManager: Opened Windows: ', openedWindow);
+
+    let requestViewDataObj = {};
+
+    const foundApplicationWindowList = [];
+
+    openedWindow.forEach(windowInfo => {
+        const monitorDeviceList = deviceMonitorAppViewContext.deviceMonitoryAppViewData[windowInfo.owner.path];
+        if (monitorDeviceList === undefined || monitorDeviceList.length === 0) return;
+
+        if (foundApplicationWindowList.findIndex(existAppPath => existAppPath === windowInfo.owner.path) !== -1) {
+            return;
+        }
+        foundApplicationWindowList.push(windowInfo.owner.path);
+
+        requestViewDataObj['win_' + windowInfo.id] = monitorDeviceList;
+    });
+
+    const requiredMonitorApps = Object.keys(deviceMonitorAppViewContext.deviceMonitoryAppViewData);
+
+    const deltaRequireMonitorAppInfo = getDeltaList(foundApplicationWindowList, requiredMonitorApps, (a, b) => a === b);
+
+    const extraMonitorAppNames = [];
+    if (deltaRequireMonitorAppInfo.newList.length > 0) {
+
+        deltaRequireMonitorAppInfo.newList.forEach(requiredMonitorAppPath => {
+            const monitorDeviceInfo = deviceMonitorAppViewContext.deviceMonitoryAppViewData[requiredMonitorAppPath];
+            if (monitorDeviceInfo === undefined || monitorDeviceInfo.length === 0) return;
+            const appName = monitorDeviceInfo[0].appName;
+            if (appName === undefined || appName === '') return;
+
+            extraMonitorAppNames.push(appName);
+
+            requestViewDataObj['app_' + appName] = monitorDeviceInfo;
+            // console.log('DeviceControlManager: extraRequireMonitorInfo: ', appName);
+        });
+    }
+
+    if (extraMonitorAppNames.length === 0 && foundApplicationWindowList.length === 0) {
+        deviceMonitorAppViewContext.monitorAppViewTask = setTimeout(() => {
+            checkAndStartMonitorAppViewTask();
+        }, 1000);
+        return;
+    }
+
+    // console.log('DeviceControlManager: requestViewDataObj: ', requestViewDataObj);
+
+    const sources = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 200, height: 200 } });
+    // console.log('DeviceControlManager: deviceMonitorAppViewContext.deviceMonitoryAppViewData: ', deviceMonitorAppViewContext.deviceMonitoryAppViewData);
+    // console.log('DeviceControlManager: available Windows: ', sources);
+
+    const finalSendMonitorViewList = [];
+
+    sources.forEach(source => {
+        const idInfo = source.id.split(':');
+        let appViewMonitorKeys;
+        if (extraMonitorAppNames.indexOf(source.name) !== -1) {
+            appViewMonitorKeys = requestViewDataObj['app_' + source.name];
+        } else {
+            appViewMonitorKeys = requestViewDataObj['win_' + idInfo[1]];
+        }
+
+        if (appViewMonitorKeys === undefined || appViewMonitorKeys.length === 0) return;
+
+        finalSendMonitorViewList.push({
+            sourceData: source.thumbnail.toJPEG(50),
+            sourceViewId: source.id,
+            sourceViewTitle: source.name,
+            targetKeys: appViewMonitorKeys
+        });
+    });
+
+    // console.log('DeviceControlManager: finalSendMonitorViewList: ', finalSendMonitorViewList, ' lastMonitorWindowInfos', deviceMonitorAppViewContext.monitorWindowInfos);
+
+    const deltaWindowMonitorInfo = getDeltaList(deviceMonitorAppViewContext.monitorWindowInfos, finalSendMonitorViewList, (a, b) => a.sourceViewId === b.sourceViewId);
+    // console.log('DeviceControlManager: deltaWindowMonitorInfo: ', deltaWindowMonitorInfo);
+
+    if (deltaWindowMonitorInfo.newList.length > 0 || deltaWindowMonitorInfo.removedList.length > 0) {
+        deviceMonitorAppViewContext.monitorWindowInfos = deepCopy(finalSendMonitorViewList);
+
+        // console.log('DeviceControlManager: finalSendMonitorViewList: ', finalSendMonitorViewList, ' NewMonitorWindowInfos', deviceMonitorAppViewContext.monitorWindowInfos);
+
+        // if (
+        //     appManager &&
+        //     appManager.windowManager &&
+        //     appManager.windowManager.mainWindow &&
+        //     appManager.windowManager.mainWindow.win
+        // ) {
+        //     appManager.windowManager.mainWindow.win.webContents.send('UpdateWindowMonitorIds', {
+        //         windowIds: finalSendMonitorViewList.map(monitorAppInfo => monitorAppInfo.sourceViewId)
+        //     });
+        // }
+    }
+
+    finalSendMonitorViewList.forEach(monitorDevicesInfo => {
+        monitorDevicesInfo.targetKeys.forEach(targetKey => {
+            sendRawResourceToDeviceKey(targetKey.serialNumber, PROTOCOL_RAW_RES_TYPE.RES_TYPE_JPEG, Array.from(monitorDevicesInfo.sourceData), targetKey.keyCode);
+        });
+    })
+
+    deviceMonitorAppViewContext.monitorAppViewTask = setTimeout(() => {
+        checkAndStartMonitorAppViewTask();
+    }, 1000);
 }
 
 function sleep(time) {

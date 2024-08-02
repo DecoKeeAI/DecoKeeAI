@@ -222,6 +222,7 @@
     "cmd": "控制行命令",
     "cmdLineEnterHint": "请输入命令",
     "deleteKeyConfigHint": "确定要删除此操作吗?",
+    "monitorAppView": "显示应用画面",
     "iconLib": {
         "title": "图标库",
         "searchHint": "搜索图标",

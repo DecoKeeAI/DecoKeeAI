@@ -222,6 +222,7 @@
   "cmd":"Command Line cmd",
   "cmdLineEnterHint": "Enter command to execute",
   "deleteKeyConfigHint": "Are you sure you wan to delete this configuration?",
+  "monitorAppView": "View App Status",
   "iconLib": {
     "title": "Icon Library",
     "searchHint": "Search Icon",

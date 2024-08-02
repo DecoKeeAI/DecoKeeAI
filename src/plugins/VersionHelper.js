@@ -89,7 +89,7 @@ export function checkUpdate(checkUpdateUriIdx = 0) {
                 version: currentVersion
             });
         }).catch(async err=> {
-            console.log('checkUpdate: Detected error', err);
+            console.log('checkUpdate: Detected error', err.message);
             if (checkUpdateUriIdx >= UPDATE_CONFIG.length) {
                 resolve({
                     haveUpdate: false,

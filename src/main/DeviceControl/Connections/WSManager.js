@@ -148,13 +148,13 @@ export default class {
         return false;
     }
 
-    sendResource(serialNumber, resourceBytes, resourceId, sequenceId) {
+    sendResource(serialNumber, resourceBytes, opCode, resourceId, sequenceId) {
         if (!serialNumber || !WSActiveDeviceMap.get(serialNumber)) return;
         try {
-            const sendoutData = new Buffer.from(wrapData(0xA2, resourceBytes, 0x01, resourceId, sequenceId));
+            const sendoutData = new Buffer.from(wrapData(0xA2, resourceBytes, opCode, resourceId, sequenceId));
             WSActiveDeviceMap.get(serialNumber).send(sendoutData);
             // console.log("WS sendResource sent size: ", resourceBytes.length + ' sendoutData: ' + sendoutData.toString());
-            console.log("WS sendResource sent size: ", resourceBytes.length);
+            // console.log("WS sendResource sent size: ", resourceBytes.length);
         } catch (err) {
             console.log('WS sendResource detected error on send resource info.', err);
         }

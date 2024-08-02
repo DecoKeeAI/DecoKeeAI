@@ -46,6 +46,7 @@
 
         <UpgradeInfoDialog ref="upgradeInfoDialog" />
         <AudioPlayer />
+        <AppViewCaptureHelper />
     </div>
 </template>
 
@@ -56,6 +57,7 @@ import UpgradeInfoDialog from '@/views/Components/UpgradeInfoDialog';
 import config from '../../../package.json';
 import AudioPlayer from '../Components/AudioPlayer';
 import {ipcRenderer} from "electron";
+import AppViewCaptureHelper from "@/views/Components/AppViewCaptureHelper.vue";
 
 export default {
     name: 'MainView',
@@ -64,6 +66,7 @@ export default {
         MainContent,
         UpgradeInfoDialog,
         AudioPlayer,
+        AppViewCaptureHelper
     },
     data() {
         return {
