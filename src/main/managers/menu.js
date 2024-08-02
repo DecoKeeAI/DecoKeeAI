@@ -3,7 +3,7 @@ import {uIOhook, UiohookKey} from 'uiohook-napi';
 import {i18nRender} from "@/plugins/i18n";
 
 const activeWindow = require('active-win');
-const { nativeImage, nativeTheme } = require('electron');
+const { nativeImage, nativeTheme, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -190,6 +190,7 @@ class MenuManager {
                         return;
                     }
 
+                    that.dragStartCursorLocation = screen.getCursorScreenPoint();
                     that.dragStartApplication = activeWindowInfo;
                 }
                 return;
@@ -237,7 +238,8 @@ class MenuManager {
 
                     const dragEndApplication = await activeWindow();
 
-                    if (that.dragStartApplication.owner.path !== dragEndApplication.owner.path
+                    if (dragEndApplication === undefined || dragEndApplication === null
+                        || that.dragStartApplication.owner.path !== dragEndApplication.owner.path
                         || that.dragStartApplication.bounds.x !== dragEndApplication.bounds.x
                         || that.dragStartApplication.bounds.y !== dragEndApplication.bounds.y
                         || that.dragStartApplication.bounds.width !== dragEndApplication.bounds.width
@@ -247,9 +249,17 @@ class MenuManager {
 
                     const dragEnd = {x: event.x, y: event.y};
 
+                    const releaseCursorLocation = screen.getCursorScreenPoint();
+
                     if (Math.abs(that.dragStart.x - dragEnd.x) >= 10 || Math.abs(that.dragStart.y - dragEnd.y) >= 10) {
                         that.shouldShowAIMenu = true;
                         setTimeout(() => {
+                            const currentCursorLocation = screen.getCursorScreenPoint();
+
+                            if (!that._isPointWithinBox(that.dragStartCursorLocation, releaseCursorLocation, currentCursorLocation)) {
+                                that.shouldShowAIMenu = false;
+                                return;
+                            }
                             that._showAIHelperMenu();
                         }, SHOW_AI_MENU_THRESHOLD);
                     }
@@ -448,6 +458,26 @@ class MenuManager {
         this.windowManager.aiAssistantWindow.win.webContents.send('AIHelperMessage', {
             requestMsg: requestMsg
         });
+    }
+
+    _isPointWithinBox(startLocation, endLocation, currentLocation) {
+        const minX = Math.min(startLocation.x, endLocation.x);
+        const maxX = Math.max(startLocation.x, endLocation.x);
+        const minY = Math.min(startLocation.y, endLocation.y);
+        const maxY = Math.max(startLocation.y, endLocation.y);
+
+        const offset = 50;
+        const minXWithOffset = minX - offset;
+        const maxXWithOffset = maxX + offset;
+        const minYWithOffset = minY - offset;
+        const maxYWithOffset = maxY + offset;
+
+        return (
+            currentLocation.x >= minXWithOffset &&
+            currentLocation.x <= maxXWithOffset &&
+            currentLocation.y >= minYWithOffset &&
+            currentLocation.y <= maxYWithOffset
+        );
     }
 }
 
