@@ -1,16 +1,12 @@
 <template>
     <div>
-        <div class="main">
-            <div class="main-screen" :style="{width: (mainscreenWidth - 300) + 'px', height: windowHeight + 'px' }">
-                <!-- 按键功能 -->
-                <!-- 格子 -->
-                <div id="box-main" class="box-content">
-                    <template v-if="!knobFun">
-                        <template>
-                            <div v-if="showVIA" class="app-action-button button-red" @click="showVIA = false">
-                                <svg-icon color="white" name="close" style="font-size: 24px; position: absolute; top: 10px; right: 10px; z-index: 1001" />
-                            </div>
-                            <webview v-if="showVIA" id="viaView" ref="viaView" :style="{
+        <div class="main" :style="{width: windowWidth + 'px', height: windowHeight + 'px' }">
+
+            <template>
+                <div v-if="showVIA" class="app-action-button button-red" @click="showVIA = false">
+                    <svg-icon color="white" name="close" style="font-size: 24px; position: absolute; top: 10px; right: 10px; z-index: 1001" />
+                </div>
+                <webview v-if="showVIA" id="viaView" ref="viaView" :style="{
                                     position: 'absolute',
                                     top: '0',
                                     left: 0,
@@ -18,9 +14,13 @@
                                     height: windowHeight + 'px',
                                     zIndex: 1000,
                                 }" :src="viaServerUrl" webpreferences="webSecurity=no,nodeIntegration=yes">
-                            </webview>
-                        </template>
+                </webview>
+            </template>
 
+            <div class="main-screen" :style="{width: (windowWidth - 300) + 'px', height: windowHeight + 'px' }">
+
+                <div id="box-main" class="box-content">
+                    <template v-if="!knobFun">
                         <template v-if="!isMultiActions">
 
                             <div class="box-profile">
@@ -165,7 +165,7 @@
             </div>
 
             <!-- 侧边栏 -->
-            <div v-if="!showVIA" :style="{ height: windowHeight + 'px' }" class="sidebar">
+            <div :style="{ height: windowHeight + 'px' }" class="sidebar">
                 <div class="box-side">
                     <el-input v-model="searchIpt" class="searchIpt" clearable placeholder="请输入内容" prefix-icon="el-icon-search" @input="handleSearchInput" />
                 </div>
@@ -265,8 +265,9 @@ export default {
             configIdx: '',
 
             isWin32: true,
-            mainscreenWidth: window.innerWidth,
+            windowWidth: window.innerWidth,
             windowHeight: window.innerHeight - 32, // 初始窗口高度
+
             searchIpt: '',
             selectedCell: null, // box选中状态
             isDraggable: false, //是否拖拽
@@ -379,11 +380,15 @@ export default {
             this.getConfigInfo(this.deviceRowCount, this.deviceColCount);
             // 初始化页码
             this.calculateTotalPage(false);
+            // 连接设备后获取窗口尺寸
+            this.handleResize()
         });
 
         this.$nextTick(() => {
-            const scrollTop = document.getElementById('scrollBarContainer').offsetTop;
-            this.maxScrollHeight = this.windowHeight - scrollTop;
+            if (document.getElementById('scrollBarContainer')) {
+                const scrollTop = document.getElementById('scrollBarContainer').offsetTop;
+                this.maxScrollHeight = this.windowHeight - scrollTop;
+            }
         });
 
         // 初始化配置文件
@@ -956,8 +961,11 @@ export default {
         handleResize() {
             this.$nextTick(() => {
                 this.windowHeight = window.innerHeight - (this.isWin32 ? 32 : 0); // 更新窗口高度
-                const scrollTop = document.getElementById('scrollBarContainer').offsetTop;
-                this.maxScrollHeight = this.windowHeight - scrollTop;
+
+                if (document.getElementById('scrollBarContainer')) {
+                    const scrollTop = document.getElementById('scrollBarContainer').offsetTop;
+                    this.maxScrollHeight = this.windowHeight - scrollTop;
+                }
 
                 this.$nextTick(() => {
                     if (this.isMultiActions) {
@@ -979,7 +987,7 @@ export default {
                 })
 
 
-                this.mainscreenWidth = window.innerWidth
+                this.windowWidth = window.innerWidth
                 this.squareHeight = 350
                 this.squareHeight += window.innerHeight - 700
 
@@ -1217,7 +1225,7 @@ export default {
                 }
             }
 
-
+            this.operationHeight = this.windowHeight - document.getElementById('box-main').offsetHeight;
         },
         // 双击
         handleDoubleClick(doubleItem) {
@@ -1732,9 +1740,6 @@ export default {
             this.knobFun = val;
             this.selectedCell = null;
             this.operationData = {};
-            this.$nextTick(() => {
-                this.operationHeight = this.windowHeight - document.getElementById('box-main').offsetHeight;
-            })
         },
         knobValue(val, isHover) {
             this.pos = val;

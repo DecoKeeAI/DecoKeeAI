@@ -23,6 +23,7 @@
   "send":"Send",
   "history":"History",
   "regenerate":"Regenerate",
+  "generationFailed":"Generation Failed",
   "copySucceeded": "Copy Succeeded",
   "copyFailed": "Copy Failed",
   "No chatHistory":"No ChatHistory",

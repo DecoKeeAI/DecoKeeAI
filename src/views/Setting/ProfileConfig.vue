@@ -5,7 +5,7 @@
                 <div class="el-container">
                     <el-scrollbar>
                         <div v-for="(item, index) in dropdownMenu" :key="item.value" :class="{ highlight: isHighlighted(index) }" class="menu" @click="menuBtn(item, index)">
-                            <el-input v-if="index === renameIndex" id="renameInput" v-model="item.label" clearable maxlength="15" @blur="handleBlur(item.label, index)" @input="handleInput($event, index, item.value)" />
+                            <el-input v-if="index === renameIndex" id="renameInput" v-model.trim="item.label" clearable maxlength="15" @blur="handleBlur(item.label, index)" @input="handleInput($event, index, item.value)" />
                             <div v-else @contextmenu.prevent="onContextmenu($event, index, item.value, item.label)">
                                 {{ item.label }}
                             </div>
@@ -493,8 +493,13 @@ export default {
         handleInput(e, index) {
             this.$set(this.dropdownMenu[index], this.dropdownMenu[index].label, e);
         },
-        handleBlur() {
+        handleBlur(label, index) {
+
             this.renameIndex = null;
+            if (!label) {
+                this.dropdownMenu[index].label = window.store.storeGet('mainscreen.dropdownMenu')[index].label
+                return
+            }
             window.store.storeSet('mainscreen.dropdownMenu', this.dropdownMenu);
             this.sendMenu(this.dropdownMenu);
         },

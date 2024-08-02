@@ -31,7 +31,7 @@
 
                                 <div class="message-operate" v-if="hoverIndex === index && !editIndex">
 
-                                    <el-button class="copy-message" @click="copyMessageBtn(message.content)" type="text" icon="el-icon-document-copy">{{ $t('settings.copy') }}</el-button>
+                                    <el-button @click="copyMessageBtn(message.content)" type="text" icon="el-icon-document-copy">{{ $t('settings.copy') }}</el-button>
                                     <!-- <i v-if="userMaxIndex === hoverIndex" @click="editUserContent(index)" class="el-icon-edit"></i> -->
                                     <i @click="deleteMessageBtn(index)" class="el-icon-delete"></i>
                                 </div>
@@ -42,15 +42,18 @@
                                 <div class="message-assistant">
                                     <span class="chat-role-assistant">
                                         <i class="el-icon-loading" v-if="AIStatus === 1 && message.requestId"></i>
-                                        <span :id="`assistant-${index}`" :class="['message', message.content !== '' ? 'message-sent' : '']" v-html="formater(message.content)"></span>
+                                        <span class="message message-sent" v-html="formater(message.content)"></span>
                                     </span>
                                 </div>
 
-                                <div v-if=" message.content !== ''" class="message-regenerate message-operate">
+                                <div v-if="index !==1" class="message-regenerate message-operate">
                                     <!-- <el-link v-if="AIStatus === 1 && message.requestId" @click="stopAssistant" :underline="false">停止生成</el-link> -->
-                                    <template v-if="index !==1 && AIStatus === 2">
+                                    <template v-if="AIStatus !== 1">
                                         <span v-if="index === maxIndex || hoverIndex === index">
-                                            <el-button class="copy-message" @click="copyMessageBtn(message.content)" type="text" icon="el-icon-document-copy">{{ $t('settings.copy') }}</el-button>
+                                            <template>
+                                                <span v-if="AIStatus === -1 && index === maxIndex" class="regenerate-fail">{{ $t('generationFailed')}}</span>
+                                                <el-button v-else @click="copyMessageBtn(message.content)" type="text danger" icon="el-icon-document-copy">{{ $t('settings.copy') }}</el-button>
+                                            </template>
                                             <i @click="regenerateMessage" :title="$t('regenerate')" v-if="index === maxIndex" class="el-icon-refresh"></i>
                                             <i @click="deleteMessageBtn(index)" class="el-icon-delete"></i>
                                         </span>
@@ -144,13 +147,28 @@
         <!-- 聊天记录 -->
 
         <el-drawer :style="{ marginTop: '77px', height: windowHeight + 'px' }" :with-header="false" :visible.sync="historyDrawer" direction="ltr" :modal="false">
-            <el-input class="search-historyList" v-model="searchHistory" @input="searchHistoryInput" @clear="clearHistoryInput" clearable placeholder="搜索聊天记录" prefix-icon="el-icon-search" />
+            <div class="search-historyList">
+                <el-input v-model="searchHistory" @input="searchHistoryInput" @clear="clearHistoryInput" clearable placeholder="搜索聊天记录" prefix-icon="el-icon-search" />
+                <div class="select-all">
+                    <el-button v-if="isShowSelectBtn" class="select-all" type="text" @click="selectAllChange">全选</el-button>
+
+                    <template v-else>
+                        <el-button disabled @click="selectDelete" type="danger" size="mini" icon="el-icon-delete" circle></el-button>
+                        <el-button @click="selectCancel" type="info" size="mini" icon="el-icon-close" circle></el-button>
+                    </template>
+                </div>
+            </div>
 
             <el-scrollbar v-if="historyList.length !== 0" :style="{ height: (windowHeight - 35) + 'px' }">
                 <div class="chat-history" id="history-drawer">
-                    <div class="history-list" v-for="(item, index) in historyList" :key="item.key">
 
+                    <div class="history-list" v-for="(item, index) in historyList" :key="item.key">
                         <div class="list-item" v-if="editKey !== item.key">
+
+                            <el-checkbox-group v-if="!isShowSelectBtn" v-model="selectAllGroup">
+                                <el-checkbox :label="item.key">{{ '' }}</el-checkbox>
+                            </el-checkbox-group>
+
                             <div class="list-title" :style="{ width: historyDrawerWidth - 70 + 'px' }">
                                 <span>
                                     <el-link :class="{ highlight: isHighlighted(item.key) }" :underline="false" @click="clickTitle(item.key)">
@@ -159,10 +177,14 @@
                                 </span>
                                 <span></span>
                             </div>
-                            <div>
-                                <i class="el-icon-edit" style="margin: 0 5px" @click="editTitle(item.key)" />
-                                <i class="el-icon-delete" @click="deleteTitle(item.key)" />
+                            <div v-if="isShowSelectBtn">
+                                <template>
+                                    <i class="el-icon-edit" style="margin: 0 5px" @click="editTitle(item.key)" />
+                                    <i class="el-icon-delete" @click="deleteTitle(item.key)" />
+                                </template>
+
                             </div>
+
                         </div>
 
                         <template v-else>
@@ -174,6 +196,7 @@
                             </el-input>
                         </template>
                     </div>
+
                 </div>
             </el-scrollbar>
 
@@ -193,9 +216,8 @@ import { AI_SUPPORT_BUILD_IN_ROLES } from '@/plugins/KeyConfiguration.js';
 import { dialog } from '@electron/remote';
 import { ipcRenderer } from 'electron';
 import { setI18nLanguage } from '@/plugins/i18n';
-// import 'github-markdown-css'
+
 import 'highlight.js/styles/an-old-hope.css';
-// eslint-disable-next-line no-unused-vars
 const hljsExtension = function () {
     return [
         {
@@ -235,6 +257,7 @@ const hljsExtension = function () {
 import ClipboardJS from 'clipboard';
 import showdown from "showdown";
 import showdownHighlight from 'showdown-highlight'
+// import showdownKatex from 'showdown-katex'
 
 export default {
     name: 'AIAssistantContent',
@@ -306,7 +329,9 @@ export default {
             editKey: '',
 
             searchHistory: '',
-
+            // 选中
+            selectAllGroup: [],
+            isShowSelectBtn: true,
             hoverIndex: null,
             editIndex: null,
             // fileList
@@ -314,6 +339,7 @@ export default {
             AIStatus: 2,
         };
     },
+
     created() {
 
         this.sendImg = window.resourcesManager.getRelatedSrcPath('@/send.png');
@@ -488,6 +514,7 @@ export default {
         reset() {
             this.historyDrawer = false;
             this.isShow = 'none';
+            this.selectCancel()
         },
         cinfigBtn() {
             this.historyDrawer = false;
@@ -543,12 +570,15 @@ export default {
             this.historyDrawer = !this.historyDrawer;
             this.isShow = 'none';
             this.editKey = '';
+            this.selectCancel()
+
             this.$nextTick(() => {
                 if (document.getElementById('history-drawer')) {
                     this.historyDrawerWidth = document.getElementById('history-drawer').offsetWidth;
                 }
             });
         },
+        // 添加会话
         addSessionBtn() {
             this.editKey = '';
             if (this.historyList.length === 0) {
@@ -592,6 +622,7 @@ export default {
         },
 
         clickTitle(key) {
+            this.AIStatus = 2
             console.log('AI聊天： 聊天记录 key', key);
             this.selectKey = key;
             this.historyDrawer = false;
@@ -687,6 +718,32 @@ export default {
         clearHistoryInput() {
             this.historyList = window.store.chatHistoryGet('historyList');
         },
+        selectAllChange() {
+            this.isShowSelectBtn = false
+            this.selectAllGroup = this.historyList.map(item => item.key)
+            // console.log('AI聊天： 全选 key', this.selectAllGroup);
+
+        },
+        selectDelete() {
+            console.log('AI聊天： 删除选中 key', this.selectAllGroup);
+            // if (this.selectAllGroup.length === 0) {
+            //     this.$message.warning('请选择要删除的记录')
+            //     return
+            // }
+
+            this.selectAllGroup.forEach(item => {
+                this.deleteTitle(item)
+            })
+            this.selectCancel()
+        },
+        // changeSelectAllGroup(val) {
+        //     console.log('val', val);
+        //     this.selectAllGroup = val
+        // },
+        selectCancel() {
+            this.isShowSelectBtn = true
+            this.selectAllGroup = []
+        },
         sendChatMessage() {
             this.requestId = window.aiChatManager.sendChatMessage(this.message);
 
@@ -723,12 +780,14 @@ export default {
 
 
 
-                // console.log('msgType:', msgType);
-                // console.log('message:', message);
-                // console.log('status:', status);
+                console.log('msgType:', msgType);
+                console.log('message:', message);
+                console.log('status:', status);
 
                 this.updateScrollHeight();
-                window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
+                if (status !== -1) {
+                    window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
+                }
             });
         },
 
@@ -758,6 +817,7 @@ export default {
                         content: this.currentMessage,
                     }
                 );
+                window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
 
                 this.userMaxIndex = this.message.length - 1; // 更新最大索引
                 this.updateScrollHeight();
@@ -991,6 +1051,9 @@ export default {
     right: 0;
     bottom: -22px;
     font-family: monospace;
+    .regenerate-fail {
+        color: #f56c6c;
+    }
     .el-button {
         padding: 0;
         color: #deeefe;
@@ -1123,12 +1186,26 @@ export default {
 }
 // 历史记录
 .search-historyList {
+    display: flex;
+    align-items: center;
+    height: 35px;
+
     /deep/ .el-input__inner {
         height: 35px;
         background: #2e3a41;
+        border-radius: 15px;
+        overflow: hidden;
     }
     /deep/ .el-icon-search {
         line-height: 35px;
+        padding: 2px 6px;
+    }
+    .select-all {
+        display: flex;
+        padding: 5px;
+    }
+    .el-button--mini.is-circle {
+        padding: 5px;
     }
 }
 

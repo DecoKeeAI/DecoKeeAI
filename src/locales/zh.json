@@ -23,6 +23,7 @@
     "send": "发送",
     "history": "历史记录",
     "regenerate": "重新生成",
+    "generationFailed":"生成失败",
     "copySucceeded": "复制成功",
     "copyFailed": "复制失败",
     "No chatHistory":"暂无聊天记录",
