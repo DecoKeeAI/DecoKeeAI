@@ -10,9 +10,19 @@
 #include "MMBitmap.h"
 #include "snprintf.h"
 #include "microsleep.h"
+#include "os.h"
 #if defined(USE_X11)
 	#include "xdisplay.h"
+	#include <X11/Xlib.h>
+    #include <X11/Xatom.h>
+    #include <X11/Xutil.h>
+#elif defined(IS_MACOSX)
+    #include <Cocoa/Cocoa.h>
+    #include <CoreFoundation/CoreFoundation.h>
 #endif
+#include <string>
+#include <utility>
+#include <iostream>
 
 using namespace v8;
 
@@ -858,6 +868,224 @@ NAN_METHOD(getColor)
 
 }
 
+#if defined(USE_X11)
+// Helper function to get clipboard data
+std::string GetClipboardData(Display* display, Window window, Atom property) {
+    Atom actualType;
+    int actualFormat;
+    unsigned long nItems, bytesAfter;
+    unsigned char* data = nullptr;
+    std::string result;
+
+    if (XGetWindowProperty(display, window, property, 0, (~0L), False, AnyPropertyType,
+                           &actualType, &actualFormat, &nItems, &bytesAfter, &data) == Success) {
+        if (data) {
+            result.assign(reinterpret_cast<char*>(data), nItems);
+            XFree(data);
+        }
+    }
+    return result;
+}
+#endif
+
+std::vector<std::pair<std::string, std::string>> GetClipboardContent() {
+    std::vector<std::pair<std::string, std::string>> clipboardContents;
+
+#if defined(IS_MACOSX)
+    @autoreleasepool {
+            NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+
+            // Get text
+            NSString *clipboardString = [pasteboard stringForType:NSPasteboardTypeString];
+            if (clipboardString) {
+                clipboardContents.push_back({"Text", [clipboardString UTF8String]});
+            }
+
+            // Get files
+            NSArray *filePaths = [pasteboard propertyListForType:NSPasteboardTypeFILEURL];
+            if (filePaths) {
+                for (NSString *filePath in filePaths) {
+                    clipboardContents.push_back({"File", [filePath UTF8String]});
+                }
+            }
+
+            // Get images
+            NSImage *image = [[pasteboard readObjectsForClasses:@[[NSImage class]] options:nil] firstObject];
+            if (image) {
+                NSSize imageSize = [image size];
+                std::string imageInfo = "Image with dimensions " + std::to_string((int)imageSize.width) + "x" + std::to_string((int)imageSize.height);
+                clipboardContents.push_back({"Image", imageInfo});
+            }
+        }
+#elif defined(IS_WINDOWS)
+
+    if (!OpenClipboard(nullptr)) {
+        std::cerr << "Failed to open clipboard" << std::endl;
+        return clipboardContents;
+    }
+
+    if (IsClipboardFormatAvailable(CF_UNICODETEXT)) {
+        HANDLE hData = GetClipboardData(CF_UNICODETEXT);
+        if (hData != nullptr) {
+            wchar_t* pwszText = static_cast<wchar_t*>(GlobalLock(hData));
+
+            if (pwszText != NULL) {
+                std::wstring wstrText(pwszText);
+
+                // Convert std::wstring (UTF-16) to std::string (UTF-8)
+                int len = WideCharToMultiByte(CP_UTF8, 0, wstrText.c_str(), -1, nullptr, 0, nullptr, nullptr);
+                std::string strText(len, 0);
+                WideCharToMultiByte(CP_UTF8, 0, wstrText.c_str(), -1, &strText[0], len, nullptr, nullptr);
+
+                clipboardContents.push_back({"Text", strText});
+                GlobalUnlock(hData);
+            }
+        }
+    }
+
+    if (IsClipboardFormatAvailable(CF_HDROP)) {
+        HANDLE hData = GetClipboardData(CF_HDROP);
+        if (hData != nullptr) {
+            HDROP hDrop = static_cast<HDROP>(GlobalLock(hData));
+            if (hDrop != nullptr) {
+                UINT fileCount = DragQueryFile(hDrop, 0xFFFFFFFF, nullptr, 0);
+                for (UINT i = 0; i < fileCount; ++i) {
+                    char filePath[MAX_PATH];
+                    if (DragQueryFile(hDrop, i, filePath, MAX_PATH)) {
+                        clipboardContents.push_back({"File", filePath});
+                    }
+                }
+                GlobalUnlock(hData);
+            }
+        }
+    }
+
+    if (IsClipboardFormatAvailable(CF_BITMAP)) {
+        HANDLE hData = GetClipboardData(CF_BITMAP);
+        if (hData != nullptr) {
+            HBITMAP hBitmap = static_cast<HBITMAP>(hData);
+            BITMAP bitmap;
+            if (GetObject(hBitmap, sizeof(BITMAP), &bitmap)) {
+                clipboardContents.push_back({"Image", "Bitmap with dimensions " +
+                                                        std::to_string(bitmap.bmWidth) + "x" +
+                                                        std::to_string(bitmap.bmHeight)});
+            }
+        }
+    }
+
+    CloseClipboard();
+#elif defined(USE_X11)
+    Display* display = XOpenDisplay(nullptr);
+    if (display == nullptr) {
+        std::cerr << "Unable to open X display" << std::endl;
+        return clipboardContents;
+    }
+
+    Window window = XRootWindow(display, 0);
+    Atom clipboard = XInternAtom(display, "CLIPBOARD", False);
+    Atom utf8String = XInternAtom(display, "UTF8_STRING", False);
+    Atom target = XInternAtom(display, "TEXT", False);
+    Atom files = XInternAtom(display, "XdndDirectSave0", False); // Handling files
+
+    // Get text
+    XConvertSelection(display, clipboard, utf8String, clipboard, window, CurrentTime);
+    XFlush(display);
+
+    XEvent event;
+    while (true) {
+        XNextEvent(display, &event);
+        if (event.type == SelectionNotify) {
+            if (event.xselection.selection == clipboard) {
+                if (event.xselection.property != None) {
+                    std::string text = GetClipboardData(display, window, event.xselection.property);
+                    if (!text.empty()) {
+                        clipboardContents.push_back({"Text", text});
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    // Get files
+    XConvertSelection(display, clipboard, XA_TARGETS, clipboard, window, CurrentTime);
+    XFlush(display);
+
+    while (true) {
+        XNextEvent(display, &event);
+        if (event.type == SelectionNotify) {
+            if (event.xselection.selection == clipboard) {
+                if (event.xselection.property != None) {
+                    Atom actualType;
+                    int actualFormat;
+                    unsigned long nItems, bytesAfter;
+                    unsigned char* data = nullptr;
+                    if (XGetWindowProperty(display, window, event.xselection.property,
+                                           0, (~0L), False, XA_TARGETS,
+                                           &actualType, &actualFormat, &nItems,
+                                           &bytesAfter, &data) == Success) {
+                        if (data) {
+                            Atom* targets = reinterpret_cast<Atom*>(data);
+                            for (unsigned long i = 0; i < nItems; ++i) {
+                                if (targets[i] == files) {
+                                    // Files are available
+                                    std::string fileData = GetClipboardData(display, window, event.xselection.property);
+                                    // This data contains file paths, process them accordingly
+                                    clipboardContents.push_back({"File", fileData});
+                                }
+                            }
+                            XFree(data);
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    XCloseDisplay(display);
+#endif
+    return clipboardContents;
+}
+
+// Function to escape JSON special characters
+std::string EscapeJSONString(const std::string& str) {
+    std::string escaped;
+    for (char c : str) {
+        switch (c) {
+            case '\"': escaped += "\\\""; break;
+            case '\\': escaped += "\\\\"; break;
+            case '\b': escaped += "\\b"; break;
+            case '\f': escaped += "\\f"; break;
+            case '\n': escaped += "\\n"; break;
+            case '\r': escaped += "\\r"; break;
+            case '\t': escaped += "\\t"; break;
+            default: escaped += c; break;
+        }
+    }
+    return escaped;
+}
+
+std::string GetClipboardContentJSON() {
+    auto contents = GetClipboardContent();
+    std::string result = "[";
+
+    for (size_t i = 0; i < contents.size(); ++i) {
+        result += "{\"type\":\"" + EscapeJSONString(contents[i].first) + "\",\"content\":\"" + EscapeJSONString(contents[i].second) + "\"}";
+        if (i != contents.size() - 1) {
+            result += ",";
+        }
+    }
+
+    result += "]";
+    return result;
+}
+
+void GetClipboardContentWrapped(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+    std::string result = GetClipboardContentJSON();
+    info.GetReturnValue().Set(Nan::New(result).ToLocalChecked());
+}
+
 NAN_MODULE_INIT(InitAll)
 {
 	Nan::Set(target, Nan::New("dragMouse").ToLocalChecked(),
@@ -919,6 +1147,11 @@ NAN_MODULE_INIT(InitAll)
 
 	Nan::Set(target, Nan::New("setXDisplayName").ToLocalChecked(),
 		Nan::GetFunction(Nan::New<FunctionTemplate>(setXDisplayName)).ToLocalChecked());
+
+
+    Nan::Set(target, Nan::New("getClipboardContent").ToLocalChecked(),
+        Nan::GetFunction(Nan::New<v8::FunctionTemplate>(GetClipboardContentWrapped)).ToLocalChecked());
+
 }
 
 NODE_MODULE(robotjs, InitAll)

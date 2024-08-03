@@ -4,7 +4,7 @@
     'include_dirs': [
         "<!(node -e \"require('nan')\")"
     ],
-    
+
     'cflags': [
       '-Wall',
       '-Wparentheses',
@@ -12,7 +12,7 @@
       '-Wbad-function-cast',
       '-Wdisabled-optimization'
     ],
-    
+
     'conditions': [
       ['OS == "mac"', {
         'include_dirs': [
@@ -26,11 +26,12 @@
             '-framework Carbon',
             '-framework CoreFoundation',
             '-framework ApplicationServices',
-            '-framework OpenGL'
+            '-framework OpenGL',
+            '-framework Cocoa'
           ]
         }
       }],
-      
+
       ['OS == "linux"', {
         'link_settings': {
           'libraries': [
@@ -40,7 +41,7 @@
             '-lXtst'
           ]
         },
-        
+
         'sources': [
           'src/xdisplay.c'
         ]
@@ -50,7 +51,7 @@
         'defines': ['IS_WINDOWS']
       }]
     ],
-    
+
     'sources': [
       'src/robotjs.cc',
       'src/deadbeef_rand.c',

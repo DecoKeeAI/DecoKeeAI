@@ -6,6 +6,7 @@ const activeWindow = require('active-win');
 const { nativeImage, nativeTheme, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const robotjs = require('robotjs');
 
 const SHOW_AI_MENU_THRESHOLD = 500; // 500 ms 内的点击算作双击
 const CLIPBOARD_CONTENT_TYPE = {
@@ -177,6 +178,7 @@ class MenuManager {
                     that.clipboardContent = {}
                 }, 200);
 
+
                 // 记录拖动开始位置
                 if (!that.isDragging) {
                     that.isDragging = true;
@@ -219,9 +221,11 @@ class MenuManager {
                 that.clipboardContent = {}
                 that.mouseAIMenu.closePopup();
             } else if (triggeredSelectAll) {
+                clearTimeout(that.showAIHelperMenuTask);
+
                 console.log('keycode', event.keycode, ' : ', event.ctrlKey);
                 that.shouldShowAIMenu = true;
-                setTimeout(() => {
+                that.showAIHelperMenuTask = setTimeout(() => {
                     that._showAIHelperMenu();
                 }, SHOW_AI_MENU_THRESHOLD);
             }
@@ -252,8 +256,9 @@ class MenuManager {
                     const releaseCursorLocation = screen.getCursorScreenPoint();
 
                     if (Math.abs(that.dragStart.x - dragEnd.x) >= 10 || Math.abs(that.dragStart.y - dragEnd.y) >= 10) {
+                        clearTimeout(that.showAIHelperMenuTask);
                         that.shouldShowAIMenu = true;
-                        setTimeout(() => {
+                        that.showAIHelperMenuTask = setTimeout(() => {
                             const currentCursorLocation = screen.getCursorScreenPoint();
 
                             if (!that._isPointWithinBox(that.dragStartCursorLocation, releaseCursorLocation, currentCursorLocation)) {
@@ -355,21 +360,70 @@ class MenuManager {
         this.mouseAIRobot.keyTap('c', 10, [isOnMac ? 'command' : 'control']);
 
         setTimeout(() => {
+
             if (!this.shouldShowAIMenu) {
                 clipboard.clear();
                 clipboard.writeText(oldClipboardData);
                 return;
             }
 
-            this.clipboardContent = this._getClipboardContentType();
-            clipboard.clear();
-            clipboard.writeText(oldClipboardData);
-            if (this.clipboardContent.type !== CLIPBOARD_CONTENT_TYPE.TEXT) {
+            try {
+                const clipBoardData = robotjs.getClipboardContent();
+
+                const nativeClipboardData = eval('(' + clipBoardData + ')');
+
+                if (nativeClipboardData && nativeClipboardData.length > 0) {
+                    if (nativeClipboardData.length === 1) {
+                        if (nativeClipboardData[0].type === 'File') {
+                            console.log('Selected File Info: ', nativeClipboardData[0].content);
+                            this.clipboardContent = {
+                                type: CLIPBOARD_CONTENT_TYPE.FILE,
+                                data: [nativeClipboardData[0].content]
+                            }
+                        } else if (nativeClipboardData[0].type === 'Text') {
+                            this.clipboardContent = {
+                                type: CLIPBOARD_CONTENT_TYPE.TEXT,
+                                data: nativeClipboardData[0].content
+                            }
+                        } else {
+                            this.clipboardContent = {
+                                type: CLIPBOARD_CONTENT_TYPE.INVALID,
+                                data: []
+                            }
+                        }
+                    } else {
+                        const clipboardFileDataList = nativeClipboardData.filter(clipboardDataInfo => clipboardDataInfo.type === 'File');
+                        const clipboardTexDataList = nativeClipboardData.filter(clipboardDataInfo => clipboardDataInfo.type === 'Text');
+
+                        if ((clipboardTexDataList.length > 0 && clipboardFileDataList.length > 0) || clipboardFileDataList.length > 0) {
+                            this.clipboardContent = {
+                                type: CLIPBOARD_CONTENT_TYPE.FILE,
+                                data: clipboardFileDataList.map(fileDataInfo => fileDataInfo.content)
+                            }
+                            console.log('Selected File Info2: ', this.clipboardContent);
+                        } else if (clipboardTexDataList.length > 0) {
+                            this.clipboardContent = {
+                                type: CLIPBOARD_CONTENT_TYPE.TEXT,
+                                data: clipboardTexDataList[0].content
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.log('GetNativeClipboardData Detected error', err.message);
+
+                this.clipboardContent = this._getClipboardContentType();
+                clipboard.clear();
+                clipboard.writeText(oldClipboardData);
+            }
+
+            if (this.clipboardContent.type !== CLIPBOARD_CONTENT_TYPE.TEXT || this.clipboardContent.data.trim() === '') {
                 this.shouldShowAIMenu = false;
                 this.aiMenuShown = false;
                 this.aiMenuShowProcessStart = false;
                 return;
             }
+
             this.aiMenuShown = true;
             this.mouseAIMenu.popup();
         }, 50);
