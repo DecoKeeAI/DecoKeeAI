@@ -85,6 +85,7 @@ class MenuManager {
         this.shouldShowAIMenu = false;
         this.aiMenuShown = false;
         this.aiMenuShowProcessStart = false;
+        this.keyPressInfo = new Map();
 
         if (this.initAIHelperDone) return;
 
@@ -210,8 +211,16 @@ class MenuManager {
         });
 
         uIOhook.on('keydown', event => {
+            let triggeredSelectAll = false;
+
+            if (process.platform === 'darwin') {
+                triggeredSelectAll = event.keycode === UiohookKey.A && event.metaKey;
+            } else {
+                triggeredSelectAll = event.keycode === UiohookKey.A && event.ctrlKey;
+            }
+            that.keyPressInfo.set(event.keycode, 1);
+
             if (!that.enableMouseAIChecking) return;
-            const triggeredSelectAll = event.keycode === UiohookKey.A && event.ctrlKey;
             if (!that.aiMenuShowProcessStart && !triggeredSelectAll) {
                 that.shouldShowAIMenu = false;
             } else if (that.aiMenuShown) {
@@ -223,8 +232,29 @@ class MenuManager {
             } else if (triggeredSelectAll) {
                 clearTimeout(that.showAIHelperMenuTask);
 
-                console.log('keycode', event.keycode, ' : ', event.ctrlKey);
                 that.shouldShowAIMenu = true;
+
+                that.showAIHelperMenuTask = setTimeout(() => {
+                    that._showAIHelperMenu();
+                }, SHOW_AI_MENU_THRESHOLD);
+            }
+        });
+
+        uIOhook.on('keyup', event => {
+            if (process.platform === 'darwin') {
+                if (event.keycode === UiohookKey.Meta || event.keycode === UiohookKey.MetaRight) {
+                    that.controlOrCommandKeyDown = false;
+                }
+            } else {
+                if (event.keycode === UiohookKey.Ctrl || event.keycode === UiohookKey.CtrlRight) {
+                    that.controlOrCommandKeyDown = false;
+                }
+            }
+
+            that.keyPressInfo.delete(event.keycode);
+
+            if (that.shouldShowAIMenu && !that.aiMenuShowProcessStart && !that.aiMenuShown && that.keyPressInfo.size === 0) {
+                clearTimeout(that.showAIHelperMenuTask);
                 that.showAIHelperMenuTask = setTimeout(() => {
                     that._showAIHelperMenu();
                 }, SHOW_AI_MENU_THRESHOLD);
@@ -351,6 +381,7 @@ class MenuManager {
 
     _showAIHelperMenu() {
         if (!this.shouldShowAIMenu) return;
+        if (this.keyPressInfo.size > 0) return;
 
         const isOnMac = process.platform === 'darwin';
 
