@@ -2,7 +2,6 @@ import { app } from 'electron';
 import defaultResourcesMap from '@/assets/resources.js';
 import Constants from '@/utils/Constants';
 import { randomString } from '@/utils/Utils';
-import {loadPCInstalledApps} from "@/main/ai/SystemInstalledAppLoader";
 
 const DecompressZip = require('decompress-zip');
 const fs = require('fs');
@@ -10,6 +9,7 @@ const path = require('path');
 const shelljs = require('shelljs');
 const sharp = require('sharp');
 const { DOMParser, XMLSerializer } = require('xmldom')
+const { fork } = require('child_process');
 
 const DEFAULT_RESOURCE_PATH = '/resources/app/assets/';
 const NODE_MODULES_PATH = '/resources/app/node_modules/';
@@ -71,19 +71,44 @@ class ResourcesManager {
         }
         this.pcInstalledApps = [];
 
-        loadPCInstalledApps().then(async installedApps => {
-            console.log('ResourceManager: Loaded Installed APPS length: ', installedApps.length);
-            console.log('ResourceManager: Loaded Installed APPS: ', installedApps);
+        const that = this;
+        setTimeout(() => {
+            const workerScriptPath = that.getRelatedSrcPath('@/scripts/SystemInstalledAppLoader.js', true);
+            console.log('workerScriptPath: ', workerScriptPath);
+            const workerProcess = fork(workerScriptPath);
 
-            for (let i = 0; i < installedApps.length; i++) {
-                const appInfo = installedApps[i];
-                const appIconInfo = await this.getAppIconInfo(appInfo.appLaunchPath);
-                if (appIconInfo) {
-                    appInfo.displayIcon = appIconInfo.id;
+            workerProcess.send({ type: 'load-pc-installed-apps' });
+
+            workerProcess.once('message', async message => {
+                if (message.type !== 'success') {
+                    console.log('ResourceManager: Failed to load pc installed apps');
+                    return;
                 }
-                this.pcInstalledApps.push(appInfo);
-            }
-        });
+                const installedApps = message.result;
+                console.log('ResourceManager: Loaded Installed APPS length: ', installedApps.length);
+                console.log('ResourceManager: Loaded Installed APPS: ', installedApps);
+                for (let i = 0; i < installedApps.length; i++) {
+                    const appInfo = installedApps[i];
+                    const appIconInfo = await that.getAppIconInfo(appInfo.appLaunchPath);
+                    if (appIconInfo) {
+                        appInfo.displayIcon = appIconInfo.id;
+                    }
+                    that.pcInstalledApps.push(appInfo);
+                }
+            })
+        }, 1000);
+
+        // loadPCInstalledApps().then(async installedApps => {
+        //
+        //     for (let i = 0; i < installedApps.length; i++) {
+        //         const appInfo = installedApps[i];
+        //         const appIconInfo = await this.getAppIconInfo(appInfo.appLaunchPath);
+        //         if (appIconInfo) {
+        //             appInfo.displayIcon = appIconInfo.id;
+        //         }
+        //         this.pcInstalledApps.push(appInfo);
+        //     }
+        // });
     }
 
     getInstalledApps() {
@@ -1248,9 +1273,9 @@ class ResourcesManager {
         const newResPath = resourcePath.replace('@/', '');
 
         if (process.env.WEBPACK_DEV_SERVER_URL) {
-            return fileAccessPath ? '' : 'file://' + path.join(this.defaultInstallPath, '/../../../../public/', newResPath);
+            return (fileAccessPath ? '' : 'file://') + path.join(this.defaultInstallPath, '/../../../../public/', newResPath);
         } else {
-            return fileAccessPath ? '' : 'file://' + path.join(this.defaultInstallPath, '..', DEFAULT_RESOURCE_PATH, '..', newResPath);
+            return (fileAccessPath ? '' : 'file://') + path.join(this.defaultInstallPath, '..', DEFAULT_RESOURCE_PATH, '..', newResPath);
         }
     }
 

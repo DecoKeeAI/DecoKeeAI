@@ -22,6 +22,7 @@ module.exports = {
         },
         electronBuilder: {
             externals: [
+                "node-hid",
                 "font-carrier",
                 "clipboard",
                 "html-docx-js"

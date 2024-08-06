@@ -1,5 +1,3 @@
-import {deepCopy} from "@/utils/ObjectUtil";
-
 const levenshtein = require('fast-levenshtein');
 
 const {getInstalledApps} = require('get-installed-apps');
@@ -9,7 +7,17 @@ const path = require('path');
 
 const excludeAppName = ['驱动程序包', 'Driver', 'Microsoft Visual C ', 'Microsoft Visual C++ ', 'Windows Software Development Kit', 'Installer', 'Setup', 'Uninstall', '卸载', 'install'];
 
-export function loadPCInstalledApps() {
+process.on('message', async message => {
+    console.log('SystemInstalledAppLoader Received: ', message);
+    loadPCInstalledApps().then((installedApps) => {
+        process.send({
+            type: 'success',
+            result: installedApps
+        })
+    });
+});
+
+function loadPCInstalledApps() {
     return new Promise(resolve => {
         let pcInstalledApps = [];
 
@@ -282,4 +290,20 @@ function isGarbled(text) {
     // 如果包含非打印字符且不包含中文字符，可能是乱码
 
     return hasNonPrintable;
+}
+
+function deepCopy(obj) {
+    if (typeof obj !== "object" || obj === null) {
+        return obj;
+    }
+
+    let result = Array.isArray(obj) ? [] : {};
+
+    for (let key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            result[key] = deepCopy(obj[key]);
+        }
+    }
+
+    return result;
 }
