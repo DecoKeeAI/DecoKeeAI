@@ -336,7 +336,9 @@ export default {
             operationHeight: null,
 
             squareHeight: 350,
-            squareWidth: 440
+            squareWidth: 440,
+
+            isConfirmFlag: false
         };
     },
 
@@ -1312,6 +1314,8 @@ export default {
         },
 
         deleteOperation(deleteItem) {
+            if (this.isConfirmFlag) return
+            this.isConfirmFlag = true
             console.log('MainScreen: deleteItem', deleteItem);
             this.$confirm(this.$t('deleteKeyConfigHint'), this.$t('hint'), {
                 confirmButtonText: this.$t('confirm'),
@@ -1325,7 +1329,10 @@ export default {
                     }
                     this.doDeleteOperation(deleteItem);
                 })
-                .catch(err => console.log(err));
+                .catch(err => console.log(err))
+                .finally(() => {
+                    this.isConfirmFlag = false;
+                });
         },
         // 删除
         doDeleteOperation(deleteItem) {

@@ -108,6 +108,7 @@ export default {
             // 选择项
             selectedIndex: null,
             currentPluginSelected: undefined,
+            isConfirmFlag: false
         };
     },
     created() {
@@ -195,7 +196,8 @@ export default {
         deletePlugin() {
             console.log('PluginConfig: deletePlugin: ', this.currentPluginSelected);
             if (!this.currentPluginSelected) return;
-
+            if (this.isConfirmFlag) return
+            this.isConfirmFlag = true;
             this.$confirm(
                 this.$t('settings.deletePluginConfig').replace(
                     '{{pluginName}}',
@@ -231,6 +233,8 @@ export default {
                         console.log('PluginConfig: deletePlugin: detected error: ', err);
                         this.$message.error(this.$t('settings.deletePluginFailed'));
                     }
+                }).finally(() => {
+                    this.isConfirmFlag = false;
                 });
         },
         handleExternalLinkClicked() {

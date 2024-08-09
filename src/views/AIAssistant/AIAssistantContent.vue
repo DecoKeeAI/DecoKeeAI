@@ -1,26 +1,23 @@
 <template>
     <div>
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px">
-            <div style="display: flex; align-items: center">
-                <img :src="historyImg" :title="$t('history')" style="width: auto; height: 35px; cursor: pointer;" @click="historyBtn" />
-            </div>
-
-            <img :src="configImg" :title="$t('settings.aiModelSetting')" style="width: auto; height: 35px; cursor: pointer" @click="cinfigBtn" />
+        <div class="chat-header">
+            <img :src="historyImg" :style="{ cursor: AIStatus === 1 ? 'not-allowed' : 'pointer' }" :title="$t('history')" @click="historyBtn" />
+            <img :src="configImg" :title="$t('settings.aiModelSetting')" @click="cinfigBtn" />
         </div>
 
         <!-- 聊天 -->
         <div>
             <el-scrollbar ref="scrollbar" :style="{ height: windowHeight + 'px' }">
-                <div @click="reset">
+                <div @click="reset" :style="{ height: windowHeight + 'px' }">
                     <div id="selectable-text">
                         <!-- eslint-disable vue/no-use-v-if-with-v-for -->
                         <div class="chat-container" v-for="(message, index) in message" :key="index" v-if="message.role !== 'system'" @mouseenter="enterInto(index)" @mouseleave="leaveOut(index)">
 
                             <div :style="{maxWidth: (windowWidth - 120) + 'px'}" v-if="message.role === 'user'" class="message-received">
                                 <div class="chat-user message">
-                                    <div v-if="editIndex && index === editIndex " class="user-input">
-                                        <el-input :autosize="{ minRows: 2, maxRows: 6}" @input="changeUserMessage($event, index)" resize="none" type="textarea" v-model="message.content"></el-input>
-                                        <i class="el-icon-check" @click="confirmUserContent(index)"></i>
+                                    <div v-if="editIndex && index === editIndex" class="user-input">
+                                        <el-input :autosize="{ minRows: 1, maxRows: 6}" @input="changeUserMessage($event, index)" resize="none" type="textarea" v-model="message.content"></el-input>
+                                        <img class="send-img" :src="sendImg" :title="$t('send')" @click="confirmUserContent(index)" :style="{ cursor: AIStatus === 1 ? 'not-allowed' : 'pointer' }" />
                                         <i class="el-icon-close" @click="cancelUserContent"></i>
                                     </div>
 
@@ -32,7 +29,7 @@
                                 <div class="message-operate" v-if="hoverIndex === index && !editIndex">
 
                                     <el-button @click="copyMessageBtn(message.content)" type="text" icon="el-icon-document-copy">{{ $t('settings.copy') }}</el-button>
-                                    <!-- <i v-if="userMaxIndex === hoverIndex" @click="editUserContent(index)" class="el-icon-edit"></i> -->
+                                    <i v-if="userMaxIndex === hoverIndex" @click="editUserContent(index)" class="el-icon-edit"></i>
                                     <i @click="deleteMessageBtn(index)" class="el-icon-delete"></i>
                                 </div>
                             </div>
@@ -76,10 +73,10 @@
 
             <!-- 发送 -->
             <div id="chat-bottom">
-                <div class="new-chat" @click="addSessionBtn">
+                <span class="new-chat" @click="addSessionBtn" :style="{ cursor: AIStatus === 1 ? 'not-allowed' : 'pointer' }">
                     <img class="add-chat" :src="addImg" />
                     <span>New Chat</span>
-                </div>
+                </span>
                 <div style="padding: 5px">
                     <div class="chat-input">
                         <div class="chat-file" v-if="fileList">
@@ -94,14 +91,14 @@
 
                             <!-- <img class="select-img" @click="selectFileBtn" title="选择文件" :src="selectFileImg" alt="" /> -->
 
-                            <img class="send-img" @click="sendBtn" :title="$t('send')" :src="sendImg" alt="" :style="{ cursor: AIStatus === 1 ? 'not-allowed' : 'pointer' }" />
+                            <img class="send-img" :src="sendImg" @click="sendBtn" :title="$t('send')" :style="{ cursor: AIStatus === 1 ? 'not-allowed' : 'pointer' }" />
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <!-- 配置 -->
-        <div class="configForm" :style="{ display: isShow, top:'40px' }">
+        <div class="configForm" :style="{ display: isShow, top:'35px' }">
             <el-form label-width="120px" label-position="left">
                 <el-form-item :label="$t('settings.aiEngineType')">
 
@@ -146,7 +143,7 @@
 
         <!-- 聊天记录 -->
 
-        <el-drawer :style="{ marginTop: '77px', height: windowHeight + 'px' }" :with-header="false" :visible.sync="historyDrawer" direction="ltr" :modal="false">
+        <el-drawer :style="{ marginTop: '67px', height: windowHeight + 'px' }" :with-header="false" :visible.sync="historyDrawer" direction="ltr" :modal="false">
             <div class="search-historyList">
                 <el-input v-model="searchHistory" @input="searchHistoryInput" @clear="clearHistoryInput" clearable placeholder="搜索聊天记录" prefix-icon="el-icon-search" />
                 <div class="select-all">
@@ -217,6 +214,13 @@ import { dialog } from '@electron/remote';
 import { ipcRenderer } from 'electron';
 import { setI18nLanguage } from '@/plugins/i18n';
 
+import ClipboardJS from 'clipboard';
+import showdown from "showdown";
+import showdownHighlight from 'showdown-highlight'
+// 公式
+// import katex from 'katex';
+// import 'katex/dist/katex.min.css';
+
 import 'highlight.js/styles/an-old-hope.css';
 const hljsExtension = function () {
     return [
@@ -252,12 +256,6 @@ const hljsExtension = function () {
     ];
 };
 
-
-
-import ClipboardJS from 'clipboard';
-import showdown from "showdown";
-import showdownHighlight from 'showdown-highlight'
-// import showdownKatex from 'showdown-katex'
 
 export default {
     name: 'AIAssistantContent',
@@ -342,7 +340,8 @@ export default {
 
     created() {
 
-        this.sendImg = window.resourcesManager.getRelatedSrcPath('@/send.png');
+        this.sendImg = window.resourcesManager.getRelatedSrcPath('@/sendable.png')
+
         this.printscreenImg = window.resourcesManager.getRelatedSrcPath('@/printscreen.png');
         this.selectFileImg = window.resourcesManager.getRelatedSrcPath('@/selectFile.png');
         this.historyImg = window.resourcesManager.getRelatedSrcPath('@/history.png');
@@ -439,7 +438,6 @@ export default {
     },
     mounted() {
 
-
         window.addEventListener('focus', () => {
             // console.log('AI对话窗口获得焦点');
             this.aiModelTypeList = window.generalAIManager.getAllSupportedModels();
@@ -456,12 +454,12 @@ export default {
 
             clipboard.on('success', e => {
                 e.clearSelection();
-                this.$message.success('复制成功');
+                this.$message.success(this.$t('copySucceeded'));
             });
 
             clipboard.on('error', function (e) {
                 e.clearSelection();
-                this.$message.error('复制失败');
+                this.$message.error(this.$t('copyFailed'));
             });
 
 
@@ -486,9 +484,13 @@ export default {
 
     methods: {
         formater(message) {
+            let markdownHtml = this.markdown.makeHtml(message)
+            // const regex = /\$\$(.*?)\$\$/g;
+            // markdownHtml = markdownHtml.replace(regex, (match, p1) => {
 
-
-            return this.markdown.makeHtml(message)
+            //     return katex.renderToString(p1, { throwOnError: false });
+            // });
+            return markdownHtml
         },
 
         handleResize() {
@@ -567,6 +569,7 @@ export default {
         },
 
         historyBtn() {
+            if (this.AIStatus === 1) return
             this.historyDrawer = !this.historyDrawer;
             this.isShow = 'none';
             this.editKey = '';
@@ -580,6 +583,7 @@ export default {
         },
         // 添加会话
         addSessionBtn() {
+            if (this.AIStatus === 1) return
             this.editKey = '';
             if (this.historyList.length === 0) {
                 this.historyList.push({
@@ -592,10 +596,11 @@ export default {
                     key: `key-${maxIndex + 1}`,
                     title: `会话${maxIndex + 1}`,
                 });
+
             }
 
             window.store.chatHistorySet('historyList', this.historyList);
-            this.historyList = window.store.chatHistoryGet('historyList');
+            // this.historyList = window.store.chatHistoryGet('historyList');
 
             this.selectKey = this.historyList[0].key;
 
@@ -622,12 +627,13 @@ export default {
         },
 
         clickTitle(key) {
+
             this.AIStatus = 2
             console.log('AI聊天： 聊天记录 key', key);
             this.selectKey = key;
             this.historyDrawer = false;
             this.message = window.store.chatHistoryGet(`chatHistory.${this.selectKey}`);
-            this.followUpList = window.store.chatHistoryGet(`followUpList.${this.selectKey}`);
+            this.followUpList = window.store.chatHistoryGet(`followUpList.${this.selectKey}`) || [];
 
             window.store.storeSet('aiConfig.selectKey', this.selectKey);
             this.initScrollHeight();
@@ -641,35 +647,55 @@ export default {
             // });
         },
         deleteObjFun(obj, id) {
-            let tempList = window.store.chatHistoryGet(`${obj}`);
-            let str = JSON.stringify(tempList, (key, value) => (key === id ? undefined : value));
-            tempList = JSON.parse(str);
-            window.store.chatHistorySet(`${obj}`, tempList);
+
+            const newObj = {}
+            for (const key in obj) {
+
+                if (key !== id) {
+                    newObj[key] = obj[key];
+                }
+            }
+            return newObj
         },
 
 
         deleteTitle(id) {
             this.editKey = '';
+            let tempFollowUpList = window.store.chatHistoryGet('followUpList') || {};
+            let tempChatHistory =  window.store.chatHistoryGet('chatHistory') || {};
 
-            this.historyList = this.historyList.filter(item => item.key !== id);
-            window.store.chatHistorySet('historyList', this.historyList);
 
-            if (window.store.chatHistoryGet('followUpList') && window.store.chatHistoryGet('followUpList')[id]) {
-                this.deleteObjFun('followUpList', id)
+            const processId = (selectId) => {
+
+                this.historyList = this.historyList.filter(item => item.key !== selectId);
+                if (window.store.chatHistoryGet('followUpList') && window.store.chatHistoryGet('followUpList')[selectId]) {
+                    tempFollowUpList = this.deleteObjFun(tempFollowUpList, selectId);
+                }
+
+                tempChatHistory = this.deleteObjFun(tempChatHistory, selectId);
+            };
+
+            if (Array.isArray(id)) {
+                id.forEach(processId);
+            } else {
+                processId(id)
             }
-            this.deleteObjFun('chatHistory', id)
+            window.store.chatHistorySet('historyList', this.historyList);
+            window.store.chatHistorySet('chatHistory', tempChatHistory);
+            window.store.chatHistorySet('followUpList', tempFollowUpList);
 
             if (this.historyList.length === 0) {
                 this.addSessionBtn();
             } else {
-                this.selectKey = this.historyList[0].key;
 
+                this.selectKey = this.historyList[0].key;
                 this.message = window.store.chatHistoryGet(`chatHistory.${this.selectKey}`);
                 window.store.storeSet('aiConfig.selectKey', this.selectKey);
+
             }
         },
         handleInput(e, index) {
-            this.$set(this.historyList[index], this.historyList[index].title, e);
+            this.$set(this.historyList, index, { ...this.historyList[index], title: e });
         },
 
         confirmBtn(index) {
@@ -726,20 +752,12 @@ export default {
         },
         selectDelete() {
             console.log('AI聊天： 删除选中 key', this.selectAllGroup);
-            // if (this.selectAllGroup.length === 0) {
-            //     this.$message.warning('请选择要删除的记录')
-            //     return
-            // }
 
-            this.selectAllGroup.forEach(item => {
-                this.deleteTitle(item)
-            })
+            this.deleteTitle(this.selectAllGroup)
+
             this.selectCancel()
         },
-        // changeSelectAllGroup(val) {
-        //     console.log('val', val);
-        //     this.selectAllGroup = val
-        // },
+
         selectCancel() {
             this.isShowSelectBtn = true
             this.selectAllGroup = []
@@ -760,19 +778,21 @@ export default {
             window.aiChatManager.setChatResponseListener((requestId, status, message, msgType) => {
                 this.AIStatus = status;
 
+                this.AIStatus !== 2 ? this.sendImg = window.resourcesManager.getRelatedSrcPath('@/unsendable.png') : this.sendImg = window.resourcesManager.getRelatedSrcPath('@/sendable.png')
+
                 if (status === -1) {
                     this.message[this.message.length - 1].content = message
 
                 } else {
 
-                    if (msgType === 'answer' || msgType === undefined) {
+                    if (msgType !== 'followUp') {
                         AIMessage += message;
                         this.message[this.message.length - 1].content = AIMessage;
                         this.message[this.message.length - 1].requestId = requestId;
-                    }
-
-                    if (msgType === 'followUp') {
-                        console.log('followUp message:', message);
+                        // if (window.store.chatHistoryGet('followUpList')[this.selectKey]) {
+                        //     this.deleteObjFun('followUpList', this.selectKey)
+                        // }
+                    } else {
                         this.followUpList.push(message)
                         window.store.chatHistorySet(`followUpList.${this.selectKey}`, this.followUpList);
                     }
@@ -793,9 +813,7 @@ export default {
 
         sendBtn() {
 
-            if (this.AIStatus === 1) {
-                return;
-            }
+            if (this.AIStatus === 1) return
             this.editIndex = null
             const reg = /^[\s]*$/;
 
@@ -850,20 +868,28 @@ export default {
             this.hoverIndex = index
         },
         changeUserMessage(e, index) {
-            this.$set(this.message[index], this.message[index].content, e);
+            this.$set(this.message, index, { ...this.message[index], content: e });
         },
         cancelUserContent() {
             this.editIndex = null
             this.message = window.store.chatHistoryGet(`chatHistory.${this.selectKey}`);
 
         },
-        confirmUserContent() {
+        confirmUserContent(index) {
             this.editIndex = null
-            window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
-            console.log(this.message);
+            const oldContent = window.store.chatHistoryGet(`chatHistory.${this.selectKey}`)[index].content
+            if (oldContent === this.message[index].content) return
 
+            window.store.chatHistorySet(`chatHistory.${this.selectKey}`, this.message);
+            // eslint-disable-next-line no-prototype-builtins
+            if (this.message[this.message.length - 1].hasOwnProperty('requestId')) {
+                this.message.pop();
+            }
+            this.sendChatMessage();
         },
+        // 停止生成
         // stopAssistant() {
+        //     console.log('stopAssistant  停止生成');
         //     window.aiChatManager.cancelChatProcess(this.requestId)
         //     this.AIStatus = 2
         // },
@@ -1000,6 +1026,17 @@ export default {
 </script>
 
 <style scoped lang='less'>
+.chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 5px;
+    img {
+        width: auto;
+        height: 35px;
+        cursor: pointer;
+    }
+}
 .chat-container {
     display: flex;
     flex-direction: column;
@@ -1033,12 +1070,11 @@ export default {
     margin-bottom: 28px;
     .chat-user {
         background: #fff;
-        /deep/ .el-textarea {
-            border-radius: 5px;
+        .user-input {
+            display: flex;
+            align-items: center;
         }
-        /deep/ .el-textarea__inner {
-            height: 150px;
-        }
+
         i {
             cursor: pointer;
         }
@@ -1124,7 +1160,7 @@ export default {
     display: flex;
     align-items: center;
     font-family: Consolas, 'Andale Mono';
-    cursor: pointer;
+    max-width: 120px;
     .add-chat {
         height: 25px;
         margin-right: 5px;
@@ -1151,23 +1187,23 @@ export default {
     justify-content: end;
     align-items: center;
     margin: 8px;
+}
 
-    img {
-        width: auto;
-    }
+img {
+    width: auto;
+}
 
-    .send-img {
-        height: 25px;
-    }
-    .printscreen-img {
-        height: 30px;
-        cursor: pointer;
-    }
-    .select-img {
-        margin-right: 5px;
-        height: 20px;
-        cursor: pointer;
-    }
+.send-img {
+    height: 25px;
+}
+.printscreen-img {
+    height: 30px;
+    cursor: pointer;
+}
+.select-img {
+    margin-right: 5px;
+    height: 20px;
+    cursor: pointer;
 }
 // 配置
 .configForm {

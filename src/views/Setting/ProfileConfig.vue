@@ -172,6 +172,8 @@ export default {
             copyId: '',
             copyLable: '',
             controlPressed: false,
+
+            isConfirmFlag: false,
         };
     },
     created() {
@@ -419,7 +421,6 @@ export default {
             this.dropdownMenu.unshift({
                 label: `${label}${maxIndex + 1}`,
                 value: this.resourceId,
-                // command: `${label}${maxIndex + 1}`,
             });
             window.store.storeSet('mainscreen.dropdownMenu', this.dropdownMenu);
             this.dropdownMenu = window.store.storeGet('mainscreen.dropdownMenu');
@@ -429,6 +430,7 @@ export default {
         // 删除
         deleteDropdownMenu() {
             this.getAllResource();
+            if (this.isConfirmFlag) return
 
             this.checkedProfileConfigs = this.checkedProfileConfigs.filter(
                 item => this.dropdownMenu[item].value !== '1-0'
@@ -461,6 +463,7 @@ export default {
             });
 
             console.log('ProfileConfig: filterArr: ', filterArr);
+            this.isConfirmFlag = true
             this.$confirm(this.$t('settings.deleteConfig'), '', {
                 confirmButtonText: this.$t('confirm'),
                 cancelButtonText: this.$t('cancel'),
@@ -487,11 +490,13 @@ export default {
                 })
                 .catch(err => {
                     console.log('profileConfig  删除菜单项 err: ', err);
+                }).finally(() => {
+                    this.isConfirmFlag = false;
                 });
         },
 
         handleInput(e, index) {
-            this.$set(this.dropdownMenu[index], this.dropdownMenu[index].label, e);
+            this.$set(this.dropdownMenu, index, { ...this.dropdownMenu[index], label: e });
         },
         handleBlur(label, index) {
 

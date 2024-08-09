@@ -20,7 +20,7 @@
         </div>
 
         <el-button class="out" type="text" @click=" $emit('outKnobBtn', false); $emit('changeClickPos', '');">
-            退出
+            {{ $t('trayMenu.exit') }}
         </el-button>
     </div>
 </template>
