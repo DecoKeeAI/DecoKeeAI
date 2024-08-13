@@ -5,6 +5,7 @@
             <SettingsView v-else-if="renderReady && windowTitle === 'Settings'"/>
             <AIAssistantView v-else-if="renderReady && windowTitle === 'AIAssistant'"/>
             <IconSelectView v-else-if="renderReady && windowTitle === 'IconSelect'"/>
+            <CustomConfigView v-else-if="renderReady && windowTitle === 'CustomConfig'"/>
         </div>
     </div>
 </template>
@@ -14,6 +15,7 @@ import MainView from '@/views/MainView/MainView'
 import SettingsView from "@/views/Setting/SettingsView";
 import AIAssistantView from "@/views/AIAssistant/AIAssistantView";
 import IconSelectView from "@/views/IconSelect/IconSelectView";
+import CustomConfigView from "@/views/CustomConfig/CustomConfigView.vue";
 import Vue from 'vue'
 import {setI18nLanguage} from "@/plugins/i18n";
 
@@ -22,6 +24,7 @@ const remote = require('@electron/remote');
 export default {
     name: 'app',
     components: {
+        CustomConfigView,
         MainView,
         SettingsView,
         AIAssistantView,

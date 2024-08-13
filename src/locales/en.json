@@ -96,7 +96,9 @@
     "chatPendingTimeout": "Chat Timeout(s)",
     "aiTextSelection": "Quick Text Selection",
     "aiTextSelectionSkills": "Text Selection Skills",
-    "disabledTextSelectionApp": "Disabled Apps"
+    "disabledTextSelectionApp": "Disabled Apps",
+    "homeAssistantControl": "HomeAssistant Control",
+    "configHomeAssistant": "HA Configuration"
   },
   "success": "Success",
   "failed": "Failed",
@@ -104,6 +106,7 @@
   "decoKeeAI": "DecoKeeAI",
   "timer": "Timer",
   "brightness": "Brightness",
+  "homeAssistant": "Home Assistant",
   "multiActions": "Multiple Operations",
   "delayed": "Delayed",
   "navigation": "Navigation",
@@ -201,7 +204,10 @@
     "ok": "Ok",
     "sorry": "Sorry，not able to process this action",
     "serverError": "Server connection error, please retry later.",
-    "finishedOutput": "Finished"
+    "finishedOutput": "Finished",
+    "noEntityFound": "No device found.",
+    "controlDeviceNotFound": "Control device not found",
+    "haNotConnected": "Service not connected, please check and try again"
   },
   "audio_mute": "audio_mute",
   "audio_vol_down": "audio_vol_down",
@@ -249,5 +255,29 @@
   "trayMenu": {
     "resume": "Resume",
     "exit": "Exit"
+  },
+  "customConfig": {
+    "haSettingsTitle": "Home Assistant Settings"
+  },
+  "homeAssistantConfig": {
+    "apiKey": "Long-lived access token",
+    "serverAddr": "Server address",
+    "selectEntity": "Select Entity",
+    "selectServiceAction": "Select Action",
+    "selectByRoom": "By Room",
+    "selectByEntity": "By Entity",
+    "reconnect": "Reconnect",
+    "connect": "Connect",
+    "displayInfo": "Display Info",
+    "iconDisplay": "Icon",
+    "defaultDisplay": "Default",
+    "customDisplay": "Custom",
+    "displayAlias": "Display alias",
+    "fontSize": "Font Size",
+    "connectionStatus": "Connection",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "configableEntity": "AI-Perceivable Entity",
+    "addState": "Add State"
   }
 }

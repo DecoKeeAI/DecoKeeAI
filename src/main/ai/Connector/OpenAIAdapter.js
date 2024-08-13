@@ -60,16 +60,23 @@ class OpenAIAdapter {
         this.currentChatMode = chatMode;
         this.aiEngineModel = engineModel;
 
-
-
         console.log('OpenAIAdapter constructor aiEngineModel: ' + this.aiEngineModel + ' ChatMode: ' + this.currentChatMode);
 
         ipcMain.on('AssistantChatResponse', (event, args) => {
             if (args.requestId !== this.chatRequestId) return;
 
-            if (this.currentChatMode === CHAT_TYPE.CHAT_TYPE_NORMAL || this.currentChatMode === CHAT_TYPE.CHAT_TYPE_OPERATE_PC) {
+            if (this.currentChatMode === CHAT_TYPE.CHAT_TYPE_NORMAL || this.currentChatMode === CHAT_TYPE.CHAT_TYPE_OPERATE_PC || this.streamResponseCallBack !== undefined) {
                 if (args.status === 2 || args.status === -1) {
                     this.chatRequestId = undefined;
+                }
+
+                if (this.streamResponseCallBack !== undefined) {
+                    this.streamResponseCallBack(args.requestId, args.status, args.message);
+
+                    if (args.status === 2 || args.status === -1) {
+                        this.streamResponseCallBack = undefined;
+                    }
+                    return;
                 }
 
                 // console.log('OpenAIAdapter OpenAI handle AssistantChatResponse: args ', args, ' Have Listener: ', (this.chatResponseListener !== undefined))
@@ -79,9 +86,13 @@ class OpenAIAdapter {
             }
 
             if (this.waitChatResponseCallback === undefined) return;
-            console.log('OpenAIAdapter OpenAI handle AssistantChatResponse: args ', args)
+            console.log('OpenAIAdapter OpenAI handle AssistantChatResponse: args ', args);
 
             this.waitChatResponseCallback(args.message);
+
+            if (args.status === 2 || args.status === -1) {
+                this.waitChatResponseCallback = undefined;
+            }
         });
 
         ipcMain.on(OPEN_AI_IPC_MESSAGE.CHANNEL_MANIPULATE_FILE_RESULT, (event, args) => {
@@ -177,10 +188,11 @@ class OpenAIAdapter {
         ipcMain.removeAllListeners('AssistantChatResponse')
     }
 
-    chatWithAI(requestId, params) {
+    chatWithAI(requestId, params, streamResponseCallBack) {
         clearTimeout(this.chatSessionExpiredTimer);
         this.chatRequestId = requestId;
 
+        this.streamResponseCallBack = streamResponseCallBack;
         console.log('OpenAIAdapter: chatWithAI: requestId: ', requestId, ' this.aiEngineType: ', this.aiEngineType, ' params: ', params)
         this._sendChatMessage(requestId, params)
     }

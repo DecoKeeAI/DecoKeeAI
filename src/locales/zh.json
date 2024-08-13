@@ -96,7 +96,9 @@
         "chatPendingTimeout": "对话超时(秒)",
         "aiTextSelection": "快捷划词工具",
         "aiTextSelectionSkills": "快捷划词技能",
-        "disabledTextSelectionApp": "已禁用应用"
+        "disabledTextSelectionApp": "已禁用应用",
+        "homeAssistantControl": "HomeAssistant 操控",
+        "configHomeAssistant": "配置 HA"
     },
     "success": "成功",
     "failed": "失败",
@@ -104,6 +106,7 @@
     "decoKeeAI": "DecoKeeAI",
     "timer": "定时器",
     "brightness": "亮度",
+    "homeAssistant": "Home Assistant",
     "multiActions": "多项操作",
     "delayed": "延时",
     "navigation": "导航",
@@ -201,7 +204,10 @@
         "ok": "好的",
         "sorry": "抱歉，无法控制此功能",
         "serverError": "服务连接异常，请稍候重试。",
-        "finishedOutput": "已完成"
+        "finishedOutput": "已完成",
+        "noEntityFound": "未找到任何设备",
+        "controlDeviceNotFound": "未找到要操控的设备",
+        "haNotConnected": "服务未连接，请检查后重试"
     },
     "audio_mute": "静音",
     "audio_vol_down": "音量-",
@@ -249,5 +255,29 @@
     "trayMenu": {
         "resume": "恢复窗口",
         "exit": "退出"
+    },
+    "customConfig": {
+        "haSettingsTitle": "Home Assistant 设置"
+    },
+    "homeAssistantConfig": {
+        "apiKey": "长期访问令牌",
+        "serverAddr": "服务地址",
+        "selectEntity": "选择实体",
+        "selectServiceAction": "选择操作",
+        "selectByRoom": "按房间",
+        "selectByEntity": "按实体",
+        "reconnect": "重连",
+        "connect": "连接",
+        "displayInfo": "显示内容",
+        "iconDisplay": "图标",
+        "defaultDisplay": "默认",
+        "customDisplay": "自定义",
+        "displayAlias": "显示别名",
+        "fontSize": "字体大小",
+        "connectionStatus": "连接状态",
+        "connected": "已连接",
+        "disconnected": "未连接",
+        "configableEntity": "AI可见实体",
+        "addState": "添加状态"
     }
 }

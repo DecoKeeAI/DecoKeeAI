@@ -57,6 +57,9 @@
                             <el-radio label=""></el-radio>
                         </el-radio-group>
                     </div>
+<!--                    <div v-else-if="optionData.config.type === 'homeAssistant' && !optionData.config.haveAlterAction">-->
+<!--                        <el-link icon="el-icon-plus" @click="handleAddAlterActionClicked">{{ $t('homeAssistantConfig.addState') }}</el-link>-->
+<!--                    </div>-->
                 </div>
 
                 <el-form label-width="180px">
@@ -213,6 +216,11 @@
                         @aiConfigUpdated="handleAIConfigUpdated"
                     />
 
+                    <HomeAssistantConfig
+                        :ha-configs="haConfigData"
+                        v-else-if="optionData.childrenName === 'homeAssistant'"
+                        @configUpdated="handleHomeAssistantConfigUpdated" />
+
                 </el-form>
             </div>
         </div>
@@ -226,6 +234,7 @@ import IconHolder from './IconHolder';
 import { deepCopy } from '@/utils/ObjectUtil';
 import Constants from '@/utils/Constants';
 import OperationConfig from '@/views/Components/config/OperationConfig';
+import HomeAssistantConfig from "@/views/Components/HomeAssistantConfig.vue";
 import { dialog } from '@electron/remote';
 import { AUDIO_FADE_OPTION, AUDIO_FADETIME_OPTION, AUDIO_OPTION, BRIGHTNESS_OPTION } from '@/plugins/KeyConfiguration.js';
 import defaultResourcesMap from '@/assets/resources.js';
@@ -238,7 +247,8 @@ export default {
         IconHolder,
         OperationConfig,
         PluginOptionView,
-        AIConfigSettings
+        AIConfigSettings,
+        HomeAssistantConfig
     },
     props: {
         operationData: {
@@ -270,6 +280,7 @@ export default {
             fontSize: null, // 字体大小
             optionData: {},
             switchIcon: null,
+            actionState: 0,
             // 亮度
             BRIGHTNESS_OPTION,
             briSelect: 0,
@@ -303,7 +314,8 @@ export default {
 
             // 自定义更改图片
             defaultResourcesMap,
-            monitorAppView: false
+            monitorAppView: false,
+            haConfigData: ''
         };
     },
     created() {
@@ -360,6 +372,9 @@ export default {
                 this.audioFade = Number(fadeArr[0]);
                 if (Number(fadeArr[1]) !== 0) this.fadeTime = Number(fadeArr[1]);
                 this.volume = this.optionData.config.actions[3].value;
+                break;
+            case 'homeAssistant':
+                this.haConfigData = deepCopy(this.optionData.config.actions[this.actionState].value);
                 break;
         }
 
@@ -433,6 +448,8 @@ export default {
 
             this.optionData = deepCopy(optionData);
             this.icon = optionData.config.icon;
+            this.switchIcon = null;
+
             if (optionData.childrenName === 'hotkeySwitch' || this.optionData.config.haveAlterAction) {
                 this.icon = this.switchIcon === null ? this.optionData.config.icon : this.optionData.config.alterIcon;
             }
@@ -445,6 +462,8 @@ export default {
             // 操作延迟
             this.pressTime = optionData.config.pressTime;
             this.gap = optionData.config.gap;
+
+            this.actionState = 0;
 
             switch (optionData.childrenName) {
                 case 'brightness':
@@ -481,6 +500,9 @@ export default {
                     this.audioFade = Number(fadeArr[0]);
                     if (Number(fadeArr[1]) !== 0) this.fadeTime = Number(fadeArr[1]);
                     this.volume = this.optionData.config.actions[3].value;
+                    break;
+                case 'homeAssistant':
+                    this.haConfigData = deepCopy(this.optionData.config.actions[this.actionState].value);
                     break;
             }
         },
@@ -567,8 +589,17 @@ export default {
             this.switchIcon = val;
 
             this.icon = this.optionData.config.icon;
+            this.actionState = 0;
             if (val === '') {
+                this.actionState = 1;
                 this.icon = this.optionData.config.alterIcon;
+            }
+
+            if (this.optionData.config.type === 'homeAssistant') {
+                this.haConfigData = '';
+                setTimeout(() => {
+                    this.haConfigData = deepCopy(this.optionData.config.actions[this.actionState].value);
+                }, 100);
             }
         },
         // 选择图片
@@ -1037,6 +1068,11 @@ export default {
             this.optionData.config.actions[0].value = JSON.stringify(newAIConfigData);
             this.updateOperationData(true);
         },
+        handleHomeAssistantConfigUpdated(newConfigData) {
+            console.log('OperationConfiguration: handleHomeAssistantConfigUpdated: ', newConfigData);
+            this.optionData.config.actions[this.actionState].value = JSON.stringify(newConfigData);
+            this.updateOperationData(true);
+        },
         handleMonitorAppViewChanged() {
             console.log('OperationConfiguration: handleMonitorAppViewChanged: ', this.monitorAppView);
 
@@ -1049,6 +1085,16 @@ export default {
             } else {
                 this.optionData.config.actions[monitorAppViewConfigIdx].value = this.monitorAppView;
             }
+            this.updateOperationData();
+        },
+        handleAddAlterActionClicked() {
+            this.optionData.config.alterIcon = this.optionData.config.icon;
+            this.optionData.config.alterTitle = Object.assign({}, this.optionData.config.title);
+            this.optionData.config.haveAlterAction = true;
+
+            this.optionData.config.actions.push(deepCopy(this.optionData.config.actions[0]));
+
+            this.optionData = deepCopy(this.optionData);
             this.updateOperationData();
         }
     },

@@ -37,6 +37,7 @@ DecoKeeAI is built using **vue-cli 5** and **Electron 23.0.0**, providing a modu
   - Switch between multiple configuration sets at will
   - Dynamic configuration switching based on foreground application
   - Quick Text Selection. To explain, summarize, translate selected text.
+  - Home Assistant: control your HA functions/devices via Keys or talk with AI 
 * MDI icon plugin and third-party icon library import
 * Support for third-party plugin import (such as HomeAssistant plugins, etc.)
 * Support for mainstream AI model interface calls, including: (API keys need to be registered on the corresponding platform and filled in the settings. For the best experience, it is recommended to use Groq's llama-3.1-70b-versatile or OpenAI's gpt-4o)

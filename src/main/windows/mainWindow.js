@@ -57,7 +57,7 @@ class MainWindow {
                 return true;
             }
 
-            console.log('initBrowserPage: onPermissionCheckHandler: ', permission, ' details: ', details);
+            // console.log('initBrowserPage: onPermissionCheckHandler: ', permission, ' details: ', details);
         });
 
         this.win.webContents.session.setDevicePermissionHandler(details => {
@@ -250,6 +250,10 @@ class MainWindow {
               haveUpdate: false,
               version: ''
             };
+        });
+
+        ipcMain.handle('ha-entity-selected', (event, args) => {
+            this.win.webContents.send('ha-entity-selected-by-user', args);
         });
     }
 

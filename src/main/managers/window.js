@@ -2,6 +2,8 @@ import MainWindow from '../windows/mainWindow'
 import SettingWindow from "@/main/windows/SettingWindow";
 import AIAssistantWindow from "@/main/windows/AIAssistantWindow";
 import IconSelectWindow from "@/main/windows/IconSelectWindow";
+import CustomConfigWindow from "@/main/windows/CustomConfigWindow";
+import HtmlToImageConverterWindow from "@/main/windows/HtmlToImageConverterWindow";
 
 class WindowManager {
   constructor (appManager) {
@@ -9,12 +11,15 @@ class WindowManager {
     this.settingWindow = new SettingWindow(null, appManager)
     this.aiAssistantWindow = new AIAssistantWindow(null, appManager)
     this.iconSelectWindow = new IconSelectWindow(null, appManager)
+    this.customConfigWindow = new CustomConfigWindow(null, appManager)
+    this.htmlToImageConverterWindow = new HtmlToImageConverterWindow()
 
     this.windowList = [];
     this.windowList.push(this.settingWindow);
     this.windowList.push(this.aiAssistantWindow);
     this.windowList.push(this.iconSelectWindow);
     this.windowList.push(this.mainWindow);
+    this.windowList.push(this.customConfigWindow);
   }
 
   /* Create all windows
@@ -24,6 +29,8 @@ class WindowManager {
     this.settingWindow.createWindow(this.mainWindow.win)
     this.aiAssistantWindow.createWindow()
     this.iconSelectWindow.createWindow(this.mainWindow.win)
+    this.customConfigWindow.createWindow(this.mainWindow.win)
+    this.htmlToImageConverterWindow.createWindow();
   }
 
   sendUpgradeProgress(progress) {

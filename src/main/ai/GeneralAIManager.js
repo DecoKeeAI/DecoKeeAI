@@ -36,6 +36,7 @@
 import { exec } from 'child_process';
 import { ipcMain } from 'electron';
 import Constants from '@/utils/Constants';
+import HAManager from "@/plugins/HomeAssistant/HAManager";
 
 const path = require('path');
 const fs = require('fs');
@@ -171,6 +172,8 @@ export default class GeneralAIManager {
         setTimeout(() => {
             this._checkRecentApps();
         }, 5000);
+
+        this.HAManager = new HAManager(this.appManager, {});
 
         this.aiSessionResourceMap = new Map();
         this.alterToneMap = new Map();
@@ -416,7 +419,7 @@ export default class GeneralAIManager {
     async _checkRecentApps() {
         try {
             this.currentRecentApps = await this._getPCRecentApps();
-            console.log('GeneralAIManager: checkRecentApps: this.currentRecentApps: ', this.currentRecentApps);
+            // console.log('GeneralAIManager: checkRecentApps: this.currentRecentApps: ', this.currentRecentApps);
         } catch (err) {
             console.log('GeneralAIManager: checkRecentApps: detect error: ', err);
         }
@@ -432,7 +435,7 @@ export default class GeneralAIManager {
             case 'win32':
                 recentApps = await this._getRecentApplicationsWindows();
 
-                console.log('WindowsRecentApps: ', recentApps);
+                // console.log('WindowsRecentApps: ', recentApps);
                 break;
             case 'darwin':
                 recentApps = await this._getRecentApplicationsMacOS();
@@ -498,14 +501,14 @@ export default class GeneralAIManager {
         return new Promise(resolve => {
             exec(`reg query HKEY_CLASSES_ROOT\\${extension}`, (err, stdout) => {
                 if (err) {
-                    console.warn(`Error querying ProgID for extension ${extension}:`, err);
+                    // console.warn(`Error querying ProgID for extension ${extension}:`, err);
                     return resolve(null);
                 }
                 const match = stdout.match(/REG_SZ\s+(.+)/);
                 if (match) {
                     resolve(match[1].trim());
                 } else {
-                    console.warn(`No ProgID found for extension ${extension}`);
+                    // console.warn(`No ProgID found for extension ${extension}`);
                     resolve(null);
                 }
             });
@@ -516,14 +519,14 @@ export default class GeneralAIManager {
         return new Promise(resolve => {
             exec(`reg query HKEY_CLASSES_ROOT\\${progID}\\shell\\open\\command`, (err, stdout) => {
                 if (err) {
-                    console.warn(`Error querying command for ProgID ${progID}:`, err);
+                    // console.warn(`Error querying command for ProgID ${progID}:`, err);
                     return resolve(null);
                 }
                 const match = stdout.match(/"([^"]+)"/);
                 if (match) {
                     resolve(match[1].trim());
                 } else {
-                    console.warn(`No command found for ProgID ${progID}`);
+                    // console.warn(`No command found for ProgID ${progID}`);
                     resolve(null);
                 }
             });
@@ -534,7 +537,7 @@ export default class GeneralAIManager {
         return new Promise(resolve => {
             exec(`powershell -command "(Get-Item '${appPath}').VersionInfo.ProductName"`, (err, stdout) => {
                 if (err) {
-                    console.warn(`Error getting app name for ${appPath}:`, err);
+                    // console.warn(`Error getting app name for ${appPath}:`, err);
                     return resolve(path.basename(appPath)); // 返回文件名作为备用
                 }
                 resolve(stdout.trim() || path.basename(appPath));
@@ -556,7 +559,7 @@ export default class GeneralAIManager {
             const recentFolder = path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'Recent');
             fs.readdir(recentFolder, async (err, files) => {
                 if (err) {
-                    console.error(`Error reading Recent folder:`, err);
+                    // console.error(`Error reading Recent folder:`, err);
                     return reject(err);
                 }
 
@@ -565,18 +568,18 @@ export default class GeneralAIManager {
                     return resolve([]);
                 }
 
-                console.log('CheckWindows RecentApp Total lnkFiles length: ', lnkFiles.length);
+                // console.log('CheckWindows RecentApp Total lnkFiles length: ', lnkFiles.length);
 
                 const commands = lnkFiles.map(file => {
                     const fullPath = path.join(recentFolder, file);
                     return `(New-Object -ComObject WScript.Shell).CreateShortcut('${fullPath}').TargetPath`;
                 });
 
-                console.log('CheckWindows RecentApp Total commands length: ', commands.length);
+                // console.log('CheckWindows RecentApp Total commands length: ', commands.length);
 
                 const targetPaths = [];
                 const batches = this._batchExec(commands);
-                console.log('CheckWindows RecentApp Split batches: ', batches.length);
+                // console.log('CheckWindows RecentApp Split batches: ', batches.length);
 
                 for (const batch of batches) {
                     try {
@@ -588,11 +591,11 @@ export default class GeneralAIManager {
                         });
                         targetPaths.push(...batchResult);
                     } catch (err) {
-                        console.error(`Error executing batch:`, err);
+                        // console.error(`Error executing batch:`, err);
                     }
                 }
 
-                console.log('CheckWindows RecentApp After batches exec targetPaths.length: ', targetPaths.length);
+                // console.log('CheckWindows RecentApp After batches exec targetPaths.length: ', targetPaths.length);
 
                 const fileTypes = new Set();
                 const recentApps = new Map();
@@ -618,7 +621,7 @@ export default class GeneralAIManager {
                 });
 
                 await Promise.all(appPromises);
-                console.log('CheckWindows RecentApp After get all Info: ', Array.from(recentApps.values()).length);
+                // console.log('CheckWindows RecentApp After get all Info: ', Array.from(recentApps.values()).length);
                 resolve(Array.from(recentApps.values()));
             });
         });

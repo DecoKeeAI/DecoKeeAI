@@ -130,6 +130,8 @@ const deviceMonitorAppViewContext = {
     monitorWindowInfos: []
 };
 
+const haStatusMonitorMap = new Map();
+
 let deviceProfileAppMonitorMap = undefined;
 class DeviceControlManager {
     constructor(mainAppManager) {
@@ -972,11 +974,11 @@ function broadcastDeviceConnectionChange(serialNumber, connected, connectionType
                 assistantInfo.aiManager.destroyEngine();
             });
         }
+        removeDeviceHAMonitorCallbacks(serialNumber);
 
         deviceAssistantManagerMap.delete(serialNumber);
 
         deviceMonitoryAppViewMap.delete(serialNumber);
-
     }
 
     if (
@@ -1320,6 +1322,11 @@ function processConfiguredAction(
 
             processCMDAction(serialNumber, keyCode, keyActions);
             break;
+        case 'homeAssistant':
+            if (action === 1) break;
+
+            processHomeAssistantFunction(serialNumber, keyCode, keyActions);
+            break;
     }
 }
 
@@ -1505,6 +1512,8 @@ async function loadConfigRelatedResource(serialNumber, resourceId, configDetail,
 
     const pcInstalledApps = appManager.resourcesManager.getInstalledApps();
 
+    removeDeviceHAMonitorCallbacks(serialNumber);
+
     let loadSoundInfos = [];
     for (let i = 0; i < configDetail.length; i++) {
         const configInfo = configDetail[i];
@@ -1559,6 +1568,12 @@ async function loadConfigRelatedResource(serialNumber, resourceId, configDetail,
                     appPath: monitorAppPath,
                     appName: (appInfo === undefined || appInfo.length === 0) ? '' : appInfo[0].appName
                 });
+            }
+        } else if (configInfo.config.type === 'homeAssistant') {
+            if (isMainEntry) {
+                setTimeout(() => {
+                    setupHAMonitorCallback(serialNumber, configInfo.keyCode, configInfo.config.actions[0].value);
+                }, 2000);
             }
         }
 
@@ -1818,6 +1833,100 @@ async function loadConfigRelatedResource(serialNumber, resourceId, configDetail,
     );
 
     deviceAppearPluginMap.set(serialNumber, deviceLoadPluginInfoList);
+}
+
+function setupHAMonitorCallback(serialNumber, keyCode, haDataConfig) {
+    let haConfigDetail = undefined;
+    try {
+        let deviceMonitorHAStatusList = haStatusMonitorMap.get(serialNumber);
+
+        haConfigDetail = JSON.parse(haDataConfig);
+        if (haConfigDetail.entity_id === undefined) return;
+
+        let monitorHAStatusItems = [];
+        let monitorInfoDetail = [];
+
+        if (haConfigDetail.custom_display_type === 'custom') {
+            monitorHAStatusItems = haConfigDetail.custom_display_detail.map(displayItem => displayItem.displayItemKey);
+            monitorInfoDetail = haConfigDetail.custom_display_detail;
+        } else if (haConfigDetail.custom_display_type === 'default') {
+            monitorHAStatusItems.push('state');
+            monitorInfoDetail.push({
+                displayItemKey: 'state',
+                displayAlias: ''
+            });
+        }
+
+        if (deviceMonitorHAStatusList === undefined) {
+            deviceMonitorHAStatusList = [];
+        } else {
+            const existMonitorInfo = deviceMonitorHAStatusList.find(existMonitorInfo => existMonitorInfo.keyCode === keyCode);
+            if (existMonitorInfo !== undefined) return;
+        }
+
+        const haStatusChangeCallBack = (stateList) => {
+            const customDisplaySetting = haConfigDetail.custom_display_settings;
+
+            let displayDataImageHtml = `
+<html>
+    <body>
+        <div id="content" style="text-align: center; height: 100%; width: 100%; color: white; font-size: ${customDisplaySetting.fontSize}px; font-weight: 800; overflow-x: hidden; overflow-y: hidden">`;
+
+            monitorInfoDetail.forEach(displayInfo => {
+                const displayLabel = (displayInfo.displayAlias === undefined || displayInfo.displayAlias === '') ? '' : (displayInfo.displayAlias + ': ');
+                const displayData = stateList.find(stateData => stateData.fieldName === displayInfo.displayItemKey);
+
+                const displayValue = displayData === undefined ? '' : displayData.fieldValue;
+
+                displayDataImageHtml += `
+                    <div>
+                        <span>${displayLabel}</span>
+                        <span>${displayValue}</span>
+                    </div>
+                `;
+            });
+
+            displayDataImageHtml += '</div></body></html>';
+
+            appManager.windowManager.htmlToImageConverterWindow.generateImage(displayDataImageHtml)
+                .then(image => {
+                    sendRawResourceToDeviceKey(serialNumber, PROTOCOL_RAW_RES_TYPE.RES_TYPE_JPEG, Array.from(image.toJPEG(50)), keyCode);
+                })
+                .catch(err => {
+                    console.log('DeviceControlManager: Process image generation error ', err, ' for serialNumber: ', serialNumber, ' keyCode: ', keyCode, ' State: ', stateList, ' monitorInfoDetail: ', monitorInfoDetail);
+                });
+        }
+
+        console.log('DeviceControlManager: setupHAMonitorCallback: for serialNumber: ', serialNumber, ' keyCode: ', keyCode, ' haConfigDetail: ', haConfigDetail, ' monitorHAStatusItems: ', monitorHAStatusItems);
+
+        global.generalAIManager.HAManager.registerEntityStateChangeCallback(haConfigDetail.entity_id, monitorHAStatusItems, haStatusChangeCallBack);
+
+        deviceMonitorHAStatusList.push({
+            keyCode: keyCode,
+            entity_id: haConfigDetail.entity_id,
+            monitorItems: monitorHAStatusItems,
+            callback: haStatusChangeCallBack
+        });
+
+        haStatusMonitorMap.set(serialNumber, deviceMonitorHAStatusList);
+    } catch (err) {
+        console.log('DeviceControlManager: setupHAMonitorCallback: failed to parse JSON data for HAConfig', err.message);
+    }
+}
+
+function removeDeviceHAMonitorCallbacks(serialNumber) {
+    console.log('DeviceControlManager: removeDeviceHAMonitorCallbacks: for serialNumber: ', serialNumber);
+
+    const deviceMonitorHAStatusList = haStatusMonitorMap.get(serialNumber);
+    if (deviceMonitorHAStatusList === undefined) return;
+    console.log('DeviceControlManager: removeDeviceHAMonitorCallbacks22222222222222: for serialNumber: ', serialNumber);
+
+
+    deviceMonitorHAStatusList.forEach(monitorInfo => {
+        global.generalAIManager.HAManager.unregisterEntityStateChangeCallback(monitorInfo.entity_id, monitorInfo.monitorItems, monitorInfo.callback);
+    });
+
+    haStatusMonitorMap.delete(serialNumber);
 }
 
 function getAllRelatedPluginList(resourceId, configDetail, multiActionIndex) {
@@ -2329,6 +2438,7 @@ async function processMultiActions(serialNumber, activeConfig, keyCode, idx, dow
                 case 'playAudio':
                 case 'stopAudio':
                 case 'text':
+                case 'homeAssistant':
                 case 'media':
                 case 'cmd':
                     processActionReturnValue = processConfiguredAction(
@@ -2920,6 +3030,50 @@ function processCMDAction(serialNumber, keyCode, keyActions) {
             );
         }
     });
+}
+
+function processHomeAssistantFunction(serialNumber, keyCode, keyActions) {
+    console.log(
+        'DeviceControlManager: processHomeAssistantFunction: For device: ' +
+        serialNumber +
+        ' Action: ' +
+        JSON.stringify(keyActions)
+    );
+
+    if (keyActions.length === 0 ||
+        !keyActions[0].type ||
+        keyActions[0].type !== 'configData' ||
+        !keyActions[0].value ||
+        keyActions[0].value === '') {
+        notifyDeviceShowAlert(serialNumber, Constants.ALERT_TYPE_INVALID, keyCode);
+        return;
+    }
+
+    const haConfigData = keyActions[0].value;
+    let haConfigDetail = undefined;
+    try {
+        haConfigDetail = JSON.parse(haConfigData);
+    } catch (err) {
+        console.log('DeviceControlManager: processHomeAssistantFunction: failed to parse JSON data for HAConfig', err.message);
+        notifyDeviceShowAlert(serialNumber, Constants.ALERT_TYPE_INVALID, keyCode);
+        return;
+    }
+
+    if (haConfigDetail === undefined) {
+        notifyDeviceShowAlert(serialNumber, Constants.ALERT_TYPE_INVALID, keyCode);
+        return;
+    }
+
+    console.log('DeviceControlManager: processHomeAssistantFunction: haConfigDetail: ', haConfigDetail);
+
+    global.generalAIManager.HAManager
+        .sendCallService(haConfigDetail.entity_id, haConfigDetail.service, haConfigDetail.service_data)
+        .then(result => {
+            console.log('DeviceControlManager: processHomeAssistantFunction: sendCallService result', result);
+            if (!result) {
+                notifyDeviceShowAlert(serialNumber, Constants.ALERT_TYPE_INVALID, keyCode);
+            }
+        });
 }
 
 function notifyDeviceCountDownValue(serialNumber, value, keyCode) {

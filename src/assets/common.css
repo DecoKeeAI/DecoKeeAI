@@ -201,3 +201,7 @@ ul {
   min-width: 100px;
   padding: 10px;
 }
+
+.el-tree-node__content:hover {
+  background-color: #9d9d9d !important;
+}

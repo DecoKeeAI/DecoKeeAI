@@ -8,7 +8,6 @@ const path = require('path');
 const excludeAppName = ['驱动程序包', 'Driver', 'Microsoft Visual C ', 'Microsoft Visual C++ ', 'Windows Software Development Kit', 'Installer', 'Setup', 'Uninstall', '卸载', 'install'];
 
 process.on('message', async message => {
-    console.log('SystemInstalledAppLoader Received: ', message);
     loadPCInstalledApps().then((installedApps) => {
         process.send({
             type: 'success',
@@ -108,14 +107,14 @@ function loadPCInstalledApps() {
                 try {
                     const startUpMenuApps = getWindowsStartUpMenuApplications();
                     console.log('loadPCInstalledApps startUpMenuApps Length: ', startUpMenuApps.length);
-                    console.log('loadPCInstalledApps startUpMenuApps Data: ' + JSON.stringify(startUpMenuApps));
+                    // console.log('loadPCInstalledApps startUpMenuApps Data: ' + JSON.stringify(startUpMenuApps));
 
                     for (let i = 0; i < startUpMenuApps.length; i++) {
                         const startUpMenuApp = startUpMenuApps[i];
                         if (pcInstalledApps.findIndex(existAppInfo => existAppInfo.appLaunchPath === startUpMenuApp.appLaunchPath) !== -1) {
                             continue;
                         }
-                        console.log('loadPCInstalledApps startUpMenuApp Add: ', startUpMenuApp);
+                        // console.log('loadPCInstalledApps startUpMenuApp Add: ', startUpMenuApp);
                         pcInstalledApps.push(startUpMenuApp);
                         if (startUpMenuApp.appName === 'WINWORD' && startUpMenuApp.DisplayName === 'Word') {
                             const microsoftWord = deepCopy(startUpMenuApp);
@@ -177,7 +176,7 @@ function getMatchingExeFile(rootDir, displayName) {
                         const displayNameDistance = levenshtein.get(displayName, path.basename(exeFileName, '.exe'));
 
                         if (displayNameDistance < minDistance) {
-                            console.log('SystemInstalledAppLoader: getMatchingExeFile: Distance for displayName: ' + displayName + ' And: ' + exeFileName + ' BaseName: ' + path.basename(exeFileName, '.exe') + ' Distance: ' + displayNameDistance);
+                            // console.log('SystemInstalledAppLoader: getMatchingExeFile: Distance for displayName: ' + displayName + ' And: ' + exeFileName + ' BaseName: ' + path.basename(exeFileName, '.exe') + ' Distance: ' + displayNameDistance);
                             minDistance = displayNameDistance;
                             mostPossibleExeFileName = exeFileName;
                         }
@@ -189,7 +188,7 @@ function getMatchingExeFile(rootDir, displayName) {
                         matchingExeFile = path.join(dirPath, exeFiles[0]);
                     }
 
-                    console.log('SystemInstalledAppLoader: getMatchingExeFile: final MatchFile: ' + matchingExeFile);
+                    // console.log('SystemInstalledAppLoader: getMatchingExeFile: final MatchFile: ' + matchingExeFile);
                 }
             }
         } else {

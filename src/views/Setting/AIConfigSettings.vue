@@ -1,38 +1,16 @@
-/*
-* Copyright 2024 DecoKee
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Additional Terms for DecoKee:
-*
-* 1. Communication Protocol Usage
-*    DecoKee is provided subject to a commercial license and subscription
-*    as described in the Terms of Use (http://www.decokee.com/about/terms.html).
-*
-*    The components of this project related to the communication protocol
-*    (including but not limited to protocol specifications, implementation code, etc.)
-*    are restricted from commercial use, as such use would violate the project's usage policies.
-*    There are no restrictions for non-commercial uses.
-*
-*    (a) Evaluation Use
-*        An evaluation license is offered that provides a limited,
-*        evaluation license for internal and non-commercial use.
-*
-*        With a paid-up subscription you can incorporate new releases,
-*        updates and patches for the software into your products.
-*        If you do not have an active subscription, you cannot apply patches
-*        from the software to your products.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+/* * Copyright 2024 DecoKee * * Licensed under the Apache License, Version 2.0 (the "License"); * you may not use this
+file except in compliance with the License. * You may obtain a copy of the License at * *
+http://www.apache.org/licenses/LICENSE-2.0 * * Additional Terms for DecoKee: * * 1. Communication Protocol Usage *
+DecoKee is provided subject to a commercial license and subscription * as described in the Terms of Use
+(http://www.decokee.com/about/terms.html). * * The components of this project related to the communication protocol *
+(including but not limited to protocol specifications, implementation code, etc.) * are restricted from commercial use,
+as such use would violate the project's usage policies. * There are no restrictions for non-commercial uses. * * (a)
+Evaluation Use * An evaluation license is offered that provides a limited, * evaluation license for internal and
+non-commercial use. * * With a paid-up subscription you can incorporate new releases, * updates and patches for the
+software into your products. * If you do not have an active subscription, you cannot apply patches * from the software
+to your products. * * Unless required by applicable law or agreed to in writing, software * distributed under the
+License is distributed on an "AS IS" BASIS, * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *
+See the License for the specific language governing permissions and * limitations under the License. */
 
 <template>
     <div>
@@ -132,7 +110,6 @@
                         <i class="el-icon-question" style="margin-left: 24px"></i>
                     </el-tooltip>
                 </div>
-
             </el-form-item>
             <template v-if="aiModelType.startsWith('spark') || speechEngineType === 'XFY'">
                 <el-form-item label="Spark APPID">
@@ -145,9 +122,7 @@
                     <el-input v-model="sparkAIConfig.apiKey" clearable style="width: 191px"></el-input>
                 </el-form-item>
             </template>
-            <template
-                v-if="customModelConfigData.supportOpenAICustomConfig"
-            >
+            <template v-if="customModelConfigData.supportOpenAICustomConfig">
                 <el-form-item label="API Key">
                     <el-input v-model="openAIAPIKey" clearable style="width: 191px"></el-input>
                 </el-form-item>
@@ -171,7 +146,9 @@
 
                         <el-tooltip placement="top" style="margin-top: 8px">
                             <div slot="content" style="white-space: pre-wrap; line-height: 20px">
-                                <el-link href="https://www.volcengine.com/docs/82379/1267885">{{ $t('settings.huoShanModelHint') }}</el-link>
+                                <el-link href="https://www.volcengine.com/docs/82379/1267885">{{
+                                    $t('settings.huoShanModelHint')
+                                }}</el-link>
                             </div>
                             <i class="el-icon-question" style="margin-left: 24px"></i>
                         </el-tooltip>
@@ -193,7 +170,9 @@
 
                         <el-tooltip placement="top" style="margin-top: 8px">
                             <div slot="content" style="white-space: pre-wrap; line-height: 20px">
-                                <el-link href="https://www.coze.cn/docs/developer_guides/preparation">{{ $t('settings.cozeModelHint') }}</el-link>
+                                <el-link href="https://www.coze.cn/docs/developer_guides/preparation">{{
+                                    $t('settings.cozeModelHint')
+                                }}</el-link>
                             </div>
                             <i class="el-icon-question" style="margin-left: 24px"></i>
                         </el-tooltip>
@@ -221,30 +200,86 @@
                     <el-switch v-model="useCustomPrompt" @change="handleUseCustomPromptChanged" />
                 </el-form-item>
                 <el-form-item :label="$t('settings.aiPromptRole')" class="selectRole">
-                    <el-input v-if="useCustomPrompt" v-model="selectedSystemPrompt" type="textarea" resize="none" rows="5" maxlength="3000" show-word-limit />
-                    <el-select v-else :disabled="useCustomPrompt" filterable v-model="selectedSystemRoleIdx" @change="aiSystemRoleChanged">
-                        <el-option v-for="(item, index) in supportedSystemRoles" :key="index" :label="item.act" :value="index" />
+                    <el-input
+                        v-if="useCustomPrompt"
+                        v-model="selectedSystemPrompt"
+                        type="textarea"
+                        resize="none"
+                        rows="5"
+                        maxlength="3000"
+                        show-word-limit
+                    />
+                    <el-select
+                        v-else
+                        :disabled="useCustomPrompt"
+                        filterable
+                        v-model="selectedSystemRoleIdx"
+                        @change="aiSystemRoleChanged"
+                    >
+                        <el-option
+                            v-for="(item, index) in supportedSystemRoles"
+                            :key="index"
+                            :label="item.act"
+                            :value="index"
+                        />
                     </el-select>
                 </el-form-item>
 
                 <el-form-item :label="$t('settings.rolePersonality')">
-                    <el-slider  style="width: 191px" v-model="roleTopP" :min="0" :max="1" :step="0.05" :marks="{ 0: $t('settings.personalityPrecise'), 1: $t('settings.personalityFlexible') }"></el-slider>
+                    <el-slider
+                        style="width: 191px"
+                        v-model="roleTopP"
+                        :min="0"
+                        :max="1"
+                        :step="0.05"
+                        :marks="{ 0: $t('settings.personalityPrecise'), 1: $t('settings.personalityFlexible') }"
+                    ></el-slider>
                 </el-form-item>
                 <el-form-item :label="$t('settings.responseQuality')">
-                    <el-slider  style="width: 191px" v-model="roleTemperature" :min="0" :max="2" :step="0.05" :marks="{ 0: $t('settings.qualityConservative'), 2: $t('settings.qualityGibberish') }"></el-slider>
+                    <el-slider
+                        style="width: 191px"
+                        v-model="roleTemperature"
+                        :min="0"
+                        :max="2"
+                        :step="0.05"
+                        :marks="{ 0: $t('settings.qualityConservative'), 2: $t('settings.qualityGibberish') }"
+                    ></el-slider>
                 </el-form-item>
                 <el-form-item :label="$t('settings.chatPendingTimeout')">
-                    <el-slider  style="width: 191px" v-model="chatPendingTimeout" :min="5" :max="30" :step="5"></el-slider>
+                    <el-slider
+                        style="width: 191px"
+                        v-model="chatPendingTimeout"
+                        :min="5"
+                        :max="30"
+                        :step="5"
+                    ></el-slider>
                 </el-form-item>
             </template>
             <el-form-item
-                v-if="customModelConfigData.supportWebSearch"
-                :label="$t('settings.webSearch')"
+                v-if="finalConfigData !== undefined && useDekiePrompt"
+                :label="$t('settings.homeAssistantControl')"
             >
+                <el-switch v-model="homeAssistantControl" />
+                <el-link
+                    v-if="homeAssistantControl"
+                    style="margin-left: 12px"
+                    :underline="false"
+                    @click="handleHAConfigClicked"
+                >
+                    {{ $t('settings.configHomeAssistant') }}
+                </el-link>
+            </el-form-item>
+            <el-form-item v-if="customModelConfigData.supportWebSearch" :label="$t('settings.webSearch')">
                 <el-switch v-model="enableWebSearch" />
             </el-form-item>
         </el-form>
-        <el-button v-if="finalConfigData !== undefined" size="mini" style="margin-left: 68%; margin-bottom: 12px" type="primary" @click="updateAIConfig">
+        <el-button
+            v-if="finalConfigData !== undefined"
+            size="mini"
+            style="margin-left: 68%; margin-bottom: 12px"
+            type="primary"
+            @click="updateAIConfig"
+        >
             {{ $t('save') }}
         </el-button>
     </div>
@@ -253,6 +288,8 @@
 <script>
 import { SPEECH_ENGINE_TYPE } from '@/main/ai/AIManager';
 import { deepCopy } from '@/utils/ObjectUtil';
+import Constants from "@/utils/Constants";
+import {ipcRenderer} from "electron";
 
 export default {
     name: 'AIConfigSettings',
@@ -357,6 +394,8 @@ export default {
             useDekiePrompt: undefined,
             finalConfigData: undefined,
 
+            homeAssistantControl: undefined,
+
             //  系统角色
             supportedSystemRoles: [],
             selectedSystemRoleIdx: 0,
@@ -369,6 +408,15 @@ export default {
     },
     created() {
         this.loadConfigData(this.aiModelConfigData);
+
+        if (this.finalConfigData !== undefined) {
+            ipcRenderer.on('ha-entity-selected-by-user', this.handleUserEntitiesSelected);
+        }
+    },
+    beforeDestroy() {
+        if (this.finalConfigData !== undefined) {
+            ipcRenderer.off('ha-entity-selected-by-user', this.handleUserEntitiesSelected);
+        }
     },
     methods: {
         loadConfigData(configData) {
@@ -578,10 +626,12 @@ export default {
                         }
                         if (this.useDekiePrompt === undefined) {
                             this.useDekiePrompt = true;
+                            this.homeAssistantControl = false;
                         }
 
                         if (this.finalConfigData !== undefined) {
                             this.finalConfigData.useDekiePrompt = this.useDekiePrompt;
+                            this.finalConfigData.homeAssistantControl = this.homeAssistantControl;
                         } else {
                             window.store.storeSet(aiConfigKeyPrefix + '.useDekiePrompt', this.useDekiePrompt);
                         }
@@ -589,9 +639,13 @@ export default {
                         if (this.useDekiePrompt === undefined) {
                             this.useDekiePrompt = true;
                         }
+                        if (this.homeAssistantControl === undefined) {
+                            this.homeAssistantControl = false;
+                        }
 
                         if (this.finalConfigData !== undefined) {
                             this.finalConfigData.useDekiePrompt = this.useDekiePrompt;
+                            this.finalConfigData.homeAssistantControl = this.homeAssistantControl;
                         } else {
                             window.store.storeSet(aiConfigKeyPrefix + '.useDekiePrompt', this.useDekiePrompt);
                         }
@@ -689,11 +743,15 @@ export default {
             if (this.useDekiePrompt === undefined) {
                 this.useDekiePrompt = true;
             }
+            if (this.homeAssistantControl === undefined) {
+                this.homeAssistantControl = false;
+            }
 
             if (this.finalConfigData === undefined) return;
 
             this.finalConfigData.apiKey = this.openAIAPIKey;
             this.finalConfigData.useDekiePrompt = this.useDekiePrompt;
+            this.finalConfigData.homeAssistantControl = this.homeAssistantControl;
             this.finalConfigData.useCustomPrompt = this.useCustomPrompt;
             this.finalConfigData.systemPrompt = this.selectedSystemPrompt;
             this.finalConfigData.systemRoleIdx = this.selectedSystemRoleIdx;
@@ -712,6 +770,7 @@ export default {
             this.customUrlAddr = undefined;
             this.customModelName = undefined;
             this.useDekiePrompt = undefined;
+            this.homeAssistantControl = undefined;
 
             if (this.finalConfigData !== undefined && this.aiModelType === this.finalConfigData.aiModelType) {
                 useCache = true;
@@ -722,6 +781,7 @@ export default {
             if (useCache && this.finalConfigData !== undefined) {
                 this.openAIAPIKey = this.finalConfigData.apiKey;
                 this.useDekiePrompt = this.finalConfigData.useDekiePrompt;
+                this.homeAssistantControl = this.finalConfigData.homeAssistantControl;
                 this.useCustomPrompt = this.finalConfigData.useCustomPrompt;
                 this.selectedSystemPrompt = this.finalConfigData.systemPrompt;
                 this.selectedSystemRoleIdx = this.finalConfigData.systemRoleIdx;
@@ -753,6 +813,10 @@ export default {
                 if (!this.useCustomPrompt) {
                     this.selectedSystemRoleIdx = this.supportedSystemRoles.findIndex(roleInfo => roleInfo.prompt === this.selectedSystemPrompt);
                 }
+            }
+
+            if (this.homeAssistantControl === undefined) {
+                this.homeAssistantControl = false;
             }
 
 
@@ -1202,6 +1266,15 @@ export default {
             } else {
                 this.selectedSystemPrompt = this.supportedSystemRoles[this.selectedSystemRoleIdx].prompt;
             }
+        },
+        handleHAConfigClicked() {
+            console.log('AIConfigSettings: handleHAConfigClicked');
+            window.windowManager.customConfigWindow.show(Constants.CUSTOM_CONFIG_PAGE_HA, this.finalConfigData.perceivableEntities);
+        },
+        handleUserEntitiesSelected(event, args) {
+            console.log('AIConfigSettings: handleUserEntitiesSelected: ', args);
+            this.finalConfigData.perceivableEntities = args.selectedEntities;
+            this.updateAIConfig();
         }
     }
 };
@@ -1273,6 +1346,5 @@ export default {
 /deep/ .el-slider__marks-text:last-child {
     left: unset !important;
     right: 0 !important;
-
 }
 </style>

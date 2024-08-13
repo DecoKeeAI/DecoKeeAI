@@ -86,7 +86,7 @@ class ResourcesManager {
                 }
                 const installedApps = message.result;
                 console.log('ResourceManager: Loaded Installed APPS length: ', installedApps.length);
-                console.log('ResourceManager: Loaded Installed APPS: ', installedApps);
+                // console.log('ResourceManager: Loaded Installed APPS: ', installedApps);
                 for (let i = 0; i < installedApps.length; i++) {
                     const appInfo = installedApps[i];
                     const appIconInfo = await that.getAppIconInfo(appInfo.appLaunchPath);

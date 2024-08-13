@@ -1,7 +1,7 @@
 import Constants from "@/utils/Constants";
 
 const defaultResourcesMap = {
-    version: 13,
+    version: 14,
     data: [
         {
             id: '0-0',
@@ -500,6 +500,15 @@ const defaultResourcesMap = {
             id: '0-54',
             name: 'custom_icon',
             path: '@/icon/custom_icon.png',
+            isDelete: false,
+            isDefault: true,
+            resourceType: Constants.RESOURCE_TYPE_ICON,
+            version: 1
+        },
+        {
+            id: '0-55',
+            name: 'home_assistant',
+            path: '@/icon/home_assistant.png',
             isDelete: false,
             isDefault: true,
             resourceType: Constants.RESOURCE_TYPE_ICON,

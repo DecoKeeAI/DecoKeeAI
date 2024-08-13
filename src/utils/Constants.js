@@ -33,6 +33,8 @@ const Constants = {
     ASSISTANT_ANIMATION_IDLE: 'assistantAnimationIdle',
     ASSISTANT_TYPE_CHAT: 'assistantTypeChat',
     ASSISTANT_TYPE_KEY_CONFIG: 'assistantTypeKeyConfig',
+
+    CUSTOM_CONFIG_PAGE_HA: 1
 }
 
 export default Constants;

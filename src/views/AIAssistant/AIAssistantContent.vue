@@ -798,11 +798,9 @@ export default {
                     }
                 }
 
-
-
-                console.log('msgType:', msgType);
-                console.log('message:', message);
-                console.log('status:', status);
+                // console.log('msgType:', msgType);
+                // console.log('message:', message);
+                // console.log('status:', status);
 
                 this.updateScrollHeight();
                 if (status !== -1) {

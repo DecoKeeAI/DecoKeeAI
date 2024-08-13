@@ -110,6 +110,28 @@ export const ALL_MENU_SIDEBAR = [
           ],
         }
       },
+      {
+        childrenName: 'homeAssistant',
+        config: {
+          type: 'homeAssistant',
+          title: {
+            text: '',
+            pos: 'bot',
+            size: 8,
+            color: '#FFFFFF',
+            display: true,
+            style: 'bold|italic|underline',
+            resourceId: 0
+          },
+          icon: '0-55',
+          actions: [
+            {
+              type: 'configData',
+              value: ''
+            }
+          ],
+        }
+      },
     ]
   },
   // 菜单2
@@ -571,6 +593,30 @@ export const MULTIACTIONS_SIDEBAR = [
             type: '变亮',
             value: 0
           }]
+        }
+      },
+      {
+        childrenName: 'homeAssistant',
+        config: {
+          type: 'homeAssistant',
+          title: {
+            text: '',
+            pos: 'bot',
+            size: 8,
+            color: '#FFFFFF',
+            display: true,
+            style: 'bold|italic|underline',
+            resourceId: 0
+          },
+          icon: '0-55',
+          gap: 100,
+          pressTime: 100,
+          actions: [
+            {
+              type: 'configData',
+              value: ''
+            }
+          ],
         }
       },
     ]
@@ -1756,6 +1802,46 @@ export const KNOB_MENU_SIDEBAR = [
                 actions: [
                   {
                     type: 'assistant',
+                    value: ''
+                  }
+                ],
+              }
+            },
+          ]
+        }
+      },
+      {
+        childrenName: 'homeAssistant',
+        config: {
+          type: 'knob',
+          title: {
+            text: '',
+            pos: 'bot',
+            size: 8,
+            color: '#FFFFFF',
+            display: true,
+            style: 'bold|italic|underline',
+            resourceId: 0
+          },
+
+          icon: '0-50',
+          subActions: [
+            {
+              config: {
+                type: 'homeAssistant',
+                title: {
+                  text: '',
+                  pos: 'bot',
+                  size: 8,
+                  color: '#FFFFFF',
+                  display: true,
+                  style: 'bold|italic|underline',
+                  resourceId: 0
+                },
+                icon: '0-55',
+                actions: [
+                  {
+                    type: 'configData',
                     value: ''
                   }
                 ],

@@ -40,8 +40,8 @@ import { app, clipboard, ipcMain, shell } from 'electron';
 import {
     AI_CONSTANT_CONFIG,
     AI_SUPPORT_FUNCTIONS,
-    CHAT_TYPE, CHUNK_MSG_TYPE,
-    getChatPrePromptMsg,
+    CHAT_TYPE, CHUNK_MSG_TYPE, DEFAULT_OPEN_TO_AI_DOMAINS,
+    getChatPrePromptMsg, getHAControlPromptPhase1, getHAControlPromptPhase2,
     getKeyConfigBotPrePrompt,
     getNormalChatPrePrompt,
     getPCOperationBotPrePrompt,
@@ -135,6 +135,13 @@ const OPERATION_STAGE = {
     STAGE_DECODE_OUTPUT: 3
 }
 
+const HA_HANDLE_DECODE_STAGE = {
+    STAGE_DECODE_END: 0,
+    STAGE_DECODE_ACTION_TYPE: 1,
+    STAGE_DECODE_ACTION_DETAIL: 2,
+    STAGE_DECODE_ACTION_MESSAGE: 3
+}
+
 class AIManager {
 
     constructor(AppManager, GeneralAIManager, chatOnly = false, aiConfigData) {
@@ -196,6 +203,14 @@ class AIManager {
             actionType: '',
             actionDetail: [],
             actionOutput: '',
+            actionProcessDone: false
+        }
+
+        this.haOperationContext = {
+            stage: HA_HANDLE_DECODE_STAGE.STAGE_DECODE_END,
+            actionType: '',
+            actionDetail: [],
+            actionMessage: '',
             actionProcessDone: false
         }
 
@@ -1183,6 +1198,7 @@ class AIManager {
                 this.aiAssistantRequestId = undefined;
 
                 this._resetOperatePCContext();
+                this._resetHAOperateContext();
 
                 this.aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_KEY_CONFIG);
                 break;
@@ -2149,9 +2165,11 @@ class AIManager {
 
         let useDekiePrompt = true;
         let configedUseDekiePrompt = undefined;
+        let supportHAControl = false;
 
         if (this.aiConfigData !== undefined) {
             configedUseDekiePrompt = this.aiConfigData.useDekiePrompt;
+            supportHAControl = this.aiConfigData.homeAssistantControl;
         }
 
         if (this.aiAssistantModelType.startsWith('Custom-') || this.aiAssistantModelType.startsWith('HuoShan-') || this.aiAssistantModelType.startsWith('Coze-')) {
@@ -2184,7 +2202,7 @@ class AIManager {
         }
 
         if (isNewSession && useDekiePrompt) {
-            let preChatMsgs = getChatPrePromptMsg(message, aiEngineType);
+            let preChatMsgs = getChatPrePromptMsg(message, aiEngineType, supportHAControl);
             console.log('AIManager: handleAIAssistantProcess: PreChatMessage: ', preChatMsgs);
 
             params.messages = preChatMsgs;
@@ -2249,6 +2267,9 @@ class AIManager {
                         this._showAssistantError(requestId);
                         return;
                     }
+                } else if (responseConfigData.userRequestAction === 'operatingEquipment') {
+                    this.chatResponseMsg = '';
+                    this.aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_OPERATE_EQUIPMENT);
                 } else {
                     this.aiAssistantChatAdapter.setChatMode(CHAT_TYPE.CHAT_TYPE_NORMAL);
                     this.aiAssistantChatAdapter.setChatResponseListener((requestId, status, message, messageType) => {
@@ -2382,6 +2403,11 @@ class AIManager {
             finalParam.stream = true;
             this.aiAssistantChatAdapter.chatWithAI(requestId, finalParam);
             this.assistantChatHistory = chatMsgs;
+            return;
+        }
+
+        if (this.aiAssistantChatAdapter.getChatMode() === CHAT_TYPE.CHAT_TYPE_OPERATE_EQUIPMENT) {
+            this._handleHAOperation(requestId, isNewSession, finalParam, message, aiEngineType, currentLanguage);
             return;
         }
 
@@ -2569,6 +2595,16 @@ class AIManager {
         }
     }
 
+    _resetHAOperateContext() {
+        this.haOperationContext = {
+            stage: HA_HANDLE_DECODE_STAGE.STAGE_DECODE_END,
+            actionType: '',
+            actionDetail: undefined,
+            actionMessage: '',
+            actionProcessDone: false
+        }
+    }
+
     _splitByLastPunctuation(text) {
         // 定义正则表达式匹配中英文断句标点符号
         const punctuationRegex = /[，。！？,.!?]/;
@@ -2645,13 +2681,230 @@ class AIManager {
         this.recognizeVoice(args.requestId, args.audioData, args.isLastFrame);
     }
 
-    _isClassValid(requestId) {
+    async _handleHAOperation(requestId, isNewSession, params, message, aiEngineType, currentLanguage) {
+        if (!this.generalAIManager.HAManager.checkConnection()) {
+            this.setAssistantProcessFailed();
+            this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.haNotConnected'));
+            return;
+        }
+
+        const haEntityList = this.generalAIManager.HAManager.getAllEntitiesByGroup();
+        if (haEntityList.length === 0) {
+            this.setAssistantProcessFailed();
+            this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.noEntityFound'));
+            return;
+        }
+
+        delete params.response_format;
+        params.temperature = 0.1;
+        params.top_p = 1.0;
+
+
+        const deviceLocationInfo = this.appManager.storeManager.storeGet('system.deviceLocationInfo', {
+            city: 'Unknown'
+        });
+        params.stream = false;
+
+        // Phase 1, determine which entity need to be control
+        if (isNewSession) {
+
+            let finalEntityList = haEntityList.flatMap(group => group.entities);
+            finalEntityList = finalEntityList
+                .filter(entity => {
+                    if (entity.attributes.friendly_name === undefined || entity.attributes.friendly_name === '') return false;
+                    if (this.aiConfigData.perceivableEntities === undefined) {
+                        const domain = entity.entity_id.split('.')[0];
+
+                        return DEFAULT_OPEN_TO_AI_DOMAINS.indexOf(domain) !== -1;
+                    }
+
+                    return this.aiConfigData.perceivableEntities.indexOf(entity.entity_id) !== -1;
+                })
+                .map(entity => ({
+                    entity_id: entity.entity_id,
+                    friendly_name: entity.attributes.friendly_name
+                }));
+
+            const chatMsg = getHAControlPromptPhase1(message, aiEngineType, currentLanguage, deviceLocationInfo, finalEntityList);
+
+            params.messages = chatMsg;
+
+            this.assistantChatHistory = chatMsg;
+        } else {
+            this.assistantChatHistory.push({
+                role: 'user',
+                content: message
+            })
+        }
+
+
+        let phase1Response, determineEntityResponse;
+        try {
+            determineEntityResponse = await this._awaitWithTimeout(this.aiAssistantChatAdapter.chatWithAssistant(requestId, params), AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
+            phase1Response = eval('(' + determineEntityResponse.replace(/\\"/g, '"') + ')');
+        } catch (err) {
+            console.log('AIManager: _handleHAOperation: Received Invalid phase1 response', err.message, ' determineEntityResponse: ', determineEntityResponse);
+            this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.serverError'));
+            this.setAssistantProcessFailed();
+            this._resetAssistantSession(this.assistantDeviceSN);
+            return;
+        }
+        let friendlyMsg = ''
+        if (phase1Response.friendly_msg !== undefined && phase1Response.friendly_msg !== '') {
+            friendlyMsg = phase1Response.friendly_msg;
+        }
+        if (phase1Response.entity_ids === undefined || phase1Response.entity_ids.length === 0) {
+            let errorMsg = ''
+            if (friendlyMsg !== '') {
+                errorMsg = friendlyMsg;
+            } else {
+                errorMsg = i18nRender('assistantConfig.controlDeviceNotFound');
+            }
+            this.ttsEngineAdapter.playTTS(requestId, errorMsg);
+            this.setAssistantProcessFailed();
+            this._resetAssistantSession(this.assistantDeviceSN);
+            return;
+        }
+
+        console.log('AIManager: _handleHAOperation: phase1Response: ', phase1Response);
+
+        const entityInfoList = this.generalAIManager.HAManager.getEntitiesInfo(phase1Response.entity_ids);
+        console.log('AIManager: _handleHAOperation: entityInfoList: ', entityInfoList);
+        if (entityInfoList.length === 0) {
+            this.ttsEngineAdapter.playTTS(requestId, i18nRender('assistantConfig.controlDeviceNotFound'));
+            this.setAssistantProcessFailed();
+            this._resetAssistantSession(this.assistantDeviceSN);
+            return;
+        }
+
+        const entityByDomain = entityInfoList.reduce((acc, entity) => {
+            const domain = entity.entity_id.split('.')[0];
+            if (!acc[domain]) {
+                acc[domain] = [];
+            }
+            acc[domain].push(entity);
+            return acc;
+        }, {});
+        console.log('AIManager: _handleHAOperation: entityByDomain: ', entityByDomain);
+        console.log('AIManager: _handleHAOperation: required control domains: ', Object.keys(entityByDomain));
+
+        const requiredControlDomains = Object.keys(entityByDomain);
+        const relatedServices = [];
+        if (requiredControlDomains.length > 0) {
+            requiredControlDomains.forEach(domain => {
+                const domainServices = this.generalAIManager.HAManager.getRelatedService(domain);
+                if (relatedServices.findIndex(serviceInfo => serviceInfo.domain === domain) !== -1) {
+                    return;
+                }
+                relatedServices.push({
+                    domain: domain,
+                    services: domainServices
+                });
+            });
+        }
+        console.log('AIManager: _handleHAOperation: relatedServices: ', JSON.stringify(relatedServices));
+
+        // Phase 2: Get control HA device data
+        params.messages = getHAControlPromptPhase2(message, aiEngineType, currentLanguage, deviceLocationInfo, entityInfoList, relatedServices);
+
+        let phase2Message = '';
+
+        this._resetHAOperateContext();
+        const that = this;
+        this.haOperationContext.stage = HA_HANDLE_DECODE_STAGE.STAGE_DECODE_ACTION_TYPE;
+        this.haOperationContext.ttsPlayChunkMsg = '';
+        this.aiAssistantChatAdapter.chatWithAI(requestId, params, (requestId, status, message) => {
+            if (!that._isClassValid(requestId)) return;
+
+            phase2Message += message;
+            console.log('AIManager: _handleHAOperation: phase2Response: status: ', status, message);
+
+            that._processHAPhase2Data(requestId, phase2Message, status === 2);
+
+            if (status === 2 && this.haOperationContext.actionProcessDone) {
+                console.log('AIManager: _handleHAOperation: phase2Response: Final: phase2Message: ', phase2Message);
+                console.log('AIManager: _handleHAOperation: phase2Response: Final: this.haOperationContext: ', this.haOperationContext);
+
+                this.haOperationContext.actionDetail.forEach(actionData => {
+                    const result = that.generalAIManager.HAManager.sendCallService(actionData.entity_id, actionData.service, actionData.service_data);
+                    console.log('AIManager: _handleHAOperation: callService to ', actionData.entity_id, ' Result: ', result);
+                });
+            }
+        });
+
+        this.isPendingChatFinish = false;
+    }
+
+    _processHAPhase2Data(requestId, message, isLast = false) {
+        if (this.haOperationContext.actionProcessDone) return;
+
+        const actionDetailStartIndex = message.indexOf('action_detail:');
+        const actionMessageStartIndex = message.indexOf('action_message:');
+        switch (this.haOperationContext.stage) {
+            case HA_HANDLE_DECODE_STAGE.STAGE_DECODE_ACTION_TYPE: {
+                const actionTypeStartIndex = message.indexOf('action_type:');
+                const actionTypeDataStartIndex = actionTypeStartIndex + 12;
+                if (actionTypeStartIndex >= 0 && actionDetailStartIndex > actionTypeDataStartIndex) {
+                    this.haOperationContext.actionType = message.substring(actionTypeDataStartIndex, actionDetailStartIndex).trim();
+                    this.haOperationContext.stage = HA_HANDLE_DECODE_STAGE.STAGE_DECODE_ACTION_DETAIL;
+                    this._processHAPhase2Data(requestId, message, isLast);
+                }
+                break;
+            }
+            case HA_HANDLE_DECODE_STAGE.STAGE_DECODE_ACTION_DETAIL: {
+                const actionDetailDataStartIndex = actionDetailStartIndex + 14;
+                if (actionDetailStartIndex >= 0 && actionMessageStartIndex > actionDetailDataStartIndex) {
+                    let actionDetailMsg = '';
+                    try {
+                        actionDetailMsg = message.substring(actionDetailDataStartIndex, actionMessageStartIndex).trim()
+                        this.haOperationContext.actionDetail = eval('(' + actionDetailMsg + ')');
+                    } catch (err) {
+                        console.log('AIManager: _processHAPhase2Data: Failed to parse action detail data: ', err.message, ' actionDetailMsg: ', actionDetailMsg);
+                    }
+                    this.haOperationContext.stage = HA_HANDLE_DECODE_STAGE.STAGE_DECODE_ACTION_MESSAGE;
+                    this._processHAPhase2Data(requestId, message, isLast);
+                }
+                break;
+            }
+            case HA_HANDLE_DECODE_STAGE.STAGE_DECODE_ACTION_MESSAGE: {
+                const actionMsgDataStartIndex = actionMessageStartIndex + 15;
+                const actionMsg = message.substring(actionMsgDataStartIndex).trim();
+                this.haOperationContext.actionMessage = actionMsg;
+
+                if (this.haOperationContext.actionMessage.length > 20 || isLast) {
+
+                    let needPlayMsg = '';
+                    if (this.haOperationContext.ttsPlayChunkMsg.length === 0) {
+                        needPlayMsg = this.haOperationContext.actionMessage;
+                    } else {
+                        needPlayMsg = actionMsg.replace(this.haOperationContext.ttsPlayChunkMsg, '');
+                    }
+                    let needPlayTTS = '';
+                    if (isLast) {
+                        this.haOperationContext.stage = HA_HANDLE_DECODE_STAGE.STAGE_DECODE_END;
+                        this.haOperationContext.actionProcessDone = true;
+
+                        needPlayTTS = needPlayMsg;
+                    } else {
+                        const splitMsg = this._splitByLastPunctuation(needPlayMsg);
+                        needPlayMsg = splitMsg[0];
+                    }
+                    this.ttsEngineAdapter.playTTS(requestId, needPlayTTS);
+                    this.haOperationContext.ttsPlayChunkMsg += needPlayTTS;
+                }
+                break;
+            }
+        }
+    }
+
+    _isClassValid(requestId = '') {
+        if (typeof requestId !== "string") return false;
+
         const requestInfo = requestId.split('-');
 
         if (requestInfo.length < 3) return false;
 
         return requestInfo[2] === this.classId;
-
     }
 }
 

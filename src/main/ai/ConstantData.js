@@ -35,6 +35,8 @@
  */
 import {AI_ENGINE_TYPE} from '@/main/ai/AIManager';
 
+export const DEFAULT_OPEN_TO_AI_DOMAINS = ['climate', 'light', 'media_player', 'person', 'sensor', 'switch', 'weather'];
+
 export const CHUNK_MSG_TYPE = {
     ANSWER: 'answer',
     FOLLOW_UP: 'followUp',
@@ -45,6 +47,7 @@ export const CHAT_TYPE = {
     CHAT_TYPE_KEY_CONFIG: 0,
     CHAT_TYPE_NORMAL: 1,
     CHAT_TYPE_OPERATE_PC: 2,
+    CHAT_TYPE_OPERATE_EQUIPMENT: 3,
 };
 
 export const AI_CONSTANT_CONFIG = {
@@ -483,11 +486,11 @@ export const SUPPORT_KEY_INPUTS = [
     'lights_kbd_down',
 ];
 
-export function getChatPrePromptMsg(message, engineType) {
-    const chineseRoleSetupMsg = `
+export function getChatPrePromptMsg(message, engineType, supportHAConfig) {
+    let chineseRoleSetupMsg = `
 # 角色
   你是小呆，一名计算机技术专家，并且对互联网公开域信息了如指掌的专家。你可以帮通过操作我的电脑来帮我快速来完成任务。尽量避免过多的技术细节，但在必要时使用它们。你将根据用户的提问，来解决为用户解答高时效性问题。根据以下规则一步步执行：
-  1. 理解用户的需求，确定我是否需要你帮助我操作电脑、生成/修改键盘/热键配置或只是与你聊天。。
+  1. 理解用户的需求，确定我是否需要你帮助我操作电脑、生成/修改键盘/热键配置${supportHAConfig ? '、控制电器设备' : ''}或只是与你聊天。
   2. 判断用户需要执行哪些操作。
                         
 # 任务
@@ -495,6 +498,7 @@ export function getChatPrePromptMsg(message, engineType) {
   - \`userRequestAction\` 支持的项目包含以下信息:
     - \`operatingComputer\`: 当需要帮助操作电脑时，如打开/关闭某一个程序，生成/写文档/作文, 生成/提供报告等。
     - \`generateConfiguration\`: 当需要生成/修改键盘/快捷键配置的帮助时。
+    ${supportHAConfig ? '- `operatingEquipment`: 当需要操控电器设备时。' : ''}
     - \`standardChat\`: 当不符合其他 'userRequestAction' 的项目时。
   - \`searchOptions\` 网络搜索相关的参数，包含以下信息:
     - \`shouldDoWebSearch\`: 是否需要在网络中搜索相关内容来扩展LLM回复中的额外参考数据。
@@ -512,23 +516,23 @@ export function getChatPrePromptMsg(message, engineType) {
     用户提问: 把我常用的应用配置到键盘上
     回复: {"userRequestAction":"generateConfiguration","searchOptions":{"shouldDoWebSearch":false,"searchString":""}}
                         
-  ## 参考示例3:
+  ## 参考示例4:
     用户提问: 北京今天天气如何
     回复: {"userRequestAction":"standardChat","searchOptions":{"shouldDoWebSearch":true,"searchString":"北京今日天气"}}
 `;
 
-    switch (engineType) {
-        default:
-        case AI_ENGINE_TYPE.GroqChat:
-        case AI_ENGINE_TYPE.OpenAI:
-        case AI_ENGINE_TYPE.CustomEngine:
-            return [
-                {
-                    role: 'system',
-                    content: `
+    if (supportHAConfig) {
+        chineseRoleSetupMsg += `     
+                  
+  ## 参考示例5:
+    用户提问: 打开大门
+    回复: {"userRequestAction":"operatingEquipment","searchOptions":{"shouldDoWebSearch"false:,"searchString":""}}`;
+    }
+
+    let englishPrompt = `
 # Role
   You are Dekie, a computer technology expert who is familiar with publicly available information on the internet. You can help me complete tasks quickly by operating my computer. Try to avoid too many technical details, but use them when necessary. You will solve high-efficiency problems for users based on their questions, following the rules below:
-  1. Understand the user's needs and determine whether I need your help to operate my computer, generate/modify keyboard/shortcut configurations, or just chat with you.
+  1. Understand the user's needs and determine whether I need your help to operate my computer, generate/modify keyboard/shortcut configurations${supportHAConfig ? ', control electrical equipment' : ''}, or just chat with you.
   2. Judge which operations the user needs to perform.
 
 # Task
@@ -536,6 +540,7 @@ export function getChatPrePromptMsg(message, engineType) {
     - \`userRequestAction\` supported items include the following information:
       - \`operatingComputer\`: When help is needed to operate the computer, such as opening/closing a program, generating/writing a document, generating a report, etc.
       - \`generateConfiguration\`: When help is needed to generate/modify keyboard/shortcut configurations.
+      ${supportHAConfig ? '- `operatingEquipment`: When help is need to control electrical equipment.' : ''}
       - \`standardChat\`: When it doesn't fit into other 'userRequestAction' items.
     - \`searchOptions\` Parameters related to web search, including the following information:
       - \`shouldDoWebSearch\`: Whether to search the web for relevant content to expand the LLM response with additional reference data.
@@ -556,7 +561,25 @@ export function getChatPrePromptMsg(message, engineType) {
   ## Reference Example 4:
     User question: How's the weather like today in LA?
     Reply: {"userRequestAction":"standardChat","searchOptions":{"shouldDoWebSearch":true,"searchString":"LA today weather"}}
-`,
+`;
+
+    if (supportHAConfig) {
+        englishPrompt += `
+
+  ## Reference Example 5:
+    User question: Open the door
+    Reply: {"userRequestAction":"operatingEquipment","searchOptions":{"shouldDoWebSearch"false:,"searchString":""}}`;
+    }
+
+    switch (engineType) {
+        default:
+        case AI_ENGINE_TYPE.GroqChat:
+        case AI_ENGINE_TYPE.OpenAI:
+        case AI_ENGINE_TYPE.CustomEngine:
+            return [
+                {
+                    role: 'system',
+                    content: englishPrompt,
                 },
                 {
                     role: 'user',
@@ -1278,4 +1301,249 @@ export function getNormalChatPrePrompt(message, language, locationInfo) {
             content: message,
         },
     ];
+}
+
+export function getHAControlPromptPhase1(requestMsg, engineType, language, locationInfo, entityList) {
+    const currentDate = new Date().toLocaleDateString();
+    const currentTime = new Date().toLocaleTimeString();
+
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    const entityChunks = splitDataInChunks(entityList, 70);
+
+    let promptMsg = `
+# 角色:
+  你是小呆，你可以通过控制 **HomeAssistant** 中的设备来满足我的需求。你熟知 **HomeAssistant** 中的所有 \`entity\`, \`service\`, \`attributes\`, \`state\`, \`type\`, \`domain\`, \`service_data\`, \`target\` 等信息。
+  根据以下信息来回复我的需求: 
+  
+  1. 我所在的城市为: ${locationInfo.city}, 当前的时间为: ${currentDate + ' ' + currentTime}, 时区为: ${timezone}。
+  2. 我的 \`entity\` 列表总数为: ${entityList.length}
+
+# 任务:
+  根据上述信息当用户给出指令时，遵循以下步骤回复用户需求:
+  1. 我将分${entityChunks.length}次消息将所有的 entity 信息提供给你。
+  2. 你将在我说发送完成后，分析用户的需求并筛选出用户需要的 entity 信息。
+  3. 严格使用以下JSON格式回答用户的问题:
+    \`\`\`{"entity_ids":[],"friendly_msg":""}\`\`\`
+    - \`entity_ids\`: 用户需要操控或查询的 \`entity_id\` 字符串列表。
+    - \`friendly_msg\`: 对应操作的友好提示语，需简短精确在15个字符内，需使用{{replyLanguage}}来回复。
+  4. 注意不要使用任何的特殊字符，表情和emoji在你的回复中，并且不要使用markdown格式回复我的问题，要使用方便阅读的格式来回复。`;
+
+    switch (language) {
+        case 'zh':
+            promptMsg = promptMsg.replace('{{replyLanguage}}', '中文');
+            break;
+
+        default:
+            promptMsg = promptMsg.replace('{{replyLanguage}}', '英文');
+            break;
+    }
+
+    switch (engineType) {
+        default:
+        case AI_ENGINE_TYPE.CustomEngine:
+        case AI_ENGINE_TYPE.GroqChat:
+        case AI_ENGINE_TYPE.OpenAI:
+        case AI_ENGINE_TYPE.ArixoChat:
+        case AI_ENGINE_TYPE.XYF:
+        case AI_ENGINE_TYPE.QWenChat:
+        case AI_ENGINE_TYPE.ZhiPuChat:
+        case AI_ENGINE_TYPE.HuoShan: {
+            const chatMsg = [
+                {
+                    role: 'system',
+                    content: promptMsg,
+                }, {
+                    role: 'assistant',
+                    content: '好的我知道了，请提供您的 `entity` 列表。'
+                }
+            ];
+
+            for (let i = 0; i < entityChunks.length; i++) {
+                const entities = entityChunks[i];
+                chatMsg.push({
+                    role: 'user',
+                    content: `entity 列表段落${i+1}: ${JSON.stringify(entities)}`
+                }, {
+                    role: 'assistant',
+                    content: `我已收到第${i+1}段 entity 信息，请继续提供 entity 列表。`
+                });
+            }
+
+            chatMsg.push({
+                role: 'user',
+                content: '根据以上信息回复我的问题: ' + requestMsg
+            });
+
+            return chatMsg;
+        }
+        case AI_ENGINE_TYPE.Coze:{
+            const chatMsg = [
+                {
+                    role: 'user',
+                    content: promptMsg,
+                }, {
+                    role: 'assistant',
+                    content: '好的我知道了，请提供您的 `entity` 列表。'
+                }
+            ];
+
+            for (let i = 0; i < entityChunks.length; i++) {
+                const entities = entityChunks[i];
+                chatMsg.push({
+                    role: 'user',
+                    content: `entity 列表段落${i+1}: ${JSON.stringify(entities)}`
+                }, {
+                    role: 'assistant',
+                    content: `我已收到第${i+1}段 entity 信息，请继续提供 entity 列表。`
+                });
+            }
+
+            chatMsg.push({
+                role: 'user',
+                content: '根据以上信息回复我的问题: ' + requestMsg
+            });
+
+            return chatMsg;
+        }
+    }
+}
+
+export function getHAControlPromptPhase2(requestMsg, engineType, language, locationInfo, entityList, serviceList) {
+    const currentDate = new Date().toLocaleDateString();
+    const currentTime = new Date().toLocaleTimeString();
+
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    let promptMsg = `
+# 角色:
+  你是小呆，你可以通过控制 **HomeAssistant** 中的设备来满足我的需求。你熟知 **HomeAssistant** 中的所有 \`entity\`, \`service\`, \`attributes\`, \`state\`, \`type\`, \`domain\`, \`service_data\`, \`target\` 等信息。
+  根据以下信息来回复我的需求: 
+  
+  1. 我所在的城市为: ${locationInfo.city}, 当前的时间为: ${currentDate + ' ' + currentTime}, 时区为: ${timezone}。
+  2. 我的 \`entity\` 列表总数为: ${entityList.length}
+  3. \`entity\` 支持的 service 列表总数为: ${serviceList.length}
+
+# 任务:
+  根据上述信息当用户给出指令时，遵循以下步骤回复用户需求:
+  1. 我将提供我的 entity 和对应的 service 列表信息给你。
+  2. 你将在我说发送完成后，分析用户的需求并给出需要的具体操作数据。
+  3. 严格使用以下格式回答用户的问题:
+    - \`action_type\`: 代表具体的操作方式，如调用某一个服务时使用 *call_service*，如用户查询某一数据时使用 *reply_msg*，然后根据我提供的 entity 信息并在 \`action_message\` 中给出具体信息。
+    - \`action_detail\`: 为JSON数组，具体的操作内容，包含以下信息:
+      - \`entity_id\`: 需要造作的 entity_id
+      - \`service\`: 需要调用的具体服务的 key
+      - \`service_data\`: 调用某一个 service 时携带的参数
+    - \`action_message\`: 对应操作的返回消息，如用户查询信息时的具体返回详情, 需使用{{replyLanguage}}来回复
+    
+    ## 参考示例1:
+      用户提问: 打开空调
+      回复: 
+        action_type: call_service
+        action_detail: [{"entity_id":"climate.abc","service":"turn_on","service_data":{}},{"entity_id":"climate.cde","service":"turn_on","service_data":{}}]
+        action_message: 好的，已打开空调。 
+    
+    ## 参考示例2:
+      用户提问: 将空调的温度设置为21度
+      回复: 
+        action_type: call_service
+        action_detail: [{"entity_id":"climate.abc","service":"set_temperature","service_data":{"temperature":21}},{"entity_id":"climate.cde","service":"set_temperature","service_data":{"temperature":21}}]
+        action_message: 已将空调的温度设置为21度。 
+    
+    ## 参考示例3:
+      用户提问: 我今天的用电量是多少
+      回复: 
+        action_type: reply_msg
+        action_detail: []
+        action_message: 今日 XX 的用电量为 AA 度, YY 的用电量为 BB 度。总用电量为 CC 度。 
+      
+  4. 注意不要使用任何的特殊字符，表情和emoji在你的回复中，并且不要使用markdown格式回复我的问题，要使用方便阅读的格式来回复。`;
+    switch (language) {
+        case 'zh':
+            promptMsg = promptMsg.replace('{{replyLanguage}}', '中文');
+            break;
+
+        default:
+            promptMsg = promptMsg.replace('{{replyLanguage}}', '英文');
+            break;
+    }
+
+    switch (engineType) {
+        default:
+        case AI_ENGINE_TYPE.CustomEngine:
+        case AI_ENGINE_TYPE.GroqChat:
+        case AI_ENGINE_TYPE.OpenAI:
+        case AI_ENGINE_TYPE.ArixoChat:
+        case AI_ENGINE_TYPE.XYF:
+        case AI_ENGINE_TYPE.QWenChat:
+        case AI_ENGINE_TYPE.ZhiPuChat:
+        case AI_ENGINE_TYPE.HuoShan: {
+            return [
+                {
+                    role: 'system',
+                    content: promptMsg,
+                }, {
+                    role: 'assistant',
+                    content: '好的, 我知道了，请提供您的 entity 列表和 service 列表。'
+                }, {
+                    role: 'user',
+                    content: `我的 entity 列表为: ${JSON.stringify(entityList)}`,
+                }, {
+                    role: 'assistant',
+                    content: '好的, 我已收到您的 entity 列表，请继续提供 service 列表。'
+                }, {
+                    role: 'user',
+                    content: `支持的 service 列表为: ${JSON.stringify(serviceList)}`,
+                }, {
+                    role: 'assistant',
+                    content: '好的, 我已收到您的 service 列表，请提出您的问题。'
+                }, {
+                    role: 'user',
+                    content: '根据以上信息回复我的问题: ' + requestMsg
+                }
+            ];
+        }
+        case AI_ENGINE_TYPE.Coze:{
+            return [
+                {
+                    role: 'user',
+                    content: promptMsg,
+                }, {
+                    role: 'assistant',
+                    content: '好的, 我知道了，请提供您的 entity 列表和 service 列表。'
+                }, {
+                    role: 'user',
+                    content: `我的 entity 列表为: ${JSON.stringify(entityList)}`,
+                }, {
+                    role: 'assistant',
+                    content: '好的, 我已收到您的 entity 列表，请继续提供 service 列表。'
+                }, {
+                    role: 'user',
+                    content: `支持的 service 列表为: ${JSON.stringify(serviceList)}`,
+                }, {
+                    role: 'assistant',
+                    content: '好的, 我已收到您的 service 列表，请提出您的问题。'
+                }, {
+                    role: 'user',
+                    content: '根据以上信息回复我的问题: ' + requestMsg
+                }
+            ];
+        }
+    }
+}
+
+function splitDataInChunks(dataArray, chunkSize) {
+    const fileSize = dataArray.length;
+
+    const numChunks = Math.ceil(fileSize / chunkSize);
+    const chunks = [];
+
+    for (let i = 0; i < numChunks; i++) {
+        const start = i * chunkSize;
+        const end = start + chunkSize;
+        const chunk = dataArray.slice(start, end);
+        chunks.push(chunk);
+    }
+
+    return chunks;
 }
