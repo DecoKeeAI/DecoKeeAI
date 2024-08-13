@@ -378,7 +378,6 @@ export default {
             console.log('MainScreen: 设备发生变化的 resourceId', this.resourceId);
 
             this.configIdx = args.configIdx;
-            this.resourceId = this.allResource.find(item => item.name === this.configIdx).id;
             this.getConfigInfo(this.deviceRowCount, this.deviceColCount);
             // 初始化页码
             this.calculateTotalPage(false);
@@ -1729,13 +1728,12 @@ export default {
             this.knobFun = true;
             this.operationData = {};
             const knobInfo = window.resourcesManager.getConfigInfo(this.resourceId);
-            if (knobInfo[knobInfo.length - 1].keyCode === '0,1') {
-                const newKnobData = knobInfo[knobInfo.length - 1].config.subActions;
-                this.leftData = deepCopy(newKnobData[1] || {});
-                this.ceneterData = deepCopy(newKnobData[0] || {});
-                this.rightData = deepCopy(newKnobData[2] || {});
-                this.knobData = deepCopy(knobInfo[knobInfo.length - 1]);
-            }
+            const newKnobData = knobInfo.filter(item => item.keyCode === '0,1')[0].config.subActions
+            console.log('MainScreen: 点击获取旋钮', newKnobData);
+
+            this.leftData = deepCopy(newKnobData[1] || {});
+            this.ceneterData = deepCopy(newKnobData[0] || {});
+            this.rightData = deepCopy(newKnobData[2] || {});
 
             this.$nextTick(() => {
                 this.operationHeight = this.windowHeight - document.getElementById('box-main').offsetHeight;
