@@ -2,6 +2,7 @@ import { app } from 'electron';
 import defaultResourcesMap from '@/assets/resources.js';
 import Constants from '@/utils/Constants';
 import { randomString } from '@/utils/Utils';
+import {loadPCInstalledApps} from "@/main/ai/SystemInstalledAppLoader";
 
 const DecompressZip = require('decompress-zip');
 const fs = require('fs');
@@ -71,44 +72,17 @@ class ResourcesManager {
         }
         this.pcInstalledApps = [];
 
-        const that = this;
-        setTimeout(() => {
-            const workerScriptPath = that.getRelatedSrcPath('@/scripts/SystemInstalledAppLoader.js', true);
-            console.log('workerScriptPath: ', workerScriptPath);
-            const workerProcess = fork(workerScriptPath);
+        loadPCInstalledApps().then(async installedApps => {
 
-            workerProcess.send({ type: 'load-pc-installed-apps' });
-
-            workerProcess.once('message', async message => {
-                if (message.type !== 'success') {
-                    console.log('ResourceManager: Failed to load pc installed apps');
-                    return;
+            for (let i = 0; i < installedApps.length; i++) {
+                const appInfo = installedApps[i];
+                const appIconInfo = await this.getAppIconInfo(appInfo.appLaunchPath);
+                if (appIconInfo) {
+                    appInfo.displayIcon = appIconInfo.id;
                 }
-                const installedApps = message.result;
-                console.log('ResourceManager: Loaded Installed APPS length: ', installedApps.length);
-                // console.log('ResourceManager: Loaded Installed APPS: ', installedApps);
-                for (let i = 0; i < installedApps.length; i++) {
-                    const appInfo = installedApps[i];
-                    const appIconInfo = await that.getAppIconInfo(appInfo.appLaunchPath);
-                    if (appIconInfo) {
-                        appInfo.displayIcon = appIconInfo.id;
-                    }
-                    that.pcInstalledApps.push(appInfo);
-                }
-            })
-        }, 1000);
-
-        // loadPCInstalledApps().then(async installedApps => {
-        //
-        //     for (let i = 0; i < installedApps.length; i++) {
-        //         const appInfo = installedApps[i];
-        //         const appIconInfo = await this.getAppIconInfo(appInfo.appLaunchPath);
-        //         if (appIconInfo) {
-        //             appInfo.displayIcon = appIconInfo.id;
-        //         }
-        //         this.pcInstalledApps.push(appInfo);
-        //     }
-        // });
+                this.pcInstalledApps.push(appInfo);
+            }
+        });
     }
 
     getInstalledApps() {

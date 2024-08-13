@@ -193,13 +193,28 @@ class AppEvents {
     }
 
     getStartOnBoot() {
-        return app.getLoginItemSettings().openAtLogin
+        let launcherPath = process.execPath;
+        let args = undefined;
+        if (process.platform === 'win32') {
+            launcherPath = this.appManager.resourcesManager.getRelatedSrcPath('@/DecoKeeAI.exe', true);
+            args = [ `"${app.getPath('exe')}"`];
+        }
+        return app.getLoginItemSettings({path: launcherPath, args: args}).openAtLogin
     }
 
     setStartOnBoot(enable) {
+
+        let launcherPath = process.execPath;
+        let args = undefined;
+
+        if (process.platform === 'win32') {
+            launcherPath = this.appManager.resourcesManager.getRelatedSrcPath('@/DecoKeeAI.exe', true);
+            args = [ `"${app.getPath('exe')}"`];
+        }
         app.setLoginItemSettings({
             openAtLogin: enable,
-            path: process.execPath
+            path: launcherPath,
+            args: args
         })
     }
 }
