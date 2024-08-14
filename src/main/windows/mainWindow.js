@@ -115,6 +115,15 @@ class MainWindow {
                         //下载完成后传回进度
                         that.appManager.windowManager.sendUpgradeProgress(progress);
                     }
+                } else if (state === 'interrupted') {
+                    console.log('MainWindow: download interrupted, item.isPaused: ', item.isPaused(), ' item.canResume: ', item.canResume());
+
+                    if (item.canResume()) {
+                        item.resume();
+                    } else {
+                        that.appManager.windowManager.sendUpgradeProgress(-1);
+                        item.cancel();
+                    }
                 }
             });
             item.once('done', (event, state) => {
@@ -123,9 +132,30 @@ class MainWindow {
                     console.log('MainWindow: download completed');
                     //下载完成后传回进度
                     that.appManager.windowManager.sendUpgradeComplete();
-                }
 
-                item.removeAllListeners();
+                    item.removeAllListeners();
+                } else if (state === 'interrupted') {
+                    console.log('MainWindow: download done with interrupted, item.isPaused: ', item.isPaused(), ' item.canResume: ', item.canResume());
+
+                    if (item.canResume()) {
+                        item.resume();
+                    } else {
+                        that.appManager.windowManager.sendUpgradeProgress(-1);
+                        item.cancel();
+
+                        item.removeAllListeners();
+                    }
+                } else {
+                    console.log('MainWindow: download done with canceled, item.isPaused: ', item.isPaused(), ' item.canResume: ', item.canResume());
+                    if (item.canResume()) {
+                        item.resume();
+                    } else {
+                        that.appManager.windowManager.sendUpgradeProgress(-1);
+                        item.cancel();
+
+                        item.removeAllListeners();
+                    }
+                }
             });
         });
 

@@ -98,7 +98,9 @@
         "aiTextSelectionSkills": "快捷划词技能",
         "disabledTextSelectionApp": "已禁用应用",
         "homeAssistantControl": "HomeAssistant 操控",
-        "configHomeAssistant": "配置 HA"
+        "configHomeAssistant": "配置 HA",
+        "downloadFailed": "下载失败" ,
+        "downloadFailedMsg": "更新失败，请稍候重试。"
     },
     "success": "成功",
     "failed": "失败",

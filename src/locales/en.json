@@ -98,7 +98,9 @@
     "aiTextSelectionSkills": "Text Selection Skills",
     "disabledTextSelectionApp": "Disabled Apps",
     "homeAssistantControl": "HomeAssistant Control",
-    "configHomeAssistant": "HA Configuration"
+    "configHomeAssistant": "HA Configuration",
+    "downloadFailed": "Download Failed" ,
+    "downloadFailedMsg": "Upgrade failed, please retry later."
   },
   "success": "Success",
   "failed": "Failed",

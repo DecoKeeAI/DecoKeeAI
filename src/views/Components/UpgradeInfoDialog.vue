@@ -59,62 +59,73 @@ export default {
             this.downloadUrlPrefix = downloadUrlPrefix;
 
             console.log('UpgradeInfoDialog show');
-            ipcRenderer.on('downloading', (event, args) => this.handleUpgradeProgress(event, args));
-            ipcRenderer.on('downloaded', () => {
-                setTimeout(() => {
-                    this.handleUpgradeComplete();
-                }, 3000);
-            });
+            ipcRenderer.on('downloading', this.handleUpgradeProgress);
+            ipcRenderer.on('downloaded', this.handleUpgradeComplete);
         },
         handleUpgradeProgress(event, args) {
+            if (!this.dialogVisible || !this.showDownloading) return;
             console.log('handleUpgradeProgress: download progress: ', args);
-            this.downloadedProgress = parseInt(args);
+            const downloadProgress = parseInt(args);
+            if (downloadProgress === -1) {
+                const that = this;
+                this.$alert(this.$t('settings.downloadFailedMsg'), this.$t('settings.downloadFailed'), {
+                    confirmButtonText: this.$t('confirm'),
+                    callback: () => {
+                        that.handleClose();
+                    }
+                });
+            } else {
+                this.downloadedProgress = downloadProgress;
+            }
         },
         handleUpgradeComplete() {
-            ipcRenderer.send('ExtractStart');
+            setTimeout(() => {
+                ipcRenderer.send('ExtractStart');
 
-            console.log('handleUpgradeComplete: download complete.');
-            this.downloadedProgress = 100;
+                console.log('handleUpgradeComplete: download complete.');
+                this.downloadedProgress = 100;
 
-            const installPath = remote.app.getPath('exe');
-            const extractPath = remote
-                .getGlobal('path')
-                .resolve(installPath, '..', 'resources', 'app-new');
-            console.log('handleUpgradeComplete: extractPath: ' + extractPath);
+                const installPath = remote.app.getPath('exe');
+                const extractPath = remote
+                    .getGlobal('path')
+                    .resolve(installPath, '..', 'resources', 'app-new');
+                console.log('handleUpgradeComplete: extractPath: ' + extractPath);
 
-            const unzipper = new DecompressZip(this.downloadFilePath);
+                const unzipper = new DecompressZip(this.downloadFilePath);
 
-            const that = this;
-            unzipper.on('error', function (err) {
-                console.log('Caught an error', err);
-            });
+                const that = this;
+                unzipper.on('error', function (err) {
+                    console.log('Caught an error', err);
+                });
 
-            unzipper.on('extract', function () {
-                console.log('Finished extracting');
-                that.$alert(that.$t('installSuccess'), '', {
-                    confirmButtonText: that.$t('restart'),
-                    showClose: false,
-                    closeOnClickModal: false,
-                    closeOnPressEscape: false,
-                    callback: async () => {
-                        console.log('Do Restart Program');
-                        setTimeout(() => {
-                            ipcRenderer.send('RestartApp', {});
-                        }, 1000);
+                unzipper.on('extract', function () {
+                    console.log('Finished extracting');
+                    that.$alert(that.$t('installSuccess'), '', {
+                        confirmButtonText: that.$t('restart'),
+                        showClose: false,
+                        closeOnClickModal: false,
+                        closeOnPressEscape: false,
+                        callback: async () => {
+                            console.log('Do Restart Program');
+                            setTimeout(() => {
+                                ipcRenderer.send('RestartApp', {});
+                            }, 1000);
+                        },
+                    });
+                });
+
+                unzipper.on('progress', function (fileIndex, fileCount) {
+                    console.log('Extracted file ' + (fileIndex + 1) + ' of ' + fileCount);
+                });
+
+                unzipper.extract({
+                    path: extractPath,
+                    filter: function (file) {
+                        return file.type !== 'SymbolicLink';
                     },
                 });
-            });
 
-            unzipper.on('progress', function (fileIndex, fileCount) {
-                console.log('Extracted file ' + (fileIndex + 1) + ' of ' + fileCount);
-            });
-
-            unzipper.extract({
-                path: extractPath,
-                filter: function (file) {
-                    return file.type !== 'SymbolicLink';
-                },
-            });
+            }, 3000);
         },
         doUpgrade() {
             this.showDownloading = true;
@@ -148,10 +159,8 @@ export default {
             this.showDownloading = false;
             this.downloadedProgress = 0;
             this.newVersionNum = '';
-            ipcRenderer.removeListener('downloading', (event, args) =>
-                this.handleUpgradeProgress(event, args)
-            );
-            ipcRenderer.removeListener('downloaded', () => this.handleUpgradeComplete());
+            ipcRenderer.off('downloading', this.handleUpgradeProgress);
+            ipcRenderer.off('downloaded', this.handleUpgradeComplete);
 
             done();
         },

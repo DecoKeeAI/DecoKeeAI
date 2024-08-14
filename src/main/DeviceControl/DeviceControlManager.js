@@ -1919,7 +1919,6 @@ function removeDeviceHAMonitorCallbacks(serialNumber) {
 
     const deviceMonitorHAStatusList = haStatusMonitorMap.get(serialNumber);
     if (deviceMonitorHAStatusList === undefined) return;
-    console.log('DeviceControlManager: removeDeviceHAMonitorCallbacks22222222222222: for serialNumber: ', serialNumber);
 
 
     deviceMonitorHAStatusList.forEach(monitorInfo => {
