@@ -100,7 +100,14 @@
         "homeAssistantControl": "HomeAssistant 操控",
         "configHomeAssistant": "配置 HA",
         "downloadFailed": "下载失败" ,
-        "downloadFailedMsg": "更新失败，请稍候重试。"
+        "downloadFailedMsg": "更新失败，请稍候重试。",
+        "monitorAppViewMaster": "显示应用画面(总)",
+        "monitorAppViewMethod": "界面获取方式",
+        "monitorAppViewFrameRate": "应用画面刷新帧率",
+        "monitorAppViewMethodDefault": "默认",
+        "monitorAppViewMethodDefaultHint": "默认方法是使用捕获应用程序截屏，\n某些应用程序可能保护该方法，\n因此无法获取应用程序视图。",
+        "monitorAppViewMethodStream": "流媒体",
+        "monitorAppViewMethodStreamHint": "流媒体方法将使用更多的系统资源来捕获应用程序窗口数据，\n这可能会导致系统卡顿。"
     },
     "success": "成功",
     "failed": "失败",

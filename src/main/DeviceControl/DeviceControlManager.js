@@ -132,6 +132,10 @@ const deviceMonitorAppViewContext = {
 
 const haStatusMonitorMap = new Map();
 
+let monitorAppViewMasterSwitch = true;
+let monitorAppViewMethod = 'default';
+let monitorAppViewFrameRate = 1;
+
 let deviceProfileAppMonitorMap = undefined;
 class DeviceControlManager {
     constructor(mainAppManager) {
@@ -413,6 +417,35 @@ class DeviceControlManager {
         }, 3000);
 
         appManager.resourcesManager.setDeviceConfigChangeListener(this.reloadDeviceConfigProfileOnDelete);
+
+        monitorAppViewMasterSwitch = appManager.storeManager.storeGet('system.appMonitorMasterSwitch', true);
+        monitorAppViewMethod = appManager.storeManager.storeGet('system.appMonitorMethod', 'default');
+        monitorAppViewFrameRate = appManager.storeManager.storeGet('system.appMonitorFrameRate', 1);
+
+        ipcMain.handle('app-monitor-view-config-changed', (event, args) => {
+            const lastMasterSwitch = monitorAppViewMasterSwitch;
+            monitorAppViewMasterSwitch = args.masterSwitch;
+            if (!args.masterSwitch) {
+                cancelCurrentMonitorAppViewTask();
+                return;
+            }
+            if (args.method === null || args.method === undefined || args.frameRate === undefined || args.frameRate === null) return;
+            if (monitorAppViewMethod === args.method && args.frameRate === monitorAppViewFrameRate && lastMasterSwitch === args.masterSwitch) return;
+            console.log('app-monitor-view-config-changed: args.method: ', args.method, ' args.frameRate: ', args.frameRate, ' deviceMonitorAppViewContext.isRunning: ', deviceMonitorAppViewContext.isRunning);
+            monitorAppViewMethod = args.method;
+            monitorAppViewFrameRate = args.frameRate;
+            if (deviceMonitorAppViewContext.isRunning) {
+                cancelCurrentMonitorAppViewTask();
+
+                setTimeout(() => {
+                    checkAndStartMonitorAppViewTask();
+                }, 3000);
+            } else if (monitorAppViewMasterSwitch) {
+                setTimeout(() => {
+                    checkAndStartMonitorAppViewTask();
+                }, 1000);
+            }
+        });
     }
 
     sendProfileChangeRequest(serialNumber, resourceId) {
@@ -3538,8 +3571,34 @@ function isPluginSupportOnCurrentPlatform(pluginInfo) {
     return true;
 }
 
+function cancelCurrentMonitorAppViewTask() {
+    clearTimeout(deviceMonitorAppViewContext.monitorAppViewTask);
+
+    if (monitorAppViewMethod === 'stream') {
+        if (
+            appManager &&
+            appManager.windowManager &&
+            appManager.windowManager.mainWindow &&
+            appManager.windowManager.mainWindow.win
+        ) {
+            console.log('DeviceControlManager: cancelCurrentMonitorAppViewTask');
+            appManager.windowManager.mainWindow.win.webContents.send('UpdateWindowMonitorIds', {
+                windowIds: []
+            });
+        }
+    }
+    deviceMonitorAppViewContext.isRunning = false;
+    deviceMonitorAppViewContext.monitorAppViewTask = undefined;
+    deviceMonitorAppViewContext.monitorWindowInfos = [];
+}
+
 async function checkAndStartMonitorAppViewTask() {
     clearTimeout(deviceMonitorAppViewContext.monitorAppViewTask);
+
+    if (!monitorAppViewMasterSwitch) {
+        deviceMonitorAppViewContext.isRunning = false;
+        return;
+    }
 
     if (deviceMonitoryAppViewMap.size === 0) {
         deviceMonitorAppViewContext.isRunning = false;
@@ -3548,16 +3607,7 @@ async function checkAndStartMonitorAppViewTask() {
         deviceMonitorAppViewContext.monitorAppViewTask = undefined;
         deviceMonitorAppViewContext.monitorWindowInfos = [];
 
-        // if (
-        //     appManager &&
-        //     appManager.windowManager &&
-        //     appManager.windowManager.mainWindow &&
-        //     appManager.windowManager.mainWindow.win
-        // ) {
-        //     appManager.windowManager.mainWindow.win.webContents.send('UpdateWindowMonitorIds', {
-        //         windowIds: []
-        //     });
-        // }
+        cancelCurrentMonitorAppViewTask();
         return;
     }
 
@@ -3611,7 +3661,12 @@ async function checkAndStartMonitorAppViewTask() {
 
     // console.log('DeviceControlManager: requestViewDataObj: ', requestViewDataObj);
 
-    const sources = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 200, height: 200 } });
+    let sources;
+    if (monitorAppViewMethod === 'default') {
+        sources = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 200, height: 200 } });
+    } else {
+        sources = await desktopCapturer.getSources({types: ['window'], thumbnailSize: {width: 0, height: 0}});
+    }
     // console.log('DeviceControlManager: deviceMonitorAppViewContext.deviceMonitoryAppViewData: ', deviceMonitorAppViewContext.deviceMonitoryAppViewData);
     // console.log('DeviceControlManager: available Windows: ', sources);
 
@@ -3628,12 +3683,20 @@ async function checkAndStartMonitorAppViewTask() {
 
         if (appViewMonitorKeys === undefined || appViewMonitorKeys.length === 0) return;
 
-        finalSendMonitorViewList.push({
-            sourceData: source.thumbnail.toJPEG(50),
-            sourceViewId: source.id,
-            sourceViewTitle: source.name,
-            targetKeys: appViewMonitorKeys
-        });
+        if (monitorAppViewMethod === 'default') {
+            finalSendMonitorViewList.push({
+                sourceData: source.thumbnail.toJPEG(50),
+                sourceViewId: source.id,
+                sourceViewTitle: source.name,
+                targetKeys: appViewMonitorKeys
+            });
+        } else {
+            finalSendMonitorViewList.push({
+                sourceViewId: source.id,
+                sourceViewTitle: source.name,
+                targetKeys: appViewMonitorKeys
+            });
+        }
     });
 
     // console.log('DeviceControlManager: finalSendMonitorViewList: ', finalSendMonitorViewList, ' lastMonitorWindowInfos', deviceMonitorAppViewContext.monitorWindowInfos);
@@ -3646,27 +3709,31 @@ async function checkAndStartMonitorAppViewTask() {
 
         // console.log('DeviceControlManager: finalSendMonitorViewList: ', finalSendMonitorViewList, ' NewMonitorWindowInfos', deviceMonitorAppViewContext.monitorWindowInfos);
 
-        // if (
-        //     appManager &&
-        //     appManager.windowManager &&
-        //     appManager.windowManager.mainWindow &&
-        //     appManager.windowManager.mainWindow.win
-        // ) {
-        //     appManager.windowManager.mainWindow.win.webContents.send('UpdateWindowMonitorIds', {
-        //         windowIds: finalSendMonitorViewList.map(monitorAppInfo => monitorAppInfo.sourceViewId)
-        //     });
-        // }
+        if (monitorAppViewMethod === 'stream') {
+            if (
+                appManager &&
+                appManager.windowManager &&
+                appManager.windowManager.mainWindow &&
+                appManager.windowManager.mainWindow.win
+            ) {
+                appManager.windowManager.mainWindow.win.webContents.send('UpdateWindowMonitorIds', {
+                    windowIds: finalSendMonitorViewList.map(monitorAppInfo => monitorAppInfo.sourceViewId)
+                });
+            }
+        }
     }
 
-    finalSendMonitorViewList.forEach(monitorDevicesInfo => {
-        monitorDevicesInfo.targetKeys.forEach(targetKey => {
-            sendRawResourceToDeviceKey(targetKey.serialNumber, PROTOCOL_RAW_RES_TYPE.RES_TYPE_JPEG, Array.from(monitorDevicesInfo.sourceData), targetKey.keyCode);
+    if (monitorAppViewMethod === 'default') {
+        finalSendMonitorViewList.forEach(monitorDevicesInfo => {
+            monitorDevicesInfo.targetKeys.forEach(targetKey => {
+                sendRawResourceToDeviceKey(targetKey.serialNumber, PROTOCOL_RAW_RES_TYPE.RES_TYPE_JPEG, Array.from(monitorDevicesInfo.sourceData), targetKey.keyCode);
+            });
         });
-    })
+    }
 
     deviceMonitorAppViewContext.monitorAppViewTask = setTimeout(() => {
         checkAndStartMonitorAppViewTask();
-    }, 1000);
+    }, monitorAppViewMethod === 'default' ? 1000 : 5000);
 }
 
 function sleep(time) {

@@ -78,6 +78,8 @@ export default {
             const canvasElement = document.createElement('canvas');
             const canvasContext = canvasElement.getContext('2d');
 
+            const monitorAppFrameRate = window.store.storeGet('system.appMonitorFrameRate', 1);
+
             videoElement.style.display = 'none'; // 或者使用 visibility: 'hidden'
 
             const constraints = {
@@ -89,7 +91,7 @@ export default {
                         maxWidth: 200,
                         maxHeight: 200,
                         minFrameRate: 1,  // 最低帧率
-                        maxFrameRate: 1   // 最高帧率
+                        maxFrameRate: monitorAppFrameRate   // 最高帧率
                     },
                 },
             };
@@ -113,7 +115,7 @@ export default {
                     // 绘制当前视频帧到画布
                     canvasContext.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
 
-                    console.log('canvasElement.width: ', canvasElement.width, ' canvasElement.height: ', canvasElement.height);
+                    // console.log('canvasElement.width: ', canvasElement.width, ' canvasElement.height: ', canvasElement.height);
                     // 将画布内容转换为JPEG Blob
                     canvasElement.toBlob((blob) => {
                         if (blob) {
@@ -133,7 +135,7 @@ export default {
                             console.error('Error: Blob is empty');
                         }
                     }, 'image/jpeg', 0.5); // 第二个参数是MIME类型，第三个参数是图像质量
-                }, 1000)
+                }, 1000 / monitorAppFrameRate)
             };
 
             this.streamCaptureList.push(steamCaptureInfo);

@@ -100,7 +100,14 @@
     "homeAssistantControl": "HomeAssistant Control",
     "configHomeAssistant": "HA Configuration",
     "downloadFailed": "Download Failed" ,
-    "downloadFailedMsg": "Upgrade failed, please retry later."
+    "downloadFailedMsg": "Upgrade failed, please retry later.",
+    "monitorAppViewMaster": "View App Status(Master)",
+    "monitorAppViewMethod": "View Method",
+    "monitorAppViewFrameRate": "App View Frame Rate",
+    "monitorAppViewMethodDefault": "Default",
+    "monitorAppViewMethodDefaultHint": "Default method is using capture application screenshot,\n some application may protect this method so not able to get the application view.",
+    "monitorAppViewMethodStream": "Stream",
+    "monitorAppViewMethodStreamHint": "Stream method will use more system resources to capture application window data,\n this may cause system laggy."
   },
   "success": "Success",
   "failed": "Failed",
@@ -231,6 +238,12 @@
   "cmdLineEnterHint": "Enter command to execute",
   "deleteKeyConfigHint": "Are you sure you wan to delete this configuration?",
   "monitorAppView": "View App Status",
+  "monitorAppViewMethod": "View Method",
+  "monitorAppViewFrameRate": "Frame Rate",
+  "monitorAppViewMethodDefault": "Default",
+  "monitorAppViewMethodDefaultHint": "Default method is using capture application screenshot,\n some application may protect this method so not able to get the application view.",
+  "monitorAppViewMethodStream": "Stream",
+  "monitorAppViewMethodStreamHint": "Stream method will use more system resources to capture application window data,\n this may cause system laggy.",
   "iconLib": {
     "title": "Icon Library",
     "searchHint": "Search Icon",
