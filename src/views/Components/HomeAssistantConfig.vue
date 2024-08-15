@@ -65,6 +65,7 @@
                             v-if="selectEntityTab === 'room'"
                             v-model="selectedEntityInfoByRoom"
                             :options="roomSelectionList"
+                            :show-all-levels="false"
                             :placeholder="$t('pleaseSelect')"
                             filterable
                             @change="handleEntitySelectedByRoom"
@@ -72,6 +73,7 @@
                         <el-cascader
                             v-else
                             v-model="selectedEntityInfoByDomain"
+                            :show-all-levels="false"
                             :options="entitySelectionList"
                             :placeholder="$t('pleaseSelect')"
                             filterable
@@ -266,12 +268,14 @@ export default {
                 configData = JSON.parse(haConfigData);
             }
 
+            this.selectEntityTab = 'entity';
             this.availableServiceDataFields = [];
             this.selectedServiceAction = '';
             this.serviceActionSelectionList = [];
             this.domainServices = [];
             this.availableDisplayItems = [];
             this.selectedEntityInfoByDomain = [];
+            this.selectedEntityInfoByRoom = [];
             this.selectedConfigInfo = deepCopy({
                 entity_id: undefined,
                 service: undefined,
