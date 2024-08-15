@@ -491,6 +491,10 @@ class DeviceControlManager {
         });
     }
 
+    sendRawResourceToDevice(serialNumber, keyCode, resourceType, resourceData) {
+        sendRawResourceToDeviceKey(serialNumber, resourceType, resourceData, keyCode);
+    }
+
     showDeviceAlert(serialNumber, alertType, keyCode) {
         notifyDeviceShowAlert(serialNumber, alertType, keyCode);
     }
@@ -3072,7 +3076,9 @@ function processHomeAssistantFunction(serialNumber, keyCode, keyActions) {
         JSON.stringify(keyActions)
     );
 
-    if (keyActions.length === 0 ||
+    if (
+        !global.generalAIManager.HAManager.checkConnection() ||
+        keyActions.length === 0 ||
         !keyActions[0].type ||
         keyActions[0].type !== 'configData' ||
         !keyActions[0].value ||

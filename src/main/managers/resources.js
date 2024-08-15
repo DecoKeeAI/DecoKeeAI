@@ -2011,6 +2011,29 @@ class ResourcesManager {
         await sharp(buffer).png().toFile(filename);
     }
 
+    async base64ToJpegBuffer(base64String) {
+        const regex = /^data:(.*);base64,(.*)$/;
+        const match = base64String.match(regex);
+        const isSvg = base64String.startsWith('data:image/svg+xml;charset=utf8,');
+        if (!match && !isSvg) {
+            throw new Error('Unknown image type!!!!!');
+        }
+
+        let base64Data = base64String.substring(base64String.indexOf(',') + 1);
+        let buffer;
+        if (isSvg) {
+            base64Data = removeTextAttributes(base64Data);
+            base64Data = decodeURIComponent(base64Data);
+            console.log('ResourceManager:Modifyed SVGDATA: ', base64Data);
+            buffer = Buffer.from(base64Data);
+        } else {
+            base64Data = match[2];
+            buffer = Buffer.from(base64Data, 'base64');
+        }
+
+        return await sharp(buffer).jpeg({quality: 50}).toBuffer();
+    }
+
     async svgToPng(svgFilePath, exportFilename) {
         let parentDir;
         if (process.platform === 'win32') {

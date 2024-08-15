@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { ipcMain } from 'electron';
 import Constants from '@/utils/Constants';
 import {checkPortRange} from "@/utils/Utils";
+import {PROTOCOL_RAW_RES_TYPE} from "@/main/DeviceControl/Connections/ProtocolUtil";
 
 const {shell} = require('electron');
 const textDecoder = new TextDecoder();
@@ -704,6 +705,15 @@ async function processSetImage(context, imageBase64, state) {
     const resourceId = contextInfos[CONTEXT_ID.RESOURCE_ID];
     const keyCode = contextInfos[CONTEXT_ID.KEY_CODE];
     const deviceSN = contextInfos[CONTEXT_ID.DEVICE_SN];
+    const multiActionIdx = contextInfos[CONTEXT_ID.MULTI_ACTION_IDX];
+
+    try {
+        if (Number(multiActionIdx) !== 0) {
+            return;
+        }
+    } catch (err) {
+        console.log('PluginWSServer: processSetImage Detect error: ', err);
+    }
 
     const deviceConfigProfileInfo = deviceControlManager.getDeviceActiveProfile(deviceSN);
     if (!deviceConfigProfileInfo) return;
@@ -742,8 +752,6 @@ async function processSetImage(context, imageBase64, state) {
         deviceConfigInfo[keyConfigIdx] = activeKeyConfig;
 
         appManager.resourcesManager.updateConfigInfo(deviceConfigProfileInfo.resourceId, deviceConfigInfo);
-
-        deviceControlManager.sendProfileChangeRequest(deviceSN, deviceConfigProfileInfo.resourceId);
         return;
     }
 
@@ -751,39 +759,14 @@ async function processSetImage(context, imageBase64, state) {
     const pluginDetail = currentPluginsList.filter(pluginInfo => pluginInfo.pluginId === contextInfos[CONTEXT_ID.PLUGIN_UUID]);
 
     if (!pluginDetail || pluginDetail.length === 0) return;
-    const regExp = new RegExp(':', 'g');
 
-    const imageFileName = context.replace(regExp, '_') + '.png';
-    const resourceSavePath = path.join(pluginDetail[0].pluginPath, 'extraIcons', imageFileName);
+    try {
+        const dataBuffer = await appManager.resourcesManager.base64ToJpegBuffer(imageBase64);
 
-    if (fs.existsSync(resourceSavePath) && fs.existsSync(resourceSavePath + '.b64')) {
-        const oldB64Data = fs.readFileSync(resourceSavePath + '.b64');
-
-        if (oldB64Data === imageBase64) {
-            if (ENABLE_LOG) console.log('PluginWSServer: processSetImage: Same IMG data skip update.');
-            return;
-        }
+        deviceControlManager.sendRawResourceToDevice(deviceSN, keyCode, PROTOCOL_RAW_RES_TYPE.RES_TYPE_JPEG, dataBuffer.toJSON().data);
+    } catch (err) {
+        console.log('PluginWSServer: processSetImage Detect error: ', err);
     }
-
-    if (ENABLE_LOG) console.log('PluginWSServer: processSetImage: Save new IMG to ', resourceSavePath);
-
-    await appManager.resourcesManager.base64ToPng(imageBase64, resourceSavePath);
-
-    const resId = appManager.resourcesManager.addExternalResource(resourceSavePath, imageFileName, Constants.RESOURCE_TYPE_PLUGIN_ICON);
-
-    if (state === 1) {
-        activeKeyConfig.config.alterIcon = resId;
-    } else {
-        activeKeyConfig.config.icon = resId;
-    }
-
-    deviceConfigInfo[keyConfigIdx] = activeKeyConfig;
-
-    appManager.resourcesManager.updateConfigInfo(deviceConfigProfileInfo.resourceId, deviceConfigInfo);
-
-    deviceControlManager.sendProfileChangeRequest(deviceSN, deviceConfigProfileInfo.resourceId);
-
-    fs.writeFileSync(resourceSavePath + '.b64', imageBase64);
 }
 
 function processShowAlert(context) {
