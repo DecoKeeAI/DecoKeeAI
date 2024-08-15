@@ -123,9 +123,9 @@ export default {
     },
     created() {
         this.$nextTick(() => {
-            this.haConnectionStatus = window.generalAIManager.HAManager.checkConnection();
             this.haAPIKey = window.store.storeGet('haConfig.accessToken', '');
             this.serverAddr = window.store.storeGet('haConfig.hassUrl', '');
+            this.haConnectionStatus = window.generalAIManager.HAManager.checkConnection();
             this.setupHASelections();
         });
     },

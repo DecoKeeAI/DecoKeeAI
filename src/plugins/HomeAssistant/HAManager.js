@@ -331,6 +331,7 @@ export default class HAManager {
 
     _handleHAConnectionReady() {
         console.log('HAConnector: _handleHAConnectionReady:');
+        this.HAConnectionState = HA_CONNECTION_STATE.CONNECTED;
     }
 
     _handleHAReconnectError() {
