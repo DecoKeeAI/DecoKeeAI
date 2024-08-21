@@ -2411,7 +2411,7 @@ class AIManager {
             return;
         }
 
-        finalParam.max_tokens = 8000;
+        finalParam.max_tokens = 4096;
 
         let chatFrameResponse = '';
 
