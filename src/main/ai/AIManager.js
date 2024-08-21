@@ -2741,6 +2741,9 @@ class AIManager {
         let phase1Response, determineEntityResponse;
         try {
             determineEntityResponse = await this._awaitWithTimeout(this.aiAssistantChatAdapter.chatWithAssistant(requestId, params), AI_CONSTANT_CONFIG.CHAT_RESPONSE_TIMEOUT);
+            if (determineEntityResponse.startsWith('```')) {
+                determineEntityResponse = this._getResponseDataJsonString(determineEntityResponse);
+            }
             phase1Response = eval('(' + determineEntityResponse.replace(/\\"/g, '"') + ')');
         } catch (err) {
             console.log('AIManager: _handleHAOperation: Received Invalid phase1 response', err.message, ' determineEntityResponse: ', determineEntityResponse);
@@ -2857,6 +2860,9 @@ class AIManager {
                     let actionDetailMsg = '';
                     try {
                         actionDetailMsg = message.substring(actionDetailDataStartIndex, actionMessageStartIndex).trim()
+                        if (actionDetailMsg.startsWith('```')) {
+                            actionDetailMsg = this._getResponseDataJsonString(actionDetailMsg);
+                        }
                         this.haOperationContext.actionDetail = eval('(' + actionDetailMsg + ')');
                     } catch (err) {
                         console.log('AIManager: _processHAPhase2Data: Failed to parse action detail data: ', err.message, ' actionDetailMsg: ', actionDetailMsg);
