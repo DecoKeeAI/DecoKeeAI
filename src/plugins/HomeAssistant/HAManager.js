@@ -38,8 +38,8 @@ import {
     callService,
     createConnection,
     createLongLivedTokenAuth,
-    ERR_CANNOT_CONNECT,
-    ERR_INVALID_AUTH,
+    ERR_CANNOT_CONNECT, ERR_CONNECTION_LOST, ERR_HASS_HOST_REQUIRED,
+    ERR_INVALID_AUTH, ERR_INVALID_HTTPS_TO_HTTP,
     getServices,
     getStates,
     subscribeEntities,
@@ -68,14 +68,16 @@ export default class HAManager {
         this.mutexLock = new Mutex();
     }
 
-    updateConfig(configInfo) {
+    updateConfig(configInfo, force = false) {
         if (configInfo === undefined) {
             return;
         }
 
         if (
             this.HAConfigData.hassUrl === configInfo.hassUrl &&
-            this.HAConfigData.accessToken === configInfo.accessToken
+            this.HAConfigData.accessToken === configInfo.accessToken &&
+            this.HAConnectionState === HA_CONNECTION_STATE.CONNECTED &&
+            !force
         )
             return;
 
@@ -84,6 +86,7 @@ export default class HAManager {
             this.HAConnection.removeEventListener('disconnected', this._handleHADisconnected);
             this.HAConnection.removeEventListener('ready', this._handleHAConnectionReady);
             this.HAConnection.removeEventListener('reconnect-error', this._handleHAReconnectError);
+            this.HAConnectionState = HA_CONNECTION_STATE.DISCONNECTED;
         }
 
         this.HAConfigData = configInfo;
@@ -251,7 +254,7 @@ export default class HAManager {
             });
 
         } catch (error) {
-            console.log('HAManager: _getAllServices Error: ', error);
+            this._checkHAError(error, 'sendCallService');
         }
         return false;
     }
@@ -297,6 +300,7 @@ export default class HAManager {
     }
 
     async _getHAConnector() {
+        console.log('HAManager: _getHAConnector: isNull: ', (this.HAConnection === undefined), ' ConnectionState: ', (this.HAConnectionState === HA_CONNECTION_STATE.CONNECTED));
         if (this.HAConnection !== undefined && this.HAConnectionState === HA_CONNECTION_STATE.CONNECTED) {
             return this.HAConnection;
         }
@@ -307,11 +311,7 @@ export default class HAManager {
         try {
             connection = await createConnection({ auth });
         } catch (error) {
-            if (error === ERR_CANNOT_CONNECT) {
-                console.log('HAManager: _getHAConnector: ERR_CANNOT_CONNECT');
-            } else if (error === ERR_INVALID_AUTH) {
-                console.log('HAManager: _getHAConnector: ERR_INVALID_AUTH');
-            }
+            this._checkHAError(error, '_getHAConnector');
             throw error;
         }
         this.HAConnectionState = HA_CONNECTION_STATE.CONNECTED;
@@ -341,6 +341,8 @@ export default class HAManager {
 
     async _getAllEntities() {
         try {
+            console.log('HAManager: _getAllEntities: ');
+
             const HAConnection = await this._getHAConnector();
             const entities = await getStates(HAConnection);
 
@@ -353,17 +355,18 @@ export default class HAManager {
             console.log('HAManager: _getAllEntities: Initial groupedEntities: ', this.getAllEntitiesByGroup());
             this._setupEntitiesSubscription(HAConnection);
         } catch (error) {
-            console.log('HAManager: _getAllEntities Error: ', error);
+            this._checkHAError(error, '_getAllEntities');
         }
     }
 
     async _getAllServices() {
         try {
+            console.log('HAManager: _getAllServices: ');
             const HAConnection = await this._getHAConnector();
             this.allServices = await getServices(HAConnection);
-            console.log('HAManager: _getAllEntities: Initial Services: ' + JSON.stringify(this.allServices));
+            console.log('HAManager: _getAllServices: Initial Services: ' + JSON.stringify(this.allServices));
         } catch (error) {
-            console.log('HAManager: _getAllServices Error: ', error);
+            this._checkHAError(error, '_getAllServices');
         }
     }
 
@@ -432,5 +435,33 @@ export default class HAManager {
                 }
             }
         });
+    }
+
+    _checkHAError(error, tag) {
+        switch (error) {
+            case ERR_CANNOT_CONNECT:
+                console.log('HAManager: ', tag, ': ERR_CANNOT_CONNECT');
+                this.HAConnectionState = HA_CONNECTION_STATE.DISCONNECTED;
+                break;
+            case ERR_INVALID_AUTH:
+                this.HAConnectionState = HA_CONNECTION_STATE.DISCONNECTED;
+                console.log('HAManager: ', tag, ': ERR_INVALID_AUTH');
+                break;
+            case ERR_CONNECTION_LOST:
+                this.HAConnectionState = HA_CONNECTION_STATE.DISCONNECTED;
+                console.log('HAManager: ', tag, ': ERR_CONNECTION_LOST');
+                break;
+            case ERR_HASS_HOST_REQUIRED:
+                this.HAConnectionState = HA_CONNECTION_STATE.DISCONNECTED;
+                console.log('HAManager: ', tag, ': ERR_HASS_HOST_REQUIRED');
+                break;
+            case ERR_INVALID_HTTPS_TO_HTTP:
+                this.HAConnectionState = HA_CONNECTION_STATE.DISCONNECTED;
+                console.log('HAManager: ', tag, ': ERR_INVALID_HTTPS_TO_HTTP');
+                break;
+            default:
+                console.log('HAManager: ', tag, ' Error: ', error);
+                break;
+        }
     }
 }

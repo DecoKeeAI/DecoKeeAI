@@ -225,8 +225,8 @@ export default {
         handleConnectButtonClicked() {
             window.generalAIManager.HAManager.updateConfig({
                 hassUrl: this.serverAddr,
-                accessToken: this.haAPIKey,
-            });
+                accessToken: this.haAPIKey
+            }, true);
 
             setTimeout(() => {
                 this.haConnectionStatus = window.generalAIManager.HAManager.checkConnection();

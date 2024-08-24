@@ -252,9 +252,9 @@ export default {
     },
     created() {
         this.$nextTick(() => {
-            this.setUpConfigInfo(this.haConfigs);
             this.haAPIKey = window.store.storeGet('haConfig.accessToken', '');
             this.serverAddr = window.store.storeGet('haConfig.hassUrl', '');
+            this.setUpConfigInfo(this.haConfigs);
             this.haConnectionStatus = window.generalAIManager.HAManager.checkConnection();
         });
     },
@@ -370,6 +370,7 @@ export default {
         handleEntitySelectedByRoom() {
             const selectedDomain = this.selectedEntityInfoByRoom[1].split('.')[0];
             this.selectedConfigInfo.entity_id = this.selectedEntityInfoByRoom[1];
+            this.selectedServiceAction = '';
             this.getEntityRelatedDisplayableItems();
             this.getRelatedServicesByDomain(selectedDomain);
             console.log(
@@ -382,6 +383,7 @@ export default {
         handleEntitySelectedByDomain() {
             const selectedDomain = this.selectedEntityInfoByDomain[1].split('.')[0];
             this.selectedConfigInfo.entity_id = this.selectedEntityInfoByDomain[1];
+            this.selectedServiceAction = '';
             this.getEntityRelatedDisplayableItems();
             this.getRelatedServicesByDomain(selectedDomain);
 
@@ -501,8 +503,8 @@ export default {
         handleConnectButtonClicked() {
             window.generalAIManager.HAManager.updateConfig({
                 hassUrl: this.serverAddr,
-                accessToken: this.haAPIKey,
-            });
+                accessToken: this.haAPIKey
+            }, true);
 
             setTimeout(() => {
                 this.haConnectionStatus = window.generalAIManager.HAManager.checkConnection();
