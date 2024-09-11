@@ -64,6 +64,8 @@ export default class HAManager {
 
         this.monitorEntityCallbackMap = new Map();
         this.mutexLock = new Mutex();
+
+        this.checkConnectionTask = undefined;
     }
 
     updateConfig(configInfo, force = false) {
@@ -293,6 +295,18 @@ export default class HAManager {
     }
 
     async _initData() {
+        clearInterval(this.checkConnectionTask);
+
+        this.checkConnectionTask = setInterval(() => {
+            const isHAConnected = this.checkConnection();
+
+            console.log('HAManager: connection check task: isHAConnected: ', isHAConnected);
+
+            if (isHAConnected) return;
+
+            this._initData();
+        }, 60000);
+
         await this._getAllServices();
         await this._getAllEntities();
     }
