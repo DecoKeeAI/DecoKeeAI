@@ -11,7 +11,7 @@
                 currentClick('center');
             " @mouseenter="mouseEnter('center')" @mouseleave="mouseLeave('center')">
 
-            <UnitControl v-if="newCeneterData?.config" :icon="newCeneterData.config.icon" :itemData="newCeneterData">
+            <UnitControl v-if="newCeneterData?.config" :icon="newCeneterData.config.icon" :itemData="newCeneterData" style="padding: 20px">
             </UnitControl>
         </div>
 

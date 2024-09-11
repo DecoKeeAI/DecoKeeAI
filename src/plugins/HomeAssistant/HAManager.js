@@ -57,8 +57,6 @@ export default class HAManager {
         this.appManager = appManager;
         this.HAConfigData = config;
         this.HAConfigData.accessToken = appManager.storeManager.storeGet('haConfig.accessToken', '');
-            // 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIwNTMwZTIzMzg2NGY0YmIwOGEzMzY1NTUwZTg1NDcwMCIsImlhdCI6MTcyMDE0NDI5NCwiZXhwIjoyMDM1NTA0Mjk0fQ.erd0C2BDLPXjUUW10Q8XHkN-odEHcmXkXgRf1JRM3EQ';
-        // this.HAConfigData.hassUrl = 'https://axsf.duckdns.org';
         this.HAConfigData.hassUrl = appManager.storeManager.storeGet('haConfig.hassUrl', '');
         globalThis.WebSocket = require('ws');
         this.HAConnectionState = HA_CONNECTION_STATE.DISCONNECTED;

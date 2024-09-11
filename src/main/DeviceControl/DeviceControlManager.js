@@ -1906,6 +1906,9 @@ function setupHAMonitorCallback(serialNumber, keyCode, haDataConfig) {
 
             let displayDataImageHtml = `
 <html>
+    <head>
+        <meta charset="UTF-8">
+    </head>
     <body>
         <div id="content" style="text-align: center; height: 100%; width: 100%; color: white; font-size: ${customDisplaySetting.fontSize}px; font-weight: 800; overflow-x: hidden; overflow-y: hidden">`;
 
