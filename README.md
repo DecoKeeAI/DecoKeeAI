@@ -1,6 +1,17 @@
 **DecoKeeAI**
 ================
 
+## Important Notice: DecoKeeAI, DK-Suite, and Quake
+
+This repository contains DecoKeeAI, an early experimental open-source concept project started by DECOKEE in 2024. DecoKeeAI was not originally created as the official software for DECOKEE Quake.
+
+The current official software for DECOKEE Quake is DK-Suite. DK-Suite is developed and maintained separately from the open-source DecoKeeAI codebase. DK-Suite is currently closed-source in order to ensure product stability, hardware compatibility, software security, and reliable customer support.
+
+For download convenience, official DK-Suite installers may be published in the Releases section of this repository. However, the source code in this repository does not represent the current DK-Suite codebase.
+
+Third-party forks, plugins, scripts, or projects based on the DecoKeeAI source code are independent community projects unless explicitly announced by DECOKEE. They are not officially maintained, endorsed, or supported by DECOKEE.
+
+
 🌟 **Your Smart Desktop Assistant** 🌟
 
 DecoKeeAI introduces a revolutionary human-machine interaction approach by combining AI technology with display-equipped shortcut keys, aiming to integrate AI into desktop HMI (Human-Machine Interface). Through the combination of voice control and new input devices (shortcut keys with displays), AI becomes your intelligent assistant.
